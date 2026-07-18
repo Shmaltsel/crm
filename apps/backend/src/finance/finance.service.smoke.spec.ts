@@ -8,6 +8,7 @@ const mockPrisma = {
   eventReport: { aggregate: jest.fn(), findMany: jest.fn() },
   event: { aggregate: jest.fn(), findMany: jest.fn(), count: jest.fn() },
   expenseItem: { findMany: jest.fn(), aggregate: jest.fn() },
+  manualExpense: { findMany: jest.fn(), create: jest.fn(), update: jest.fn(), delete: jest.fn(), count: jest.fn() },
   salaryRecord: { findMany: jest.fn(), aggregate: jest.fn() },
   city: { findMany: jest.fn() },
   user: { findUnique: jest.fn() },
@@ -43,6 +44,7 @@ const defaultMocks = () => {
     .mockResolvedValueOnce([])
     .mockResolvedValueOnce([]);
   mockPrisma.expenseItem.findMany.mockResolvedValueOnce([]);
+  mockPrisma.manualExpense.findMany.mockResolvedValueOnce([]);
   mockPrisma.salaryRecord.findMany.mockResolvedValueOnce([]);
   mockPrisma.expenseItem.aggregate.mockResolvedValueOnce({
     _sum: { amount: 0 },

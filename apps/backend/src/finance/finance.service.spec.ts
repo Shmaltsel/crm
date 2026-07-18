@@ -21,6 +21,14 @@ const mockPrisma = {
     aggregate: jest.fn(),
   },
 
+  manualExpense: {
+    findMany: jest.fn(),
+    create: jest.fn(),
+    update: jest.fn(),
+    delete: jest.fn(),
+    count: jest.fn(),
+  },
+
   salaryRecord: {
     findMany: jest.fn(),
     aggregate: jest.fn(),
@@ -84,6 +92,7 @@ describe('FinanceService', () => {
       .mockResolvedValueOnce([])
       .mockResolvedValueOnce([]);
     mockPrisma.expenseItem.findMany.mockResolvedValueOnce([]);
+    mockPrisma.manualExpense.findMany.mockResolvedValueOnce([]);
 
     mockPrisma.salaryRecord.findMany.mockResolvedValueOnce([]);
 
@@ -116,6 +125,7 @@ describe('FinanceService', () => {
       });
       mockPrisma.eventReport.findMany.mockResolvedValueOnce([]);
       mockPrisma.expenseItem.findMany.mockResolvedValueOnce([]);
+      mockPrisma.manualExpense.findMany.mockResolvedValueOnce([]);
       mockPrisma.$queryRaw
         .mockResolvedValueOnce([])
         .mockResolvedValueOnce([])
@@ -188,6 +198,7 @@ describe('FinanceService', () => {
       });
       mockPrisma.eventReport.findMany.mockResolvedValueOnce([]);
       mockPrisma.expenseItem.findMany.mockResolvedValueOnce([]);
+      mockPrisma.manualExpense.findMany.mockResolvedValueOnce([]);
       mockPrisma.$queryRaw.mockResolvedValueOnce([]);
       mockPrisma.event.aggregate.mockResolvedValueOnce({
         _sum: { price: 5000 },
@@ -218,6 +229,7 @@ describe('FinanceService', () => {
         { category: 'Паливо', amount: 300 },
         { category: 'Реклама', amount: 200 },
       ]);
+      mockPrisma.manualExpense.findMany.mockResolvedValueOnce([]);
       mockPrisma.$queryRaw
         .mockResolvedValueOnce([])
         .mockResolvedValueOnce([])

@@ -1,9 +1,10 @@
 import { Prisma } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
-import { Injectable, Inject } from '@nestjs/common';
+import { Injectable, Inject, NotFoundException, ForbiddenException } from '@nestjs/common';
 import { CACHE_MANAGER } from '@nestjs/cache-manager';
 import type { Cache } from 'cache-manager';
 import { CacheVersionService } from '../common/cache/cache-version.service';
+import { CreateManualExpenseDto } from './dto/create-manual-expense.dto';
 export interface FinanceKpi {
   totalRevenue: number;
   totalExpenses: number;
@@ -137,7 +138,7 @@ export class FinanceService {
       ...(project ? { project } : {}),
     };
 
-    const [kpiAgg, expensesRaw] = await Promise.all([
+    const [kpiAgg, expensesRaw, manualExpensesRaw] = await Promise.all([
       this.prisma.eventReport.aggregate({
         where: { event: baseEventWhere },
         _sum: { totalSum: true, remainderSum: true },
@@ -145,6 +146,13 @@ export class FinanceService {
       }),
       this.prisma.expenseItem.findMany({
         where: { report: { event: baseEventWhere } },
+        select: { category: true, name: true, amount: true },
+      }),
+      this.prisma.manualExpense.findMany({
+        where: {
+          ...(dateFrom ? { date: { gte: dateFrom } } : {}),
+          ...(cityId ? { cityId } : {}),
+        },
         select: { category: true, name: true, amount: true },
       }),
     ]);
@@ -157,6 +165,12 @@ export class FinanceService {
     let totalExpenses = 0;
 
     for (const exp of expensesRaw) {
+      const cat: string = exp.category || exp.name || 'Інше';
+      const amt: number = Number(exp.amount) || 0;
+      expCatMap[cat] = (expCatMap[cat] ?? 0) + amt;
+      totalExpenses += amt;
+    }
+    for (const exp of manualExpensesRaw) {
       const cat: string = exp.category || exp.name || 'Інше';
       const amt: number = Number(exp.amount) || 0;
       expCatMap[cat] = (expCatMap[cat] ?? 0) + amt;
@@ -385,7 +399,7 @@ export class FinanceService {
       ...(project ? { project } : {}),
     };
 
-    const [revenueAgg, expensesRaw, paidAgg, pendingAgg] = await Promise.all([
+    const [revenueAgg, expensesRaw, paidAgg, pendingAgg, manualExpensesRaw] = await Promise.all([
       this.prisma.eventReport.aggregate({
         where: { event: baseEventWhere },
         _sum: { totalSum: true },
@@ -402,13 +416,19 @@ export class FinanceService {
         where: { status: 'PENDING', event: baseEventWhere },
         _sum: { amount: true },
       }),
+      this.prisma.manualExpense.findMany({
+        where: {
+          ...(dateFrom ? { date: { gte: dateFrom } } : {}),
+          ...(cityId ? { cityId } : {}),
+        },
+        select: { amount: true },
+      }),
     ]);
 
     const totalRevenue = Number(revenueAgg._sum.totalSum ?? 0);
-    const totalExpenses = expensesRaw.reduce(
-      (s, e) => s + (Number(e.amount) || 0),
-      0,
-    );
+    const totalExpenses =
+      expensesRaw.reduce((s, e) => s + (Number(e.amount) || 0), 0) +
+      manualExpensesRaw.reduce((s, e) => s + (Number(e.amount) || 0), 0);
     const totalPaidSalaries = Number(paidAgg._sum.amount ?? 0);
     const totalPendingSalaries = Number(pendingAgg._sum.amount ?? 0);
     const companyBalance = totalRevenue - totalExpenses - totalPaidSalaries;
@@ -496,5 +516,104 @@ export class FinanceService {
     const totalRevenue = totalAgg[0]?.revenue ?? 0;
 
     return { staff, totalRevenue, eventsCount };
+  }
+
+  async getManualExpenses({
+    period,
+    cityId,
+    page = 1,
+    take = 20,
+  }: {
+    period?: string;
+    cityId?: string;
+    page?: number;
+    take?: number;
+  }) {
+    const dateFrom = this.resolveDateFrom(period);
+    const where: Prisma.ManualExpenseWhereInput = {
+      ...(dateFrom ? { date: { gte: dateFrom } } : {}),
+      ...(cityId ? { cityId } : {}),
+    };
+
+    const [items, total] = await Promise.all([
+      this.prisma.manualExpense.findMany({
+        where,
+        include: { createdBy: { select: { id: true, name: true } }, city: { select: { id: true, name: true } } },
+        orderBy: { date: 'desc' },
+        skip: (page - 1) * take,
+        take,
+      }),
+      this.prisma.manualExpense.count({ where }),
+    ]);
+
+    return {
+      items: items.map((i) => ({
+        ...i,
+        amount: Number(i.amount),
+      })),
+      total,
+      page,
+      take,
+      totalPages: Math.ceil(total / take),
+    };
+  }
+
+  async createManualExpense(dto: CreateManualExpenseDto, userId: string) {
+    const expense = await this.prisma.manualExpense.create({
+      data: {
+        category: dto.category,
+        name: dto.name,
+        description: dto.description,
+        amount: dto.amount,
+        date: new Date(dto.date),
+        cityId: dto.cityId ?? null,
+        createdById: userId,
+      },
+      include: { createdBy: { select: { id: true, name: true } }, city: { select: { id: true, name: true } } },
+    });
+
+    await this.cacheVersion.bumpVersion('finance');
+    return { ...expense, amount: Number(expense.amount) };
+  }
+
+  async updateManualExpense(
+    id: string,
+    dto: Partial<CreateManualExpenseDto>,
+    userId: string,
+    userRole: string,
+  ) {
+    const existing = await this.prisma.manualExpense.findUnique({ where: { id } });
+    if (!existing) throw new NotFoundException('Витрату не знайдено');
+    if (userRole === 'MANAGER' && existing.createdById !== userId) {
+      throw new ForbiddenException('Немає доступу до цієї витрати');
+    }
+
+    const expense = await this.prisma.manualExpense.update({
+      where: { id },
+      data: {
+        ...(dto.category !== undefined && { category: dto.category }),
+        ...(dto.name !== undefined && { name: dto.name }),
+        ...(dto.description !== undefined && { description: dto.description }),
+        ...(dto.amount !== undefined && { amount: dto.amount }),
+        ...(dto.date !== undefined && { date: new Date(dto.date) }),
+        ...(dto.cityId !== undefined && { cityId: dto.cityId ?? null }),
+      },
+      include: { createdBy: { select: { id: true, name: true } }, city: { select: { id: true, name: true } } },
+    });
+
+    await this.cacheVersion.bumpVersion('finance');
+    return { ...expense, amount: Number(expense.amount) };
+  }
+
+  async deleteManualExpense(id: string, userId: string, userRole: string) {
+    const existing = await this.prisma.manualExpense.findUnique({ where: { id } });
+    if (!existing) throw new NotFoundException('Витрату не знайдено');
+    if (userRole === 'MANAGER' && existing.createdById !== userId) {
+      throw new ForbiddenException('Немає доступу до цієї витрати');
+    }
+
+    await this.prisma.manualExpense.delete({ where: { id } });
+    await this.cacheVersion.bumpVersion('finance');
+    return { deleted: true };
   }
 }

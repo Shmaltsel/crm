@@ -108,6 +108,20 @@ export interface ExpenseItem {
   amount: number;
 }
 
+export interface ManualExpense {
+  id: string;
+  category: string;
+  name?: string;
+  description?: string;
+  amount: number;
+  date: string;
+  cityId?: string;
+  createdById: string;
+  createdBy: { id: string; name: string };
+  city?: { id: string; name: string };
+  createdAt: string;
+}
+
 export type SalaryStatus = "PENDING" | "PAID" | "CANCELLED";
 
 export interface SalaryRecord {
