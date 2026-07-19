@@ -2,7 +2,7 @@ import { IsString, IsNotEmpty, IsIn } from 'class-validator';
 import { ApiProperty } from '@nestjs/swagger';
 
 export class CreateCategoryDto {
-  @ApiProperty({ example: '?????????' })
+  @ApiProperty({ example: 'Реквізит' })
   @IsString()
   @IsNotEmpty()
   name: string;

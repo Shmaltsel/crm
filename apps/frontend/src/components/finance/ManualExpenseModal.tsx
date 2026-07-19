@@ -34,6 +34,7 @@ export function ManualExpenseModal({ isOpen, onClose, onSave, expense }: ManualE
   const createCategory = useCreateCategory();
   const [newCategory, setNewCategory] = useState("");
   const [addingCategory, setAddingCategory] = useState(false);
+  const [categoryError, setCategoryError] = useState("");
 
   const {
     register,
@@ -65,15 +66,22 @@ export function ManualExpenseModal({ isOpen, onClose, onSave, expense }: ManualE
       });
       setAddingCategory(false);
       setNewCategory("");
+      setCategoryError("");
     }
   }, [isOpen, expense, reset]);
 
   const handleAddCategory = async () => {
     if (!newCategory.trim()) return;
-    await createCategory.mutateAsync({ name: newCategory.trim(), type: "EXPENSE" });
-    setValue("category", newCategory.trim());
-    setNewCategory("");
-    setAddingCategory(false);
+    setCategoryError("");
+    try {
+      await createCategory.mutateAsync({ name: newCategory.trim(), type: "EXPENSE" });
+      setValue("category", newCategory.trim());
+      setNewCategory("");
+      setAddingCategory(false);
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : "Не вдалося створити категорію";
+      setCategoryError(msg);
+    }
   };
 
   return (
@@ -90,16 +98,16 @@ export function ManualExpenseModal({ isOpen, onClose, onSave, expense }: ManualE
             <div className="flex gap-2">
               <input
                 value={newCategory}
-                onChange={(e) => setNewCategory(e.target.value)}
+                onChange={(e) => { setNewCategory(e.target.value); setCategoryError(""); }}
                 placeholder="Назва нової категорії"
                 className="flex-1 p-2.5 border border-border-strong rounded-control bg-surface focus:ring-2 focus:ring-brand outline-none"
                 autoFocus
-                onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); handleAddCategory(); } if (e.key === "Escape") setAddingCategory(false); }}
+                onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); handleAddCategory(); } if (e.key === "Escape") { setAddingCategory(false); setCategoryError(""); } }}
               />
               <button type="button" onClick={handleAddCategory} disabled={createCategory.isPending} className="px-3 py-2.5 rounded-control bg-brand text-white text-sm">
                 {createCategory.isPending ? "..." : "OK"}
               </button>
-              <button type="button" onClick={() => setAddingCategory(false)} className="px-3 py-2.5 rounded-control bg-surface-muted text-content-secondary text-sm">
+              <button type="button" onClick={() => { setAddingCategory(false); setCategoryError(""); }} className="px-3 py-2.5 rounded-control bg-surface-muted text-content-secondary text-sm">
                 ✕
               </button>
             </div>
@@ -119,6 +127,7 @@ export function ManualExpenseModal({ isOpen, onClose, onSave, expense }: ManualE
               </button>
             </div>
           )}
+          {categoryError && <p className="text-xs text-red-500 mt-1">{categoryError}</p>}
           {errors.category && <p className="text-xs text-red-500 mt-1">{errors.category.message}</p>}
         </div>
 

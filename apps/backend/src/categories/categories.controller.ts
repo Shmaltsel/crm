@@ -13,21 +13,21 @@ import { Roles } from '../auth/decorators/roles.decorator';
 export class CategoriesController {
   constructor(private readonly categoriesService: CategoriesService) {}
 
-  @ApiOperation({ summary: '?????? ?????????' })
+  @ApiOperation({ summary: 'Список категорій' })
   @ApiQuery({ name: 'type', required: false, enum: ['INVENTORY', 'EXPENSE'] })
   @Get()
   findAll(@Query('type') type?: string) {
     return this.categoriesService.findAll(type);
   }
 
-  @ApiOperation({ summary: '???????? ?????????' })
+  @ApiOperation({ summary: 'Створити категорію' })
   @Post()
   @Roles('SUPERADMIN', 'OWNER', 'MANAGER')
   create(@Body() dto: CreateCategoryDto) {
     return this.categoriesService.create(dto);
   }
 
-  @ApiOperation({ summary: '???????? ?????????' })
+  @ApiOperation({ summary: 'Видалити категорію' })
   @Delete(':id')
   @Roles('SUPERADMIN', 'OWNER')
   remove(@Param('id') id: string) {
