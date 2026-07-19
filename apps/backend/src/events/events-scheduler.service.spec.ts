@@ -1,6 +1,7 @@
 import { EventsSchedulerService } from './events-scheduler.service';
 import { PrismaService } from '../prisma/prisma.service';
 import { NotificationsService } from '../notifications/notifications.service';
+import { InventoryService } from '../inventory/inventory.service';
 
 const mockPrisma = {
   event: { findMany: jest.fn() },
@@ -10,11 +11,15 @@ const mockNotifications = {
   sendTelegramNotification: jest.fn().mockResolvedValue(undefined),
   sendTelegramToUsers: jest.fn().mockResolvedValue(undefined),
 };
+const mockInventory = {
+  findByProject: jest.fn().mockResolvedValue([]),
+};
 
 const makeService = () =>
   new EventsSchedulerService(
     mockPrisma as unknown as PrismaService,
     mockNotifications as unknown as NotificationsService,
+    mockInventory as unknown as InventoryService,
   );
 
 beforeEach(() => {

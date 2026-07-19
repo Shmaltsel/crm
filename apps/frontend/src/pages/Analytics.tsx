@@ -171,8 +171,9 @@ function buildChartEntry(year: number, month: number): ChartEntry {
 }
 
 function formatAxisLabel(entry: ChartEntry, span: number): string {
+  if (entry.day) return entry.label;
   if (span > 18) return String(entry.year);
-  if (span > 6) return `${UA_MONTHS[entry.month - 1]} ${String(entry.year).slice(2)}`;
+  if (span > 6) return `${UA_MONTHS[entry.month - 1]} '${String(entry.year).slice(2)}`;
   return UA_MONTHS_FULL[entry.month - 1];
 }
 
@@ -476,6 +477,20 @@ export default function Analytics() {
     const entries = Array.from(byKey.values()).sort(
       (a, b) => a.key.localeCompare(b.key)
     );
+    // Ініціалізуємо всі active project×city ключі з нулями
+    // щоб Recharts малював лінії навіть якщо rawDayData не містить дані для деяких комбінацій
+    if (!aggregateByCity) {
+      for (const entry of entries) {
+        for (const project of activeProjects) {
+          for (const city of activeCities) {
+            const lk = `profit_${project}_${city}`;
+            const rv = `revenue_${project}_${city}`;
+            if (!(lk in entry)) entry[lk] = 0;
+            if (!(rv in entry)) entry[rv] = 0;
+          }
+        }
+      }
+    }
     const span = entries.length;
     for (const e of entries) {
       const d = new Date(e.key);
@@ -484,7 +499,7 @@ export default function Analytics() {
       else e.label = `${d.getDate()} ${UA_MONTHS_FULL[d.getMonth()]}`;
     }
     return entries;
-  }, [rawDayData, granularity, chartData, activeCities, aggregateByCity]);
+  }, [rawDayData, granularity, chartData, activeCities, activeProjects, aggregateByCity]);
   const activeLines = useMemo(() => {
     const lines: { key: string; label: string; color: string }[] = [];
     let idx = 0;
@@ -903,7 +918,15 @@ export default function Analytics() {
     });
   }, [zoomedChartData, chartMode, activeLines]);
 
-  const chartDataForRender = chartMode === 'composite' ? compositeChartData : zoomedChartData;
+  const chartDataForRender = useMemo(() => {
+    const base = chartMode === 'composite' ? compositeChartData : zoomedChartData;
+    return base.map((entry) => ({
+      ...entry,
+      label: entry.day
+        ? entry.label
+        : formatAxisLabel(entry, base.length),
+    }));
+  }, [chartMode, compositeChartData, zoomedChartData]);
 
   const zoomSpan = chartDataForRender.length;
   const isZoomed = zoomKeys[0] !== chartData[0]?.key || zoomKeys[1] !== chartData[chartData.length - 1]?.key;
@@ -1452,6 +1475,7 @@ export default function Analytics() {
                         </defs>
                         <CartesianGrid vertical={false} stroke="#f1f5f9" />
                         <XAxis
+                          type="category"
                           dataKey="label"
                           tick={{ fontSize: 11, fill: "#64748b" }}
                           axisLine={{ stroke: "#e2e8f0" }}

@@ -1,5 +1,6 @@
 import { memo, useMemo } from "react";
 import type { EventHistory, SchoolComment } from "../../types";
+import { useAuth } from "../../context/AuthContext";
 
 interface HistoryTimelineProps {
   currentEvent: { history?: EventHistory[] } | null;
@@ -24,11 +25,14 @@ export default memo(function HistoryTimeline({
   onHistoryClick,
   onAddCommentClick,
 }: HistoryTimelineProps) {
+  const { user } = useAuth();
+  const isFieldStaff = user?.role === "HOST" || user?.role === "DRIVER";
+
   const items = useMemo(() => {
     const historyItems: MergedItem[] = (currentEvent?.history ?? []).map(
       (h) => ({ ...h, isPending: false }),
     );
-    const pendingItems: MergedItem[] = schoolComments.map((sc) => ({
+    const pendingItems: MergedItem[] = isFieldStaff ? [] : schoolComments.map((sc) => ({
       id: sc.id,
       action: "Коментар до події",
       comment: sc.text,
@@ -41,18 +45,20 @@ export default memo(function HistoryTimeline({
     return [...historyItems, ...pendingItems].sort(
       (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime(),
     );
-  }, [currentEvent, schoolComments]);
+  }, [currentEvent, schoolComments, isFieldStaff]);
 
   return (
     <div className="bg-surface p-6 rounded-card card-shadow hover:card-shadow-hover border border-border flex flex-col hover:-translate-y-0.5 transition-all duration-200">
       <div className="flex justify-between items-center mb-5">
         <h3 className="font-bold text-content-primary">Історія взаємодії</h3>
-        <button
-          onClick={onAddCommentClick}
-          className="text-xs font-bold text-brand bg-brand-50 hover:bg-brand-100 px-3 py-2.5 rounded-control transition-colors flex items-center gap-1 shadow-sm"
-        >
-          <span>+</span> Коментар
-        </button>
+        {!isFieldStaff && (
+          <button
+            onClick={onAddCommentClick}
+            className="text-xs font-bold text-brand bg-brand-50 hover:bg-brand-100 px-3 py-2.5 rounded-control transition-colors flex items-center gap-1 shadow-sm"
+          >
+            <span>+</span> Коментар
+          </button>
+        )}
       </div>
 
       {items.length === 0 ? (

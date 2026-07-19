@@ -5,6 +5,7 @@ import { TelegramService } from '../telegram/telegram.service';
 import { CACHE_MANAGER } from '@nestjs/cache-manager';
 import { NotificationsService } from '../notifications/notifications.service';
 import { CacheVersionService } from '../common/cache/cache-version.service';
+import { InventoryService } from '../inventory/inventory.service';
 
 const mockPrisma = {
   event: {
@@ -76,6 +77,12 @@ describe('Smoke: EventsService', () => {
           useValue: {
             getVersion: jest.fn().mockResolvedValue(0),
             bumpVersion: jest.fn().mockResolvedValue(undefined),
+          },
+        },
+        {
+          provide: InventoryService,
+          useValue: {
+            findByProject: jest.fn().mockResolvedValue([]),
           },
         },
       ],

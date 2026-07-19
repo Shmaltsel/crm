@@ -39,11 +39,12 @@ export class SchoolCommentsController {
   @ApiOperation({ summary: 'Отримати коментарі школи' })
   findAll(
     @Param('schoolId') schoolId: string,
+    @CurrentUser() user: JwtUser,
     @Query('type') type?: CommentType,
     @Query('page') page?: number,
     @Query('take') take?: number,
   ) {
-    return this.service.findAll(schoolId, type, page ?? 1, take ?? 20);
+    return this.service.findAll(schoolId, type, page ?? 1, take ?? 20, user.role);
   }
 
   @Delete(':id')

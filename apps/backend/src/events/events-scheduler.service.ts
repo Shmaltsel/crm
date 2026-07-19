@@ -2,6 +2,7 @@ import { Injectable, Logger } from '@nestjs/common';
 import { Cron } from '@nestjs/schedule';
 import { PrismaService } from '../prisma/prisma.service';
 import { NotificationsService } from '../notifications/notifications.service';
+import { InventoryService } from '../inventory/inventory.service';
 
 @Injectable()
 export class EventsSchedulerService {
@@ -10,6 +11,7 @@ export class EventsSchedulerService {
   constructor(
     private prisma: PrismaService,
     private notificationsService: NotificationsService,
+    private inventoryService: InventoryService,
   ) {}
 
   @Cron('0 20 * * *', { timeZone: 'Europe/Kyiv' })
@@ -85,6 +87,8 @@ export class EventsSchedulerService {
   private async sendReminder(event: any, user: any, roleLabel: string) {
     if (!user) return;
 
+    const items = await this.inventoryService.findByProject(event.project);
+
     this.notificationsService
       .sendTelegramNotification(user.id, 'EVENT_REMINDER', {
         eventId: event.id,
@@ -92,6 +96,7 @@ export class EventsSchedulerService {
         schoolName: event.school?.name,
         project: event.project,
         contactPhone: event.contactPhone,
+        items,
       })
       .catch(() => {});
 
@@ -101,6 +106,7 @@ export class EventsSchedulerService {
         project: event.project,
         schoolName: event.school?.name,
         role: roleLabel,
+        items,
       })
       .catch(() => {});
   }

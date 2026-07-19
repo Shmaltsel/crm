@@ -12,6 +12,7 @@ import { PrismaService } from '../prisma/prisma.service';
 import { TelegramService } from '../telegram/telegram.service';
 import { NotificationsService } from '../notifications/notifications.service';
 import { CacheVersionService } from '../common/cache/cache-version.service';
+import { InventoryService } from '../inventory/inventory.service';
 import { Prisma, PreparationStatus } from '@prisma/client';
 
 import { CreateEventDto } from './dto/create-event.dto';
@@ -32,6 +33,7 @@ export class EventsService {
     private notificationsService: NotificationsService,
     @Inject(CACHE_MANAGER) private cacheManager: Cache,
     private readonly cacheVersion: CacheVersionService,
+    private readonly inventoryService: InventoryService,
   ) {}
 
   private toOptionalNumber(value: unknown): number | null {
@@ -316,6 +318,8 @@ export class EventsService {
     });
     const timeStr = event.time ? `, ${event.time}` : '';
 
+    const items = await this.inventoryService.findByProject(event.project);
+
     const crewPayload = {
       eventId: event.id,
       eventDate: `${dateStr}${timeStr}`,
@@ -325,6 +329,7 @@ export class EventsService {
       address: event.address,
       contactPerson: event.contactPerson,
       contactPhone: event.contactPhone,
+      items,
     };
 
     if (hostId) {

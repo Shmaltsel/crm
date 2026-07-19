@@ -42,6 +42,18 @@ function fmtDate(val: unknown): string {
   }
 }
 
+function formatItems(items?: { name: string; currentStock: number; minStock: number; unit: string }[]): string {
+  if (!items || items.length === 0) return '';
+  let block = '\n📦 <b>Потрібні речі:</b>\n';
+  for (const item of items) {
+    const isLow = item.currentStock <= item.minStock;
+    const stock = `${item.currentStock} ${item.unit}`;
+    const label = isLow ? `⚠️ <b>${item.name}</b> — ${stock} (мало!)` : `• ${item.name} — ${stock}`;
+    block += `${label}\n`;
+  }
+  return block;
+}
+
 const templates: Record<TelegramTemplateType, TemplateFn> = {
   REPORT_SUBMITTED: (p) => {
     const link = buildLink(
@@ -260,6 +272,7 @@ const templates: Record<TelegramTemplateType, TemplateFn> = {
       (p.contactPhone
         ? `\n📞 <b>Контакт закладу:</b> <code>${p.contactPhone}</code>\n`
         : '\n') +
+      formatItems(p.items as { name: string; currentStock: number; minStock: number; unit: string }[]),
       `━━━━━━━━━━━━━━━━━━━━\n` +
       `<a href="${link}">📋 Переглянути всі деталі події</a>`
     );
@@ -284,6 +297,7 @@ const templates: Record<TelegramTemplateType, TemplateFn> = {
       (p.contactPhone
         ? `\n📞 <b>Телефон:</b> <code>${p.contactPhone}</code>`
         : '') +
+      formatItems(p.items as { name: string; currentStock: number; minStock: number; unit: string }[]),
       `\n\n━━━━━━━━━━━━━━━━━━━━\n` +
       `<a href="${link}">📋 Детальна інформація про подію</a>`
     );

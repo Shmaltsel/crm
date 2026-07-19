@@ -28,7 +28,10 @@ export class SchoolCommentsService {
     });
   }
 
-  async findAll(schoolId: string, type?: CommentType, page = 1, take = 20) {
+  async findAll(schoolId: string, type?: CommentType, page = 1, take = 20, role?: string) {
+    if (role === 'HOST' || role === 'DRIVER') {
+      return { items: [], total: 0, page, take, pageCount: 0 };
+    }
     const where: Record<string, unknown> = { schoolId, deletedAt: null };
     if (type) where.type = type;
 

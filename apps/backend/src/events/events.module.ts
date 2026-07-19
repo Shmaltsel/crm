@@ -8,6 +8,7 @@ import { TelegramModule } from '../telegram/telegram.module';
 import { NotificationsModule } from '../notifications/notifications.module';
 import { RedisCacheModule } from '../common/cache/redis-cache.module';
 import { EventsSchedulerService } from './events-scheduler.service';
+import { InventoryModule } from '../inventory/inventory.module';
 
 @Module({
   imports: [
@@ -15,6 +16,7 @@ import { EventsSchedulerService } from './events-scheduler.service';
     TelegramModule,
     NotificationsModule,
     RedisCacheModule,
+    InventoryModule,
   ],
   controllers: [EventsController],
   providers: [
