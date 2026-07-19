@@ -41,6 +41,7 @@ export function useCreateManualExpense() {
       amount: number;
       date: string;
       cityId?: string;
+      photoUrl?: string;
     }) => api.post<ManualExpense>("/finance/manual-expenses", dto).then((r) => r.data),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["manual-expenses"] });
@@ -53,7 +54,7 @@ export function useCreateManualExpense() {
 export function useUpdateManualExpense() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: ({ id, ...dto }: { id: string; category?: string; name?: string; description?: string; amount?: number; date?: string; cityId?: string }) =>
+    mutationFn: ({ id, ...dto }: { id: string; category?: string; name?: string; description?: string; amount?: number; date?: string; cityId?: string; photoUrl?: string }) =>
       api.patch<ManualExpense>(`/finance/manual-expenses/${id}`, dto).then((r) => r.data),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["manual-expenses"] });

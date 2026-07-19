@@ -116,6 +116,7 @@ export interface ManualExpense {
   amount: number;
   date: string;
   cityId?: string;
+  photoUrl?: string;
   createdById: string;
   createdBy: { id: string; name: string };
   city?: { id: string; name: string };

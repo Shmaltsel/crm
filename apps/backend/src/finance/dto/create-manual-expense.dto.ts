@@ -1,4 +1,4 @@
-import { IsString, IsNumber, IsNotEmpty, IsPositive, IsOptional, IsDateString } from 'class-validator';
+import { IsString, IsNumber, IsNotEmpty, IsPositive, IsOptional, IsDateString, MaxLength } from 'class-validator';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 
 export class CreateManualExpenseDto {
@@ -30,4 +30,10 @@ export class CreateManualExpenseDto {
   @IsString()
   @IsOptional()
   cityId?: string;
+
+  @ApiPropertyOptional({ description: 'Base64 data URL фото (чек)' })
+  @IsString()
+  @IsOptional()
+  @MaxLength(5_000_000)
+  photoUrl?: string;
 }

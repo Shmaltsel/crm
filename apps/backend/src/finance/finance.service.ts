@@ -567,6 +567,7 @@ export class FinanceService {
         amount: dto.amount,
         date: new Date(dto.date),
         cityId: dto.cityId ?? null,
+        photoUrl: dto.photoUrl ?? null,
         createdById: userId,
       },
       include: { createdBy: { select: { id: true, name: true } }, city: { select: { id: true, name: true } } },
@@ -597,6 +598,7 @@ export class FinanceService {
         ...(dto.amount !== undefined && { amount: dto.amount }),
         ...(dto.date !== undefined && { date: new Date(dto.date) }),
         ...(dto.cityId !== undefined && { cityId: dto.cityId ?? null }),
+        ...(dto.photoUrl !== undefined && { photoUrl: dto.photoUrl ?? null }),
       },
       include: { createdBy: { select: { id: true, name: true } }, city: { select: { id: true, name: true } } },
     });

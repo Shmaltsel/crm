@@ -471,6 +471,7 @@ model ManualExpense {
   amount      Decimal  @db.Decimal(12, 2)
   date        DateTime @db.Date
   cityId      String?
+  photoUrl    String?
   createdById String
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt

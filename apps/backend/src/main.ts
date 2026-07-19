@@ -8,12 +8,14 @@ import { Logger as PinoLogger } from 'nestjs-pino';
 import { AllExceptionsFilter } from './common/filters/all-exceptions.filter';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 import { PrismaService } from './prisma/prisma.service';
+import express from 'express';
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule, { bufferLogs: true });
   app.useLogger(app.get(PinoLogger));
   app.use(helmet());
   app.use(cookieParser());
+  app.use(express.json({ limit: '5mb' }));
 
   const allowedOrigins = (process.env.FRONTEND_URL ?? '')
     .split(',')

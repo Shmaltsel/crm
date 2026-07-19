@@ -15,6 +15,7 @@ const schema = z.object({
   amount: z.coerce.number().positive("Сума повинна бути більше 0"),
   date: z.string().min(1, "Вкажіть дату"),
   cityId: z.string().optional().default(""),
+  photoUrl: z.string().optional().default(""),
 });
 
 type FormValues = z.infer<typeof schema>;
@@ -35,6 +36,7 @@ export function ManualExpenseModal({ isOpen, onClose, onSave, expense }: ManualE
   const [newCategory, setNewCategory] = useState("");
   const [addingCategory, setAddingCategory] = useState(false);
   const [categoryError, setCategoryError] = useState("");
+  const [photoPreview, setPhotoPreview] = useState<string>("");
 
   const {
     register,
@@ -63,7 +65,9 @@ export function ManualExpenseModal({ isOpen, onClose, onSave, expense }: ManualE
         amount: expense?.amount ?? 0,
         date: expense?.date?.split("T")[0] ?? today(),
         cityId: expense?.cityId ?? "",
+        photoUrl: expense?.photoUrl ?? "",
       });
+      setPhotoPreview(expense?.photoUrl ?? "");
       setAddingCategory(false);
       setNewCategory("");
       setCategoryError("");
@@ -82,6 +86,22 @@ export function ManualExpenseModal({ isOpen, onClose, onSave, expense }: ManualE
       const msg = err instanceof Error ? err.message : "Не вдалося створити категорію";
       setCategoryError(msg);
     }
+  };
+
+  const handlePhotoChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    if (file.size > 5 * 1024 * 1024) {
+      setCategoryError("Фото занадто велике (макс. 5 МБ)");
+      return;
+    }
+    const reader = new FileReader();
+    reader.onloadend = () => {
+      const base64 = reader.result as string;
+      setPhotoPreview(base64);
+      setValue("photoUrl", base64);
+    };
+    reader.readAsDataURL(file);
   };
 
   return (
@@ -184,6 +204,39 @@ export function ManualExpenseModal({ isOpen, onClose, onSave, expense }: ManualE
             placeholder="Додаткові подробиці"
             className="w-full p-2.5 border border-border-strong rounded-control bg-surface focus:ring-2 focus:ring-brand outline-none resize-none"
           />
+        </div>
+
+        <div>
+          <label className="block text-sm mb-1 text-content-secondary">Фото чека (необов'язково)</label>
+          {photoPreview ? (
+            <div className="relative inline-block">
+              <img
+                src={photoPreview}
+                alt="Превʼю чека"
+                className="max-h-32 rounded-lg border border-border object-contain"
+              />
+              <button
+                type="button"
+                onClick={() => { setPhotoPreview(""); setValue("photoUrl", ""); }}
+                className="absolute -top-2 -right-2 w-6 h-6 bg-red-500 text-white rounded-full text-xs flex items-center justify-center hover:bg-red-600"
+              >
+                ✕
+              </button>
+            </div>
+          ) : (
+            <label className="flex items-center gap-2 px-4 py-3 border border-dashed border-border-strong rounded-lg cursor-pointer hover:bg-surface-muted transition-colors text-sm text-content-muted">
+              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+              </svg>
+              Натисніть для завантаження
+              <input
+                type="file"
+                accept="image/*"
+                onChange={handlePhotoChange}
+                className="hidden"
+              />
+            </label>
+          )}
         </div>
 
         <div className="flex gap-3 mt-2 pt-4 border-t border-border">
