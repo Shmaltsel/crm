@@ -2,13 +2,15 @@ import { config } from "dotenv";
 import { resolve, dirname } from "path";
 import { fileURLToPath } from "url";
 import { spawn } from "child_process";
-import { existsSync, mkdirSync, readFileSync, readdirSync, writeFileSync } from "fs";
+import { existsSync, mkdirSync, readFileSync, readdirSync, writeFileSync, unlinkSync } from "fs";
 
 config({ path: resolve(dirname(fileURLToPath(import.meta.url)), "..", ".env") });
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
+import { SSEServerTransport } from "@modelcontextprotocol/sdk/server/sse.js";
 import { Bot, InlineKeyboard } from "grammy";
 import { z } from "zod";
+import { createServer } from "http";
 
 const bot = new Bot(process.env.TELEGRAM_BOT_TOKEN!);
 const CHAT_ID = process.env.TELEGRAM_CHAT_ID!;
@@ -22,6 +24,56 @@ const INBOX_DIR = resolve(AGENTS_DIR, "inbox");
 if (!existsSync(MAILBOX_DIR)) mkdirSync(MAILBOX_DIR, { recursive: true });
 if (!existsSync(QUEUE_DIR)) mkdirSync(QUEUE_DIR, { recursive: true });
 if (!existsSync(INBOX_DIR)) mkdirSync(INBOX_DIR, { recursive: true });
+
+// ── File Lock ─────────────────────────────────────────────────────
+
+const LOCK_TIMEOUT_MS = 15_000;
+
+async function acquireLock(filePath: string): Promise<string> {
+  const lockPath = `${filePath}.lock`;
+  const lockId = `lock-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+  const start = Date.now();
+
+  while (Date.now() - start < LOCK_TIMEOUT_MS) {
+    if (!existsSync(lockPath)) {
+      writeFileSync(lockPath, lockId, "utf-8");
+      // Verify we won the race
+      const current = readFileSync(lockPath, "utf-8");
+      if (current === lockId) return lockId;
+    }
+    await new Promise((r) => setTimeout(r, 50));
+  }
+  // Force break stale lock
+  if (existsSync(lockPath)) {
+    const age = Date.now() - parseInt(readFileSync(lockPath, "utf-8").split("-")[1] || "0", 10);
+    if (age > LOCK_TIMEOUT_MS) {
+      unlinkSync(lockPath);
+      return acquireLock(filePath);
+    }
+  }
+  return lockId; // proceed anyway after timeout
+}
+
+function releaseLock(filePath: string, lockId: string): void {
+  const lockPath = `${filePath}.lock`;
+  if (existsSync(lockPath)) {
+    try {
+      const current = readFileSync(lockPath, "utf-8");
+      if (current === lockId) unlinkSync(lockPath);
+    } catch {
+      // lock file gone or stale — ignore
+    }
+  }
+}
+
+async function withFileLock<T>(filePath: string, fn: () => T | Promise<T>): Promise<T> {
+  const lockId = await acquireLock(filePath);
+  try {
+    return await fn();
+  } finally {
+    releaseLock(filePath, lockId);
+  }
+}
 
 // ── Helpers ────────────────────────────────────────────────────────
 
@@ -254,7 +306,6 @@ bot.on("message:text", async (ctx) => {
       if (answer === "cancel") {
         // Видаляємо inbox
         if (existsSync(inboxPath)) {
-          const { unlinkSync } = await import("fs");
           unlinkSync(inboxPath);
         }
         await bot.api.sendMessage(CHAT_ID, "Скасовано.");
@@ -379,8 +430,6 @@ server.tool(
       const goalMatch = content.match(/\*\*goal\*\*:\s*(.+)/);
       if (goalMatch) {
         const goal = goalMatch[1].trim();
-        // Видаляємо з inbox
-        const { unlinkSync } = await import("fs");
         unlinkSync(inboxPath);
         return { content: [{ type: "text", text: goal }] };
       }
@@ -407,7 +456,6 @@ server.tool(
       const goalMatch = content.match(/\*\*goal\*\*:\s*(.+)/);
       if (goalMatch) {
         const goal = goalMatch[1].trim();
-        const { unlinkSync } = await import("fs");
         unlinkSync(inboxPath);
         return { content: [{ type: "text", text: goal }] };
       }
@@ -429,7 +477,6 @@ server.tool(
       const decisionMatch = content.match(/\*\*decision\*\*:\s*(.+)/);
       if (decisionMatch) {
         const decision = decisionMatch[1].trim();
-        const { unlinkSync } = await import("fs");
         unlinkSync(approvalPath);
         if (decision === "✅ Ок") return { content: [{ type: "text", text: "approved" }] };
         if (decision === "❌ Скасувати") return { content: [{ type: "text", text: "rejected" }] };
@@ -454,6 +501,8 @@ server.tool(
   async ({ target, question, proposal, feature }) => {
     const mailboxPath = resolve(MAILBOX_DIR, `${target}.md`);
     const entryId = `msg-${Date.now()}`;
+    const responseMarker = `## Response ${entryId}`;
+    const requestBlock = `## Request ${entryId}`;
     const timestamp = new Date().toISOString();
 
     // ── Frequency monitoring ──
@@ -466,9 +515,10 @@ server.tool(
       warningSuffix = `\n\n⚠️ Часті ask_agent на цій фічі (${currentCount} викликів) — можливо контракт Wave 0 недостатньо чіткий`;
     }
 
-    // Записати запит в mailbox
-    const requestBlock = [
-      `## Request ${entryId}`,
+    // Записати запит в mailbox з файловим локом
+    const block = [
+      ``,
+      requestBlock,
       `- **from**: ${target === "mimo" ? "opencode" : "mimo"}`,
       `- **to**: ${target}`,
       `- **time**: ${timestamp}`,
@@ -478,19 +528,20 @@ server.tool(
       question,
       ``,
       proposal ? `### Proposal\n${proposal}\n` : "",
-      `### Response`,
+      `### Response ${entryId}`,
       `_очікується..._`,
       ``,
       `---`,
-      ``,
     ].join("\n");
 
-    if (existsSync(mailboxPath)) {
-      const existing = readFileSync(mailboxPath, "utf-8");
-      writeFileSync(mailboxPath, existing + requestBlock, "utf-8");
-    } else {
-      writeFileSync(mailboxPath, `# Mailbox для ${target}\n\n` + requestBlock, "utf-8");
-    }
+    await withFileLock(mailboxPath, () => {
+      if (existsSync(mailboxPath)) {
+        const existing = readFileSync(mailboxPath, "utf-8");
+        writeFileSync(mailboxPath, existing + block, "utf-8");
+      } else {
+        writeFileSync(mailboxPath, `# Mailbox для ${target}\n` + block, "utf-8");
+      }
+    });
 
     // Сповістити людину
     await bot.api.sendMessage(
@@ -498,30 +549,24 @@ server.tool(
       `📬 Запит до ${target}: ${question}${warningSuffix}`
     );
 
-    // Чекати відповіді (таймаут 10 хв)
+    // Чекати відповіді (таймаут 10 хв) — шукаємо по entryId marker
     const TIMEOUT_MS = 10 * 60 * 1000;
     const start = Date.now();
     let response = null;
 
     while (Date.now() - start < TIMEOUT_MS) {
-      await new Promise((r) => setTimeout(r, 3000)); // перевірка кожні 3с
+      await new Promise((r) => setTimeout(r, 3000));
       if (existsSync(mailboxPath)) {
         const content = readFileSync(mailboxPath, "utf-8");
-        // Шукаємо відповідь після нашого запиту
-        const marker = `## Response ${entryId}`;
-        // Шукаємо наступний блок після Response який НЕ є _очікується...
-        const respRegex = new RegExp(
-          `### Response\\n(?!_очікується)([\\s\\S]*?)(?=\\n---|$)`
+        // Шукаємо саме наш marker: "### Response <entryId>" + НЕ _очікується
+        const markerRegex = new RegExp(
+          `${responseMarker.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}\\n(?!_очікується)([\\s\\S]*?)(?=\\n## Request|\\n---\\n|$)`
         );
-        const allAfterResponse = content.split(`### Response`).slice(1);
-        for (const block of allAfterResponse) {
-          const clean = block.split("\n---")[0].trim();
-          if (clean && !clean.includes("_очікується")) {
-            response = clean;
-            break;
-          }
+        const m = content.match(markerRegex);
+        if (m) {
+          response = m[1].trim();
+          break;
         }
-        if (response) break;
       }
     }
 
@@ -589,4 +634,50 @@ server.tool(
 
 // ── Start ──────────────────────────────────────────────────────────
 
-await server.connect(new StdioServerTransport());
+const TRANSPORT = process.env.HB_TRANSPORT || "stdio";
+const SSE_PORT = parseInt(process.env.HB_SSE_PORT || "3100", 10);
+
+if (TRANSPORT === "sse") {
+  const transports = new Map<string, SSEServerTransport>();
+
+  const httpServer = createServer(async (req, res) => {
+    const url = new URL(req.url || "/", `http://localhost:${SSE_PORT}`);
+
+    if (url.pathname === "/health") {
+      res.writeHead(200, { "Content-Type": "application/json" });
+      res.end(JSON.stringify({ status: "ok", connected: transports.size }));
+      return;
+    }
+
+    if (url.pathname === "/sse" && req.method === "GET") {
+      const transport = new SSEServerTransport("/messages", res);
+      transports.set(transport.sessionId, transport);
+      transport.onclose = () => transports.delete(transport.sessionId);
+      await server.connect(transport);
+      return;
+    }
+
+    if (url.pathname === "/messages" && req.method === "POST") {
+      const sessionId = url.searchParams.get("sessionId") || "";
+      const transport = transports.get(sessionId);
+      if (!transport) {
+        res.writeHead(404);
+        res.end("Session not found");
+        return;
+      }
+      await transport.handlePostMessage(req, res);
+      return;
+    }
+
+    res.writeHead(404);
+    res.end("Not found");
+  });
+
+  httpServer.listen(SSE_PORT, () => {
+    console.log(`🔗 human-bridge SSE server on http://localhost:${SSE_PORT}`);
+    console.log(`   MCP endpoint: http://localhost:${SSE_PORT}/sse`);
+    console.log(`   Health check: http://localhost:${SSE_PORT}/health`);
+  });
+} else {
+  await server.connect(new StdioServerTransport());
+}

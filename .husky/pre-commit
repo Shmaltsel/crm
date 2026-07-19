@@ -1,9 +1,16 @@
 #!/usr/bin/env sh
-# Pre-commit: charset-guard → affected-first тести.
-# Charset-guard виконується через node напряму (не pnpm) для сумісності.
+# Pre-commit: charset-guard → lint-queue → affected-first тести.
+
 node tools/queue-tools/charset-guard.js
 if [ $? -ne 0 ]; then
   echo "❌ Charset-guard не пройшов — коміт заблоковано"
   exit 1
 fi
+
+node tools/queue-tools/lint-queue.js
+if [ $? -ne 0 ]; then
+  echo "❌ Lint-queue не пройшов — коміт заблоковано"
+  exit 1
+fi
+
 pnpm test:affected
