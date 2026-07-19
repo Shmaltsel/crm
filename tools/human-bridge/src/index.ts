@@ -2,12 +2,14 @@ import { config } from "dotenv";
 import { resolve, dirname } from "path";
 import { fileURLToPath } from "url";
 import { spawn } from "child_process";
+import { randomUUID } from "crypto";
 import { existsSync, mkdirSync, readFileSync, readdirSync, writeFileSync, unlinkSync } from "fs";
 
 config({ path: resolve(dirname(fileURLToPath(import.meta.url)), "..", ".env") });
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
-import { SSEServerTransport } from "@modelcontextprotocol/sdk/server/sse.js";
+import { StreamableHTTPServerTransport } from "@modelcontextprotocol/sdk/server/streamableHttp.js";
+import { isInitializeRequest } from "@modelcontextprotocol/sdk/types.js";
 import { Bot, InlineKeyboard } from "grammy";
 import { z } from "zod";
 import { createServer } from "http";
@@ -161,6 +163,9 @@ let goalWaiters: Array<(goal: string) => void> = [];
 
 /** Лічильник ask_agent на фічу: { featureSlug: count } */
 const askAgentCounts = new Map<string, number>();
+
+/** Максимум ask_agent на одну фічу перед ескалацією в ask_human */
+const MAX_AGENT_ITERATIONS = 3;
 
 /** Парсинг YAML frontmatter з підтримкою multiline списків */
 function parseFrontmatter(content: string): Record<string, unknown> | null {
@@ -511,6 +516,22 @@ server.tool(
     askAgentCounts.set(featureSlug, currentCount);
 
     let warningSuffix = "";
+    if (currentCount > MAX_AGENT_ITERATIONS) {
+      // Circuit breaker: ескалація в ask_human замість чергового mailbox
+      await bot.api.sendMessage(
+        CHAT_ID,
+        `🔴 Circuit breaker: ${currentCount} ask_agent на фічі "${featureSlug}" — перевищено ліміт ${MAX_AGENT_ITERATIONS}. Ескалація в людину.`
+      );
+      const reqId = `circuit:${reqCounter++}`;
+      const answer = await new Promise<string>((resolve) => {
+        pending.set(reqId, resolve);
+        bot.api.sendMessage(
+          CHAT_ID,
+          `❓ [Circuit Breaker] ${question}\n\n(відповідай текстом)`,
+        );
+      });
+      return { content: [{ type: "text", text: answer }] };
+    }
     if (currentCount > 2) {
       warningSuffix = `\n\n⚠️ Часті ask_agent на цій фічі (${currentCount} викликів) — можливо контракт Wave 0 недостатньо чіткий`;
     }
@@ -635,48 +656,102 @@ server.tool(
 // ── Start ──────────────────────────────────────────────────────────
 
 const TRANSPORT = process.env.HB_TRANSPORT || "stdio";
-const SSE_PORT = parseInt(process.env.HB_SSE_PORT || "3100", 10);
+const PORT = parseInt(process.env.HB_SSE_PORT || "3100", 10);
 
 if (TRANSPORT === "sse") {
-  const transports = new Map<string, SSEServerTransport>();
+  const transports = new Map<string, StreamableHTTPServerTransport>();
 
   const httpServer = createServer(async (req, res) => {
-    const url = new URL(req.url || "/", `http://localhost:${SSE_PORT}`);
+    const url = new URL(req.url || "/", `http://localhost:${PORT}`);
 
-    if (url.pathname === "/health") {
+    if (url.pathname === "/health" && req.method === "GET") {
       res.writeHead(200, { "Content-Type": "application/json" });
       res.end(JSON.stringify({ status: "ok", connected: transports.size }));
       return;
     }
 
-    if (url.pathname === "/sse" && req.method === "GET") {
-      const transport = new SSEServerTransport("/messages", res);
-      transports.set(transport.sessionId, transport);
-      transport.onclose = () => transports.delete(transport.sessionId);
-      await server.connect(transport);
-      return;
-    }
+    if (url.pathname === "/mcp") {
+      if (req.method === "POST") {
+        const sessionId = req.headers["mcp-session-id"] as string | undefined;
+        let transport: StreamableHTTPServerTransport;
 
-    if (url.pathname === "/messages" && req.method === "POST") {
-      const sessionId = url.searchParams.get("sessionId") || "";
-      const transport = transports.get(sessionId);
-      if (!transport) {
-        res.writeHead(404);
-        res.end("Session not found");
+        if (sessionId && transports.has(sessionId)) {
+          transport = transports.get(sessionId)!;
+        } else if (!sessionId) {
+          let body: unknown;
+          try {
+            const chunks: Buffer[] = [];
+            for await (const chunk of req) chunks.push(chunk);
+            body = JSON.parse(Buffer.concat(chunks).toString());
+          } catch {
+            res.writeHead(400, { "Content-Type": "application/json" });
+            res.end(JSON.stringify({ jsonrpc: "2.0", error: { code: -32700, message: "Parse error" }, id: null }));
+            return;
+          }
+
+          if (!isInitializeRequest(body)) {
+            res.writeHead(400, { "Content-Type": "application/json" });
+            res.end(JSON.stringify({ jsonrpc: "2.0", error: { code: -32000, message: "Bad Request: no session ID" }, id: null }));
+            return;
+          }
+
+          transport = new StreamableHTTPServerTransport({
+            sessionIdGenerator: () => randomUUID(),
+            onsessioninitialized: (sid) => {
+              transports.set(sid, transport);
+            },
+          });
+
+          transport.onclose = () => {
+            const sid = transport.sessionId;
+            if (sid) transports.delete(sid);
+          };
+
+          await server.connect(transport);
+          await transport.handleRequest(req, res, body);
+          return;
+        } else {
+          res.writeHead(400, { "Content-Type": "application/json" });
+          res.end(JSON.stringify({ jsonrpc: "2.0", error: { code: -32000, message: "Bad Request: invalid session" }, id: null }));
+          return;
+        }
+
+        await transport.handleRequest(req, res);
         return;
       }
-      await transport.handlePostMessage(req, res);
-      return;
+
+      if (req.method === "GET") {
+        const sessionId = req.headers["mcp-session-id"] as string | undefined;
+        if (!sessionId || !transports.has(sessionId)) {
+          res.writeHead(400);
+          res.end("Invalid or missing session ID");
+          return;
+        }
+        await transports.get(sessionId)!.handleRequest(req, res);
+        return;
+      }
+
+      if (req.method === "DELETE") {
+        const sessionId = req.headers["mcp-session-id"] as string | undefined;
+        if (!sessionId || !transports.has(sessionId)) {
+          res.writeHead(400);
+          res.end("Invalid or missing session ID");
+          return;
+        }
+        const transport = transports.get(sessionId)!;
+        await transport.handleRequest(req, res);
+        return;
+      }
     }
 
     res.writeHead(404);
     res.end("Not found");
   });
 
-  httpServer.listen(SSE_PORT, () => {
-    console.log(`🔗 human-bridge SSE server on http://localhost:${SSE_PORT}`);
-    console.log(`   MCP endpoint: http://localhost:${SSE_PORT}/sse`);
-    console.log(`   Health check: http://localhost:${SSE_PORT}/health`);
+  httpServer.listen(PORT, () => {
+    console.log(`🔗 human-bridge StreamableHTTP on http://localhost:${PORT}`);
+    console.log(`   MCP endpoint: http://localhost:${PORT}/mcp`);
+    console.log(`   Health check: http://localhost:${PORT}/health`);
   });
 } else {
   await server.connect(new StdioServerTransport());
