@@ -14,6 +14,7 @@ import {
   Cell,
   BarChart,
   Bar,
+  LabelList,
 } from "recharts";
 import type {
   FinanceDashboardData,
@@ -353,7 +354,7 @@ const ExpenseChart = memo(function ExpenseChart({
         <BarChart
           data={byExpenseCategory}
           layout="vertical"
-          margin={{ top: 0, right: 20, left: 30, bottom: 0 }}
+          margin={{ top: 0, right: 80, left: 30, bottom: 0 }}
         >
           <CartesianGrid
             strokeDasharray="3 3"
@@ -384,6 +385,12 @@ const ExpenseChart = memo(function ExpenseChart({
             {byExpenseCategory.map((_: FinanceByCategory, idx: number) => (
               <Cell key={`cell-${idx}`} fill={PALETTE[idx % PALETTE.length]} />
             ))}
+            <LabelList
+              dataKey="value"
+              position="right"
+              formatter={(v: number) => `${fmt(v)} грн`}
+              style={{ fontSize: 11, fill: "#475569", fontWeight: 600 }}
+            />
           </Bar>
         </BarChart>
       </ResponsiveContainer>

@@ -78,6 +78,7 @@ export default function DesktopCalendarGrid({
           ))}
 
           {days.map((day, idx) => {
+            const col = idx % 7;
             const isToday =
               day && day.toDateString() === new Date().toDateString();
             const isSelected =
@@ -88,6 +89,7 @@ export default function DesktopCalendarGrid({
             const dayPendingRequests = day
               ? (pendingRequestsByDate.get(dayKey) ?? [])
               : [];
+            const tooltipSide = col >= 5 ? "right-0" : "left-0";
 
             const dayColor = day
               ? getDayColor(dayEvents, projectHexMap)
@@ -144,7 +146,7 @@ export default function DesktopCalendarGrid({
                         </button>
 
                         {isManagerOrAdmin && dayOffEntries.length > 0 && (
-                          <div className="hidden md:block absolute top-full left-0 mt-2 w-48 bg-neutral-800 text-white p-2.5 rounded-xl shadow-2xl opacity-0 invisible group-hover/dayoff:opacity-100 group-hover/dayoff:visible transition-all duration-200 pointer-events-none">
+                          <div className={`hidden md:block absolute top-full ${tooltipSide} mt-2 w-48 bg-neutral-800 text-white p-2.5 rounded-xl shadow-2xl opacity-0 invisible group-hover/dayoff:opacity-100 group-hover/dayoff:visible transition-all duration-200 pointer-events-none`}>
                             <p className="text-[10px] uppercase tracking-wide text-content-muted mb-1.5">
                               Вихідний ({dayOffEntries.length})
                             </p>
@@ -169,7 +171,7 @@ export default function DesktopCalendarGrid({
                         )}
 
                         {isManagerOrAdmin && dayPendingRequests.length > 0 && (
-                          <div className="hidden md:block absolute top-full left-0 mt-2 w-48 bg-blue-800 text-white p-2.5 rounded-xl shadow-2xl opacity-0 invisible group-hover/dayoff:opacity-100 group-hover/dayoff:visible transition-all duration-200 pointer-events-none z-20">
+                          <div className={`hidden md:block absolute top-full ${tooltipSide} mt-2 w-48 bg-blue-800 text-white p-2.5 rounded-xl shadow-2xl opacity-0 invisible group-hover/dayoff:opacity-100 group-hover/dayoff:visible transition-all duration-200 pointer-events-none z-20`}>
                             <p className="text-[10px] uppercase tracking-wide text-blue-200 mb-1.5">
                               Очікують підтвердження ({dayPendingRequests.length})
                             </p>

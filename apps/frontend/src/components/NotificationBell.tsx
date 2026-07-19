@@ -67,15 +67,20 @@ export default function NotificationBell() {
     const ddW = 320;
     const gap = 8;
     const pad = 12;
+    const innerH = window.innerHeight;
 
-    const spaceBelow = window.innerHeight - r.bottom;
-    const openDown = spaceBelow >= 380;
-    const top = openDown ? r.bottom + gap : undefined;
-    const bottom = !openDown ? window.innerHeight - r.top + gap : undefined;
+    const spaceBelow = innerH - r.bottom;
+    const spaceAbove = r.top;
+    const openDown = spaceBelow >= spaceAbove;
+
+    const maxH = Math.min(Math.max(openDown ? spaceBelow : spaceAbove, 200) - gap - pad, innerH * 0.7);
 
     const left = Math.max(pad, Math.min(r.left, window.innerWidth - ddW - pad));
 
-    return { position: "fixed" as const, top, bottom, left };
+    if (openDown) {
+      return { position: "fixed" as const, top: r.bottom + gap, left, maxHeight: maxH };
+    }
+    return { position: "fixed" as const, bottom: innerH - r.top + gap, left, maxHeight: maxH };
   };
 
   return (
@@ -100,7 +105,7 @@ export default function NotificationBell() {
         <>
           <div className="fixed inset-0 z-[60]" onClick={close} />
           <div
-            className="notif-dropdown w-80 max-w-[min(320px,calc(100vw-2rem))] bg-nav border border-slate-700/50 rounded-xl shadow-2xl z-[61] max-h-[70vh] flex flex-col"
+            className="notif-dropdown w-80 max-w-[min(320px,calc(100vw-2rem))] bg-nav border border-slate-700/50 rounded-xl shadow-2xl z-[61] flex flex-col"
             style={getDropdownStyle()}
           >
         <div className="flex items-center justify-between px-4 py-3 border-b border-slate-700/50 shrink-0">

@@ -32,7 +32,7 @@ export default function EventTooltip({ event: ev, children }: EventTooltipProps)
           <div
             className="fixed w-72 max-w-[min(288px,calc(100vw-2rem))] bg-neutral-800 text-white p-3 rounded-xl shadow-2xl pointer-events-none z-[9999]"
             style={{
-              left: Math.min(pos.x, window.innerWidth - 300),
+              left: Math.max(8, Math.min(pos.x, window.innerWidth - 288 - 8)),
               top: pos.y > 200 ? pos.y - 120 : pos.y + 24,
             }}
           >

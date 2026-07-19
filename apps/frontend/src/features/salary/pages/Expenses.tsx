@@ -6,7 +6,7 @@ import { Plus, Pencil, Trash2 } from "lucide-react";
 import { api } from "../../../config/api";
 import { useSelectedCity } from "../../../context/CityContext";
 import { useAuth } from "../../../context/AuthContext";
-import type { FinanceDashboardData } from "../../../types";
+import type { FinanceDashboardData, ManualExpense } from "../../../types";
 import { staggerContainer, staggerItem, useCountUp, fabVariants } from "../../../lib/motion";
 import {
   useManualExpenses,
@@ -15,6 +15,7 @@ import {
   useDeleteManualExpense,
 } from "../../../hooks/useManualExpenses";
 import { ManualExpenseModal } from "../../../components/finance/ManualExpenseModal";
+import { ExpenseDetailModal } from "../../../components/finance/ExpenseDetailModal";
 
 const ExpenseChart = lazy(() =>
   import("../../../components/finance/FinanceCharts").then((m) => ({ default: m.ExpenseChart }))
@@ -38,6 +39,7 @@ export default function Expenses() {
   const [period, setPeriod] = useState("year");
   const [modalOpen, setModalOpen] = useState(false);
   const [editExpense, setEditExpense] = useState(null as null | { id: string; category: string; name?: string; description?: string; amount: number; date: string; cityId?: string });
+  const [detailExpense, setDetailExpense] = useState<ManualExpense | null>(null);
 
   const canManage = ["SUPERADMIN", "OWNER", "MANAGER"].includes(user?.role ?? "");
 
@@ -92,7 +94,7 @@ export default function Expenses() {
   if (isLoading || !data) return <Skeleton />;
 
   const totalExpenses = data.kpi?.totalExpenses ?? 0;
-  const categories = [...(data.byExpenseCategory ?? [])].sort((a, b) => Number(b.amount) - Number(a.amount));
+  const categories = [...(data.byExpenseCategory ?? [])].sort((a, b) => Number(b.value) - Number(a.value));
   const manualExpenses = manualData?.items ?? [];
 
   return (
@@ -143,13 +145,13 @@ export default function Expenses() {
           <h3 className="text-sm font-semibold text-content-primary mb-3">Деталізація</h3>
           <div className="space-y-2">
             {categories.map((cat) => {
-              const pct = totalExpenses > 0 ? Math.round((Number(cat.amount) / Number(totalExpenses)) * 100) : 0;
+              const pct = totalExpenses > 0 ? Math.round((Number(cat.value) / Number(totalExpenses)) * 100) : 0;
               return (
                 <motion.div key={cat.name} className="flex items-center justify-between py-2 border-b border-border last:border-0" variants={staggerItem}>
                   <span className="text-sm text-content-secondary">{cat.name}</span>
                   <div className="flex items-center gap-3">
                     <span className="text-xs text-content-muted">{pct}%</span>
-                    <span className="text-sm font-semibold text-content-primary">{fmt(cat.amount)} грн</span>
+                    <span className="text-sm font-semibold text-content-primary">{fmt(cat.value)} грн</span>
                   </div>
                 </motion.div>
               );
@@ -170,8 +172,9 @@ export default function Expenses() {
             {manualExpenses.map((exp) => (
               <motion.div
                 key={exp.id}
-                className="flex items-center justify-between py-2 border-b border-border last:border-0"
+                className="flex items-center justify-between py-2 border-b border-border last:border-0 cursor-pointer hover:bg-surface-muted/50 -mx-2 px-2 rounded-lg transition-colors"
                 variants={staggerItem}
+                onClick={() => setDetailExpense(exp)}
               >
                 <div className="flex flex-col min-w-0">
                   <span className="text-sm text-content-primary font-medium truncate">
@@ -187,10 +190,10 @@ export default function Expenses() {
                   <span className="text-sm font-semibold text-content-primary whitespace-nowrap">{fmt(exp.amount)} грн</span>
                   {canManage && (
                     <>
-                      <button onClick={() => handleEdit(exp)} className="p-1 text-content-muted hover:text-brand transition-colors" aria-label="Редагувати">
+                      <button onClick={(e) => { e.stopPropagation(); handleEdit(exp); }} className="p-1 text-content-muted hover:text-brand transition-colors" aria-label="Редагувати">
                         <Pencil className="w-4 h-4" />
                       </button>
-                      <button onClick={() => handleDelete(exp.id)} className="p-1 text-content-muted hover:text-red-500 transition-colors" aria-label="Видалити">
+                      <button onClick={(e) => { e.stopPropagation(); handleDelete(exp.id); }} className="p-1 text-content-muted hover:text-red-500 transition-colors" aria-label="Видалити">
                         <Trash2 className="w-4 h-4" />
                       </button>
                     </>
@@ -222,6 +225,14 @@ export default function Expenses() {
         onSave={handleSave}
         expense={editExpense}
       />
+
+      {detailExpense && (
+        <ExpenseDetailModal
+          isOpen={!!detailExpense}
+          onClose={() => setDetailExpense(null)}
+          expense={detailExpense}
+        />
+      )}
     </div>
   );
 }
