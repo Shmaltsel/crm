@@ -20,3 +20,6 @@ contract_ref: ""
 - `proposals/` — PROP-*.md для Wave 0 контрактів
 - `decisions/` — архів фіналізованих пропозицій
 - `mailbox/` — файли-мейлбокси для ask_agent
+
+## Session notes
+_(порожньо)_

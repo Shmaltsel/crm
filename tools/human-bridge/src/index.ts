@@ -29,6 +29,9 @@ let reqCounter = 0;
 /** Очікування /plan-повідомлення (wait_for_goal) */
 let goalWaiters: Array<(goal: string) => void> = [];
 
+/** Лічильник ask_agent на фічу: { featureSlug: count } */
+const askAgentCounts = new Map<string, number>();
+
 /** Парсинг YAML frontmatter з підтримкою multiline списків */
 function parseFrontmatter(content: string): Record<string, unknown> | null {
   const match = content.match(/^---\n([\s\S]*?)\n---/);
@@ -213,11 +216,22 @@ server.tool(
     target: z.enum(["mimo", "opencode"]),
     question: z.string(),
     proposal: z.string().optional(),
+    feature: z.string().optional(),
   },
-  async ({ target, question, proposal }) => {
+  async ({ target, question, proposal, feature }) => {
     const mailboxPath = resolve(MAILBOX_DIR, `${target}.md`);
     const entryId = `msg-${Date.now()}`;
     const timestamp = new Date().toISOString();
+
+    // ── Frequency monitoring ──
+    const featureSlug = feature || "unknown";
+    const currentCount = (askAgentCounts.get(featureSlug) || 0) + 1;
+    askAgentCounts.set(featureSlug, currentCount);
+
+    let warningSuffix = "";
+    if (currentCount > 2) {
+      warningSuffix = `\n\n⚠️ Часті ask_agent на цій фічі (${currentCount} викликів) — можливо контракт Wave 0 недостатньо чіткий`;
+    }
 
     // Записати запит в mailbox
     const requestBlock = [
@@ -248,7 +262,7 @@ server.tool(
     // Сповістити людину
     await bot.api.sendMessage(
       CHAT_ID,
-      `📬 Запит до ${target}: ${question}`
+      `📬 Запит до ${target}: ${question}${warningSuffix}`
     );
 
     // Чекати відповіді (таймаут 10 хв)

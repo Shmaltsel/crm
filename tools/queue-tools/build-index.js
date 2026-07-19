@@ -80,7 +80,8 @@ function main() {
       const wave = t.wave !== undefined ? ` [W${t.wave}]` : "";
       const blocked = t.blocked_by?.length ? ` ⛔ blocked by: ${Array.isArray(t.blocked_by) ? t.blocked_by.join(", ") : t.blocked_by}` : "";
       const owner = t.owner ? ` (${t.owner})` : "";
-      lines.push(`- **${t.id || t.file}**: ${t.title || "?"}${owner}${wave}${blocked}`);
+      const checkpoint = t.checkpoint_at ? ` 📍 checkpoint: ${t.checkpoint_at}` : "";
+      lines.push(`- **${t.id || t.file}**: ${t.title || "?"}${owner}${wave}${blocked}${checkpoint}`);
     }
     lines.push("");
   }

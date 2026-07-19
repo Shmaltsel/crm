@@ -14,3 +14,6 @@ contract_ref: ""
 # TASK-4: Оновлений handoff
 
 Оновлено `.agents/handoff.md`: секція "Ready for other agent" тепер містить формат "Contract diff" — що саме змінилось у типах/DTO.
+
+## Session notes
+_(порожньо)_

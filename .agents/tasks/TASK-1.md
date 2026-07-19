@@ -18,3 +18,6 @@ contract_ref: ""
 Створено `tools/queue-tools/build-index.js` та `tools/queue-tools/lint-queue.js`.
 - build-index: read-only генерація queue.md з TASK-*.md файлів
 - lint: перевірка criteria (наявність), blocked_by (цикли + references), owner/status (допустимі значення)
+
+## Session notes
+_(порожньо)_

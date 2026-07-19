@@ -14,12 +14,17 @@
 
 import { readdirSync, readFileSync } from "fs";
 import { join, resolve } from "path";
+import { execSync } from "child_process";
 
 const ROOT = resolve(import.meta.dirname, "../..");
 const TASKS_DIR = join(ROOT, ".agents", "tasks");
 
 const VALID_OWNERS = ["mimo", "opencode"];
 const VALID_STATUSES = ["todo", "in_progress", "done"];
+
+/** Пороги для size guardrail */
+const SIZE_LINES_THRESHOLD = 400;
+const SIZE_FILES_THRESHOLD = 6;
 
 function parseFrontmatter(content) {
   const match = content.match(/^---\n([\s\S]*?)\n---/);
@@ -152,6 +157,42 @@ function main() {
     errors.push(`Цикл blocked_by: ${cycle.join(" → ")}`);
   }
 
+  // ── Size guardrail (WARNING, не помилка) ──
+  const warnings = [];
+  for (const t of tasks) {
+    if (t.status !== "done") continue;
+    // Перевірка через git diff для закритих задач
+    try {
+      // Знаходимо коміт для цієї задачі
+      const commitMsg = execSync(
+        `git log --all --oneline --grep="${t.id}" -1 --format="%H"`,
+        { cwd: ROOT, encoding: "utf-8", timeout: 5000 }
+      ).trim();
+      if (!commitMsg) continue;
+
+      const diffStat = execSync(
+        `git diff --stat ${commitMsg}^..${commitMsg} 2>/dev/null || echo ""`,
+        { cwd: ROOT, encoding: "utf-8", timeout: 5000 }
+      );
+
+      // Підрахунок змінених рядків
+      const totalMatch = diffStat.match(/(\d+) files? changed/);
+      const filesChanged = totalMatch ? parseInt(totalMatch[1], 10) : 0;
+
+      // Підрахунок рядків з change summary
+      const lineMatches = [...diffStat.matchAll(/\+(\d+)\s/g)];
+      const totalAdded = lineMatches.reduce((sum, m) => sum + parseInt(m[1], 10), 0);
+
+      if (totalAdded > SIZE_LINES_THRESHOLD || filesChanged > SIZE_FILES_THRESHOLD) {
+        warnings.push(
+          `${t.file} (${t.id}): ${totalAdded}+/${filesChanged} файлів — задача можливо мала бути розбита на кілька`
+        );
+      }
+    } catch {
+      // git не доступний або коміт не знайдено — пропускаємо
+    }
+  }
+
   if (errors.length > 0) {
     console.error("❌ Лайнтинг черги знайшов помилки:");
     for (const e of errors) {
@@ -160,7 +201,14 @@ function main() {
     process.exit(1);
   }
 
-  console.log(`✓ Лайнтинг черги пройдено (${tasks.length} задач, 0 помилок)`);
+  if (warnings.length > 0) {
+    console.warn("⚠️ Попередження (size guardrail):");
+    for (const w of warnings) {
+      console.warn(`  • ${w}`);
+    }
+  }
+
+  console.log(`✓ Лайнтинг черги пройдено (${tasks.length} задач, 0 помилок${warnings.length ? `, ${warnings.length} попереджень` : ""})`);
   process.exit(0);
 }
 

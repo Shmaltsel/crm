@@ -24,3 +24,6 @@ contract_ref: ""
 - `wait_for_goal()`: блокуючий MCP tool для очікування цілі
 - `ask_agent(target, question, proposal)`: mailbox-система з таймаутом 10хв + ескалація
 - `assign_task`: batch mode (масив task-ids замість одного)
+
+## Session notes
+_(порожньо)_

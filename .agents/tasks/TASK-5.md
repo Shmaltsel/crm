@@ -21,3 +21,6 @@ contract_ref: ""
 - pre-push-verification: додано крок 0 (lint-queue.js)
 - backend/AGENTS.md: повний цикл роботи (wait_for_goal → Wave 0 → Wave 1 → done)
 - frontend/AGENTS.md: повний цикл з review PROP та ask_agent правилами
+
+## Session notes
+_(порожньо)_
