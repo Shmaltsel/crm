@@ -79,10 +79,10 @@ export default function Login({ onLogin }: LoginProps) {
   };
 
   return (
-    <div className="flex items-center justify-center min-h-screen bg-[var(--color-surface-subtle)] p-4 relative">
+    <div className="flex items-center justify-center min-h-screen bg-gradient-to-br from-[var(--color-surface-subtle)] to-[var(--color-surface)] p-4 relative">
       <button
         onClick={toggleTheme}
-        className="absolute top-4 right-4 p-2 rounded-full bg-[var(--color-surface)] border border-[var(--color-border)] text-[var(--color-content-muted)] hover:text-[var(--color-content-primary)] hover:border-[var(--color-border-strong)] transition-colors"
+        className="absolute top-4 right-4 p-2 rounded-full bg-[var(--color-surface)] border border-[var(--color-border)] text-[var(--color-content-muted)] hover:text-[var(--color-content-primary)] hover:border-[var(--color-border-strong)] focus-visible:ring-2 focus-visible:ring-[var(--color-brand)] transition-colors"
         aria-label={theme === "light" ? "Перемкнути на темну тему" : "Перемкнути на світлу тему"}
       >
         {theme === "light" ? <Moon className="w-5 h-5" /> : <Sun className="w-5 h-5" />}
@@ -113,7 +113,7 @@ export default function Login({ onLogin }: LoginProps) {
               : { opacity: 1, scale: 1 }
         }
         transition={{ duration: 0.4 }}
-        className="p-6 sm:p-8 bg-[var(--color-surface)] rounded-card shadow-modal w-full max-w-sm sm:max-w-md"
+        className="p-6 sm:p-8 bg-[var(--color-surface)] rounded-card shadow-modal ring-1 ring-[var(--color-border)] w-full max-w-sm sm:max-w-md"
       >
         <h1 className="text-2xl font-bold text-center text-[var(--color-content-primary)] mb-6">
           Вхід у CRM
@@ -123,7 +123,7 @@ export default function Login({ onLogin }: LoginProps) {
           <motion.div
             initial={{ opacity: 0, y: -10 }}
             animate={{ opacity: 1, y: 0 }}
-            className="mb-4 p-3 bg-[var(--color-danger-bg)] text-[var(--color-danger)] rounded-control text-sm text-center"
+            className="mb-4 p-3 bg-[var(--color-danger-bg)] text-[var(--color-danger)] border border-[var(--color-danger)]/30 rounded-control text-sm text-center"
           >
             {error}
           </motion.div>
@@ -148,7 +148,7 @@ export default function Login({ onLogin }: LoginProps) {
                 autoCapitalize="none"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                className="w-full px-3.5 py-3 border border-[var(--color-border-strong)] rounded-control focus:ring-2 focus:ring-[var(--color-brand)]/30 focus:border-[var(--color-brand)] outline-none text-base transition-colors bg-[var(--color-surface)] text-[var(--color-content-primary)]"
+                className="w-full px-3.5 py-3 border border-[var(--color-border-strong)] rounded-control focus:ring-2 focus:ring-[var(--color-brand)]/30 focus:border-[var(--color-brand)] outline-none text-base transition-colors bg-[var(--color-surface)] text-[var(--color-content-primary)] placeholder:text-[var(--color-content-muted)]"
                 whileFocus={{ scale: 1.01 }}
                 transition={TRANSITION.focus}
                 required
@@ -165,7 +165,7 @@ export default function Login({ onLogin }: LoginProps) {
                   autoComplete="current-password"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
-                  className="w-full px-3.5 py-3 pr-10 border border-[var(--color-border-strong)] rounded-control focus:ring-2 focus:ring-[var(--color-brand)]/30 focus:border-[var(--color-brand)] outline-none text-base transition-colors bg-[var(--color-surface)] text-[var(--color-content-primary)]"
+                  className="w-full px-3.5 py-3 pr-10 border border-[var(--color-border-strong)] rounded-control focus:ring-2 focus:ring-[var(--color-brand)]/30 focus:border-[var(--color-brand)] outline-none text-base transition-colors bg-[var(--color-surface)] text-[var(--color-content-primary)] placeholder:text-[var(--color-content-muted)]"
                   whileFocus={{ scale: 1.01 }}
                   transition={TRANSITION.focus}
                   required
