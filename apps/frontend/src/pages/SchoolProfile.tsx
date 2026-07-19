@@ -655,8 +655,24 @@ export default function SchoolProfile() {
 
       </div>
 
-      {/* Десктопна версія (≥1280px): 2 колонки */}
-      <div className="hidden xl:grid xl:grid-cols-2 xl:gap-6">
+      {/* Десктопна версія (≥1280px): пайплайн + 2 колонки */}
+      <div className="hidden xl:block space-y-6">
+        {currentEvent && (
+          <Suspense
+            fallback={
+              <div className="bg-surface rounded-card shadow-card h-24 animate-pulse border border-border" />
+            }
+          >
+            <Pipeline
+              currentStageIndex={currentStageIndex}
+              currentEvent={currentEvent}
+              onPipelineClick={handlePipelineClick}
+              stages={PIPELINE_STAGES}
+            />
+          </Suspense>
+        )}
+
+        <div className="grid xl:grid-cols-2 xl:gap-6">
         <div className="space-y-6">
           <Suspense
             fallback={
@@ -755,6 +771,7 @@ export default function SchoolProfile() {
           </div>
 
           {completedEventsBlock("completed-events-anchor")}
+        </div>
         </div>
       </div>
 
