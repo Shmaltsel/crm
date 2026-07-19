@@ -257,7 +257,7 @@ export default function Schools() {
         queryKey: ["schoolContacts", schoolName, currentCityName],
         queryFn: async () => {
           const res = await api.get<SchoolContact[]>(
-            `/schools/contacts/search?q=${encodeURIComponent(schoolName)}&city=${encodeURIComponent(currentCityName)}&type=Школа`,
+            `/schools/contacts/search?q=${encodeURIComponent(schoolName)}&city=${encodeURIComponent(currentCityName)}&type=${encodeURIComponent(INSTITUTION_TYPES[institutionType].apiType)}`,
           );
           return res.data;
         },
@@ -300,7 +300,7 @@ export default function Schools() {
             queryKey: ["schoolSearchExternal", value],
             queryFn: async () => {
               const res = await api.get(
-                `/schools/search?q=${encodeURIComponent(value)}&type=Школа`,
+                `/schools/search?q=${encodeURIComponent(value)}&type=${encodeURIComponent(INSTITUTION_TYPES[institutionType].apiType)}`,
               );
               return res.data;
             },
@@ -326,7 +326,7 @@ export default function Schools() {
   const handleAddSchool = (e: React.FormEvent) => {
     e.preventDefault();
     if (!form.name.trim() || !form.cityId) return;
-    addSchoolMutation.mutate({ ...form, type: "Школа" });
+    addSchoolMutation.mutate({ ...form, type: INSTITUTION_TYPES[institutionType].apiType });
   };
 
   const handleDeleteSchool = useCallback(
@@ -502,7 +502,7 @@ export default function Schools() {
           <motion.div variants={backdropVariants} initial="hidden" animate="visible" exit="exit" className="fixed inset-0 bg-neutral-900/40 md:backdrop-blur-sm z-50 flex items-center justify-center p-4">
             <motion.div variants={modalContentVariants} initial="hidden" animate="visible" exit="exit" className="bg-surface rounded-modal shadow-modal w-full max-w-md max-h-[90vh] overflow-hidden flex flex-col">
               <div className="p-5 border-b border-border flex justify-between items-center bg-surface-muted shrink-0">
-                <h3 className="text-xl font-bold text-content-primary">Нова школа</h3>
+                <h3 className="text-xl font-bold text-content-primary">{institutionType === "school" ? "Нова школа" : "Новий садочок"}</h3>
                 <button
                   onClick={() => setIsModalOpen(false)}
                   className="text-content-muted hover:text-content-secondary p-2 -mr-2 leading-none active:scale-90 transition-transform duration-fast"
@@ -518,7 +518,7 @@ export default function Schools() {
               >
                 <div className="relative">
                   <label className="block text-sm font-medium text-content-secondary mb-1.5">
-                    Назва школи
+                    {institutionType === "school" ? "Назва школи" : "Назва садочка"}
                   </label>
                   <input
                     type="text"
@@ -527,7 +527,7 @@ export default function Schools() {
                     onBlur={() =>
                       setTimeout(() => setShowSuggestions(false), 150)
                     }
-                    placeholder="Наприклад: Школа №1"
+                    placeholder={institutionType === "school" ? "Наприклад: Школа №1" : "Наприклад: Садочок №1"}
                     required
                     className="w-full p-3 border border-border-strong rounded-control text-base focus:outline-none focus:ring-2 focus:ring-brand/30"
                   />
