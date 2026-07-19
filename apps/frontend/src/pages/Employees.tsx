@@ -100,7 +100,7 @@ function EmployeesSkeleton() {
             <div className="h-5 w-24 bg-surface-muted rounded" />
             <div className="h-5 w-8 bg-surface-muted rounded-full" />
           </div>
-          <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
             {[1, 2, 3].map((i) => (
               <div key={i} className="relative overflow-hidden bg-surface border border-border rounded-card p-5 flex items-start gap-4">
                 <Shimmer />
@@ -500,7 +500,7 @@ export default function Employees() {
                     ) : (
                       <motion.div
                         variants={sectionVariants}
-                        className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3"
+                        className="grid grid-cols-1 md:grid-cols-2 gap-3"
                       >
                         <AnimatePresence initial={false}>
                           {items.map((u) => (

@@ -1,5 +1,5 @@
 import { motion } from "framer-motion";
-import { Phone, MapPin, Edit3, UserX } from "lucide-react";
+import { Phone, MapPin, Edit3, UserX, Mail, Car, Send } from "lucide-react";
 import { cardVariants } from "../../animations/employees";
 import { useHoverCapable } from "../../lib/motion";
 
@@ -65,50 +65,135 @@ export default function EmployeeCard({
       aria-label={`${user.name}, ${ROLE_LABELS[role] ?? role}`}
       className="group relative bg-surface rounded-card shadow-card border border-border p-5 transition-shadow duration-200 hover:shadow-card-hover"
     >
-      <div className="flex items-start gap-4">
+      {/* ── Мобільний вигляд (md:hidden) — без змін ── */}
+      <div className="md:hidden">
+        <div className="flex items-start gap-4">
+          <div className="relative shrink-0">
+            <div
+              className={`w-12 h-12 rounded-2xl flex items-center justify-center text-lg font-bold text-white bg-gradient-to-br ${ROLE_GRADIENT[role] ?? "from-neutral-500 to-neutral-600"}`}
+            >
+              {user.name.charAt(0)}
+            </div>
+            <span className="absolute -bottom-0.5 -right-0.5 w-3.5 h-3.5 rounded-full bg-success border-2 border-surface" />
+          </div>
+
+          <div className="min-w-0 flex-1">
+            <div className="flex items-center gap-2 mb-1">
+              <h3 className="font-semibold text-content-primary truncate text-sm">
+                {user.name}
+              </h3>
+              <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full border ${ROLE_BADGE[role] ?? "bg-neutral-100 text-neutral-600 border-neutral-200"}`}>
+                {ROLE_LABELS[role] ?? role}
+              </span>
+            </div>
+
+            <p className="text-xs text-content-muted truncate">{user.email}</p>
+
+            <div className="mt-2.5 flex flex-wrap items-center gap-x-3 gap-y-1">
+              <span className="text-xs text-content-secondary flex items-center gap-1">
+                <Phone className="w-3 h-3" />
+                {user.phone || "—"}
+              </span>
+              <span className="text-xs text-content-secondary flex items-center gap-1">
+                <MapPin className="w-3 h-3" />
+                {user.city?.name || "Всі міста"}
+              </span>
+            </div>
+
+            <div className="mt-2 flex items-center gap-3 text-2xs text-content-muted">
+              {user.car && <span>🚗 {user.car}</span>}
+            </div>
+          </div>
+
+          {isSuperAdmin && (
+            <div className={`flex items-center gap-0.5 shrink-0 transition-opacity duration-200 ${hoverCapable ? "opacity-100 md:opacity-0 md:group-hover:opacity-100" : "opacity-100"}`}>
+              <motion.button
+                whileTap={{ scale: 0.9 }}
+                onClick={() => onEdit(user)}
+                className="p-1.5 rounded-control text-content-muted hover:text-brand hover:bg-brand-50 transition-colors"
+                aria-label={`Редагувати ${user.name}`}
+              >
+                <Edit3 className="w-4 h-4" />
+              </motion.button>
+              <motion.button
+                whileTap={{ scale: 0.9 }}
+                onClick={() => onDelete(user.id, user.name)}
+                className="p-1.5 rounded-control text-content-muted hover:text-danger hover:bg-danger-50 transition-colors"
+                aria-label={`Видалити ${user.name}`}
+              >
+                <UserX className="w-4 h-4" />
+              </motion.button>
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* ── Десктопний вигляд (hidden md:flex) — розширений ── */}
+      <div className="hidden md:flex items-start gap-5">
+        {/* Аватар */}
         <div className="relative shrink-0">
           <div
-            className={`w-12 h-12 rounded-2xl flex items-center justify-center text-lg font-bold text-white bg-gradient-to-br ${ROLE_GRADIENT[role] ?? "from-neutral-500 to-neutral-600"}`}
+            className={`w-14 h-14 rounded-2xl flex items-center justify-center text-xl font-bold text-white bg-gradient-to-br ${ROLE_GRADIENT[role] ?? "from-neutral-500 to-neutral-600"}`}
           >
             {user.name.charAt(0)}
           </div>
           <span className="absolute -bottom-0.5 -right-0.5 w-3.5 h-3.5 rounded-full bg-success border-2 border-surface" />
         </div>
 
+        {/* Інформація */}
         <div className="min-w-0 flex-1">
-          <div className="flex items-center gap-2 mb-1">
-            <h3 className="font-semibold text-content-primary truncate text-sm">
+          {/* Рядок 1: Ім'я + Роль */}
+          <div className="flex items-center gap-2.5 mb-2">
+            <h3 className="font-bold text-content-primary text-base truncate">
               {user.name}
             </h3>
-            <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full border ${ROLE_BADGE[role] ?? "bg-neutral-100 text-neutral-600 border-neutral-200"}`}>
+            <span className={`text-xs font-semibold px-2.5 py-0.5 rounded-full border shrink-0 ${ROLE_BADGE[role] ?? "bg-neutral-100 text-neutral-600 border-neutral-200"}`}>
               {ROLE_LABELS[role] ?? role}
             </span>
           </div>
 
-          <p className="text-xs text-content-muted truncate">{user.email}</p>
-
-          <div className="mt-2.5 flex flex-wrap items-center gap-x-3 gap-y-1">
-            <span className="text-xs text-content-secondary flex items-center gap-1">
-              <Phone className="w-3 h-3" />
+          {/* Рядок 2: Email + Телефон + Місто — все видимо */}
+          <div className="flex flex-wrap items-center gap-x-4 gap-y-1.5 text-sm text-content-secondary">
+            <span className="flex items-center gap-1.5 min-w-0">
+              <Mail className="w-3.5 h-3.5 text-content-muted shrink-0" />
+              <span className="truncate">{user.email}</span>
+            </span>
+            <span className="flex items-center gap-1.5 shrink-0">
+              <Phone className="w-3.5 h-3.5 text-content-muted" />
               {user.phone || "—"}
             </span>
-            <span className="text-xs text-content-secondary flex items-center gap-1">
-              <MapPin className="w-3 h-3" />
+            <span className="flex items-center gap-1.5 shrink-0">
+              <MapPin className="w-3.5 h-3.5 text-content-muted" />
               {user.city?.name || "Всі міста"}
             </span>
           </div>
 
-          <div className="mt-2 flex items-center gap-3 text-2xs text-content-muted">
-            {user.car && <span>🚗 {user.car}</span>}
-          </div>
+          {/* Рядок 3: Telegram + Авто (якщо є) */}
+          {(user.telegramId || user.car) && (
+            <div className="flex flex-wrap items-center gap-x-4 gap-y-1 mt-1.5 text-sm text-content-muted">
+              {user.telegramId && (
+                <span className="flex items-center gap-1.5">
+                  <Send className="w-3.5 h-3.5" />
+                  @{user.telegramId}
+                </span>
+              )}
+              {user.car && (
+                <span className="flex items-center gap-1.5">
+                  <Car className="w-3.5 h-3.5" />
+                  {user.car}
+                </span>
+              )}
+            </div>
+          )}
         </div>
 
+        {/* Кнопки дій — з'являються по hover */}
         {isSuperAdmin && (
-          <div className={`flex items-center gap-0.5 shrink-0 transition-opacity duration-200 ${hoverCapable ? "opacity-100 md:opacity-0 md:group-hover:opacity-100" : "opacity-100"}`}>
+          <div className={`flex items-center gap-1 shrink-0 transition-opacity duration-200 ${hoverCapable ? "opacity-0 group-hover:opacity-100" : "opacity-100"}`}>
             <motion.button
               whileTap={{ scale: 0.9 }}
               onClick={() => onEdit(user)}
-              className="p-1.5 rounded-control text-content-muted hover:text-brand hover:bg-brand-50 transition-colors"
+              className="p-2 rounded-control text-content-muted hover:text-brand hover:bg-brand-50 transition-colors"
               aria-label={`Редагувати ${user.name}`}
             >
               <Edit3 className="w-4 h-4" />
@@ -116,7 +201,7 @@ export default function EmployeeCard({
             <motion.button
               whileTap={{ scale: 0.9 }}
               onClick={() => onDelete(user.id, user.name)}
-              className="p-1.5 rounded-control text-content-muted hover:text-danger hover:bg-danger-50 transition-colors"
+              className="p-2 rounded-control text-content-muted hover:text-danger hover:bg-danger-50 transition-colors"
               aria-label={`Видалити ${user.name}`}
             >
               <UserX className="w-4 h-4" />
