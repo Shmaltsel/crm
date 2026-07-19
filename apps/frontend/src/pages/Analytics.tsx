@@ -714,14 +714,17 @@ export default function Analytics() {
   }, [showForecast, canForecast, forecastData.entries, chartData]);
 
   const clampRange = useCallback(
-    (start: number, end: number, sourceLen: number): [number, number] => {
+    (start: number, end: number, sourceLen: number, isDayMode: boolean = false): [number, number] => {
       const max = sourceLen - 1;
-      const MIN_SPAN = 1;
+      // У month-режимі: мінімум 12 місяців (щоб завжди було видно хоча б 1 рік)
+      // У day-режимі: мінімум 1 день
+      const MIN_SPAN = isDayMode ? 1 : 12;
       let s = Math.max(0, Math.min(max, Math.round(start)));
       let e = Math.max(0, Math.min(max, Math.round(end)));
       if (e - s < MIN_SPAN) {
         if (s === 0) e = Math.min(max, s + MIN_SPAN);
-        else s = Math.max(0, e - MIN_SPAN);
+        else if (e === max) s = Math.max(0, e - MIN_SPAN);
+        else { s = Math.max(0, Math.round((s + e) / 2 - MIN_SPAN / 2)); e = Math.min(max, s + MIN_SPAN); }
       }
       return [s, e];
     },
@@ -744,8 +747,8 @@ export default function Analytics() {
       const step = Math.max(1, Math.floor(span / 4));
       const newSpan = shrink ? span - 2 * step : span + 2 * step;
       const [ns, ne] = shrink
-        ? clampRange(curS + step, curE - step, sourceLen)
-        : clampRange(curS - step, curE + step, sourceLen);
+        ? clampRange(curS + step, curE - step, sourceLen, granularity === 'day')
+        : clampRange(curS - step, curE + step, sourceLen, granularity === 'day');
 
       // Обчислюємо фінальні ключі з урахуванням можливого перемикання granularity
       let finalKeys: [string, string] | null = null;
@@ -824,7 +827,7 @@ export default function Analytics() {
         const center = (origS + origE) / 2;
         const origSpan = origE - origS;
         const newSpan = Math.round(origSpan / ratio);
-        const [ns, ne] = clampRange(center - newSpan / 2, center + newSpan / 2, sourceLen);
+        const [ns, ne] = clampRange(center - newSpan / 2, center + newSpan / 2, sourceLen, granularity === 'day');
 
         if (source[ns] && source[ne]) {
           // Обчислюємо фінальні ключі з урахуванням можливого перемикання granularity
@@ -1439,7 +1442,9 @@ export default function Analytics() {
                           tick={{ fontSize: 11, fill: "#64748b" }}
                           axisLine={{ stroke: "#e2e8f0" }}
                           tickLine={false}
-                          interval={granularity === 'day' ? (zoomSpan > 60 ? 14 : zoomSpan > 30 ? 7 : zoomSpan > 14 ? 3 : 0) : (zoomSpan > 24 ? Math.floor(zoomSpan / 8) : zoomSpan > 12 ? 1 : 0)}
+                          interval={granularity === 'day'
+                            ? (zoomSpan > 90 ? 28 : zoomSpan > 60 ? 14 : zoomSpan > 30 ? 7 : zoomSpan > 14 ? 3 : 0)
+                            : (zoomSpan > 36 ? 5 : zoomSpan > 24 ? 3 : zoomSpan > 12 ? 1 : 0)}
                         />
                         <YAxis
                           tick={{ fontSize: 11, fill: "#64748b" }}
