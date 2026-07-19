@@ -17,9 +17,87 @@ const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), "..", "..", "..");
 const AGENTS_DIR = resolve(ROOT, ".agents");
 const MAILBOX_DIR = resolve(AGENTS_DIR, "mailbox");
 const QUEUE_DIR = resolve(AGENTS_DIR, "tasks");
+const INBOX_DIR = resolve(AGENTS_DIR, "inbox");
 
 if (!existsSync(MAILBOX_DIR)) mkdirSync(MAILBOX_DIR, { recursive: true });
 if (!existsSync(QUEUE_DIR)) mkdirSync(QUEUE_DIR, { recursive: true });
+if (!existsSync(INBOX_DIR)) mkdirSync(INBOX_DIR, { recursive: true });
+
+// ── Helpers ────────────────────────────────────────────────────────
+
+/** Наступний вільний TASK id */
+function nextTaskId(): string {
+  const existing = readdirSync(QUEUE_DIR)
+    .filter((f) => f.startsWith("TASK-") && f.endsWith(".md"))
+    .map((f) => {
+      const m = f.match(/TASK-(\d+)/);
+      return m ? parseInt(m[1], 10) : 0;
+    });
+  const max = existing.length > 0 ? Math.max(...existing) : 0;
+  return `TASK-${max + 1}`;
+}
+
+/** Записати TASK файл */
+function writeTaskFile(
+  id: string,
+  title: string,
+  body: string,
+  owner: string,
+  opts?: { wave?: number; blockedBy?: string[]; criteria?: string[]; checkpointAt?: string }
+) {
+  const fm = [
+    `---`,
+    `id: ${id}`,
+    `title: "${title.replace(/"/g, '\\"')}"`,
+    `owner: ${owner}`,
+    `status: todo`,
+    `wave: ${opts?.wave ?? 1}`,
+    `blocked_by: ${opts?.blockedBy?.length ? `[${opts.blockedBy.join(", ")}]` : "[]"}`,
+    `criteria:`,
+    ...(opts?.criteria?.map((c) => `  - ${c}`) ?? ["  - виконано згідно опису"]),
+    opts?.checkpointAt ? `checkpoint_at: "${opts.checkpointAt}"` : `contract_ref: ""`,
+    `---`,
+    ``,
+    `# ${id}: ${title}`,
+    ``,
+    body,
+    ``,
+    `## Session notes`,
+    `_(порожньо)_`,
+  ].join("\n");
+
+  writeFileSync(resolve(QUEUE_DIR, `${id}.md`), fm, "utf-8");
+}
+
+/** Прочитати стан черги */
+function readQueueSummary(): string {
+  if (!existsSync(QUEUE_DIR)) return "Черга порожня.";
+  const files = readdirSync(QUEUE_DIR)
+    .filter((f) => f.startsWith("TASK-") && f.endsWith(".md"))
+    .sort();
+
+  if (files.length === 0) return "Черга порожня.";
+
+  const grouped: Record<string, string[]> = { todo: [], in_progress: [], done: [] };
+  for (const f of files) {
+    const raw = readFileSync(resolve(QUEUE_DIR, f), "utf-8");
+    const fm = parseFrontmatter(raw);
+    const status = (fm?.status as string) || "todo";
+    const id = (fm?.id as string) || f;
+    const title = (fm?.title as string) || "?";
+    const owner = fm?.owner ? ` (${fm.owner})` : "";
+    if (grouped[status]) grouped[status].push(`${id}: ${title}${owner}`);
+  }
+
+  const lines: string[] = [];
+  if (grouped.in_progress.length)
+    lines.push(`🔄 В роботі (${grouped.in_progress.length}):\n${grouped.in_progress.map((s) => `  • ${s}`).join("\n")}`);
+  if (grouped.todo.length)
+    lines.push(`📋 Черга (${grouped.todo.length}):\n${grouped.todo.map((s) => `  • ${s}`).join("\n")}`);
+  if (grouped.done.length)
+    lines.push(`✅ Готово (${grouped.done.length})`);
+  return lines.join("\n\n");
+}
 
 // ── State ──────────────────────────────────────────────────────────
 
@@ -96,13 +174,47 @@ bot.on("callback_query:data", async (ctx) => {
 bot.on("message:text", async (ctx) => {
   const text = ctx.message.text;
 
-  // /plan <текст> — нова ціль для планування
+  // ── /task <текст> — створити задачу в черзі ──
+  if (text.startsWith("/task ")) {
+    const body = text.slice(6).trim();
+    if (!body) {
+      await ctx.reply("⚠️ Порожня задача. Напиши /task <опис задачі>");
+      return;
+    }
+
+    // Визначаємо owner: якщо є слово "frontend" або "UI" → opencode, інакше mimo
+    const lowerBody = body.toLowerCase();
+    const isFrontend = /\b(frontend|ui|react|компонент|сторінка|вкладка|мобільн|дизайн)\b/.test(lowerBody);
+    const owner = isFrontend ? "opencode" : "mimo";
+
+    const id = nextTaskId();
+    const title = body.length > 80 ? body.slice(0, 77) + "..." : body;
+    writeTaskFile(id, title, body, owner);
+
+    await ctx.reply(
+      `✅ Задачу створено:\n• ID: ${id}\n• Власник: ${owner}\n• Назва: ${title}`
+    );
+    return;
+  }
+
+  // ── /tasks — показати чергу ──
+  if (text === "/tasks" || text === "/status") {
+    const summary = readQueueSummary();
+    await ctx.reply(summary);
+    return;
+  }
+
+  // ── /plan <текст> — нова ціль для планування ──
   if (text.startsWith("/plan ")) {
     const goal = text.slice(6).trim();
     if (!goal) {
       await ctx.reply("⚠️ Порожній план. Напиши /plan <текст цілі>");
       return;
     }
+
+    // Зберігаємо в persistent inbox
+    const inboxPath = resolve(INBOX_DIR, "pending-goal.md");
+    writeFileSync(inboxPath, `# Pending Goal\n\n- **time**: ${new Date().toISOString()}\n- **goal**: ${goal}\n`, "utf-8");
 
     // Якщо є активна черга — попередити і запитати підтвердження
     if (hasActiveQueue()) {
@@ -121,6 +233,11 @@ bot.on("message:text", async (ctx) => {
       });
 
       if (answer === "cancel") {
+        // Видаляємо inbox
+        if (existsSync(inboxPath)) {
+          const { unlinkSync } = await import("fs");
+          unlinkSync(inboxPath);
+        }
         await bot.api.sendMessage(CHAT_ID, "Скасовано.");
         return;
       }
@@ -129,7 +246,6 @@ bot.on("message:text", async (ctx) => {
           CHAT_ID,
           "♻️ Перезапуск: поточна черга буде очищена. Чекаю на планування..."
         );
-        // Сповістити всіх goal-waiter'ів
         for (const w of goalWaiters) w(goal);
         goalWaiters = [];
         return;
@@ -140,7 +256,19 @@ bot.on("message:text", async (ctx) => {
     // Сповістити всіх goal-waiter'ів
     for (const w of goalWaiters) w(goal);
     goalWaiters = [];
-    await bot.api.sendMessage(CHAT_ID, `✅ Ціль прийнята: ${goal}`);
+    await bot.api.sendMessage(CHAT_ID, `✅ Ціль прийнята: ${goal}\nЗбережено в inbox. Агент створить задачі при наступному старті.`);
+    return;
+  }
+
+  // ── /inbox — показати pending goal ──
+  if (text === "/inbox") {
+    const inboxPath = resolve(INBOX_DIR, "pending-goal.md");
+    if (existsSync(inboxPath)) {
+      const content = readFileSync(inboxPath, "utf-8");
+      await ctx.reply(`📥 Є невиконаний план:\n\n${content}`);
+    } else {
+      await ctx.reply("📭 Inbox порожній.");
+    }
     return;
   }
 
@@ -197,13 +325,50 @@ server.tool(
 
 server.tool(
   "wait_for_goal",
-  "Блокуючий виклик: чекає на /plan-повідомлення від людини. Повертає текст цілі.",
+  "Блокуючий виклик: спочатку перевіряє inbox (/plan), якщо порожньо — чекає на нове /plan-повідомлення.",
   {},
   async () => {
+    // Спочатку перевіряємо persistent inbox
+    const inboxPath = resolve(INBOX_DIR, "pending-goal.md");
+    if (existsSync(inboxPath)) {
+      const content = readFileSync(inboxPath, "utf-8");
+      const goalMatch = content.match(/\*\*goal\*\*:\s*(.+)/);
+      if (goalMatch) {
+        const goal = goalMatch[1].trim();
+        // Видаляємо з inbox
+        const { unlinkSync } = await import("fs");
+        unlinkSync(inboxPath);
+        return { content: [{ type: "text", text: goal }] };
+      }
+    }
+
+    // Inbox порожній — чекаємо на /plan
     const goal = await new Promise<string>((resolve) => {
       goalWaiters.push(resolve);
     });
     return { content: [{ type: "text", text: goal }] };
+  }
+);
+
+// ── check_inbox ────────────────────────────────────────────────────
+
+server.tool(
+  "check_inbox",
+  "Перевірити чи є невиконана ціль з /plan в inbox. Повертає goal або порожній рядок.",
+  {},
+  async () => {
+    const inboxPath = resolve(INBOX_DIR, "pending-goal.md");
+    if (existsSync(inboxPath)) {
+      const content = readFileSync(inboxPath, "utf-8");
+      const goalMatch = content.match(/\*\*goal\*\*:\s*(.+)/);
+      if (goalMatch) {
+        const goal = goalMatch[1].trim();
+        const { unlinkSync } = await import("fs");
+        unlinkSync(inboxPath);
+        return { content: [{ type: "text", text: goal }] };
+      }
+    }
+    return { content: [{ type: "text", text: "" }] };
   }
 );
 
