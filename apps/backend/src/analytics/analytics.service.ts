@@ -164,8 +164,8 @@ export class AnalyticsService {
     const rows = await this.prisma.$queryRaw<DayRow[]>`
       SELECT
         TO_CHAR(e.date, 'YYYY-MM-DD')            AS date,
-        COALESCE(c.name, '�')                    AS "cityName",
-        COALESCE(e.project, '????')              AS project,
+        COALESCE(c.name, '—')                    AS "cityName",
+        COALESCE(e.project, 'Інше')              AS project,
         COALESCE(SUM(r."totalSum"), 0)::float     AS revenue,
         COALESCE(SUM(r."remainderSum"), 0)::float AS profit
       FROM "Event" e
@@ -372,7 +372,7 @@ async cityLeaderboard(metric?: string, year?: number, schoolType?: string) {
     const result = rows
       .map((r) => ({
         cityId: r.cityId,
-        cityName: cityMap.get(r.cityId) ?? '�',
+        cityName: cityMap.get(r.cityId) ?? '—',
         events: Number(r.events),
         revenue: r.revenue,
         profit: r.profit,

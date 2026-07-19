@@ -193,7 +193,7 @@ export class AnalyticsController {
   }
 
 
-  @ApiOperation({ summary: '????? ?? ????' })
+  @ApiOperation({ summary: 'Дохід по днях' })
   @Get('revenue-by-day')
   @Roles('SUPERADMIN', 'OWNER', 'MANAGER')
   async revenueByDay(@CurrentUser() user: JwtUser, @Query() query: RevenueByDayDto) {

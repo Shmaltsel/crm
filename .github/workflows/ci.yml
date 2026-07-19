@@ -36,6 +36,9 @@ jobs:
       - name: Встановлення залежностей
         run: pnpm install --frozen-lockfile
 
+      - name: Charset-guard
+        run: node tools/queue-tools/charset-guard.js
+
       - name: Генерація Prisma клієнта
         run: pnpm --filter backend exec prisma generate
 

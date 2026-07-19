@@ -112,7 +112,7 @@ export default function CityLeaderboard() {
     queryFn: () =>
       api
         .get<CityLeaderboardEntry[]>("/analytics/city-leaderboard", {
-          params: { metric, year, schoolType: schoolType === 'all' ? undefined : schoolType === 'school' ? '?????' : '???????' },
+          params: { metric, year, schoolType: schoolType === 'all' ? undefined : schoolType === 'school' ? 'Школи' : 'Садочки' },
         })
         .then((r) => r.data),
     staleTime: 5 * 60 * 1000,
@@ -142,9 +142,9 @@ export default function CityLeaderboard() {
             </select>
         <div className="flex items-center gap-1 bg-surface-muted rounded-lg p-1 ml-2">
           {[
-            { key: 'all' as const, label: '???' },
-            { key: 'school' as const, label: '?????' },
-            { key: 'kindergarten' as const, label: '???????' },
+            { key: 'all' as const, label: 'Всі' },
+            { key: 'school' as const, label: 'Школи' },
+            { key: 'kindergarten' as const, label: 'Садочки' },
           ].map((t) => (
             <button
               key={t.key}
