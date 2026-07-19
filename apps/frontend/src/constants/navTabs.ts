@@ -48,7 +48,7 @@ export const NAV_SECTIONS: { label: string; routes: string[] }[] = [
 ];
 
 export const ADMIN_TABS: NavTab[] = [
-  { to: "/cities", icon: MapPin, label: "Міста", roles: ["SUPERADMIN"] },
+  { to: "/cities", icon: MapPin, label: "Міста", roles: ["SUPERADMIN", "OWNER", "MANAGER"] },
 ];
 
 export const DASHBOARD_TABS: DashboardTab[] = [

@@ -104,7 +104,7 @@ function AppRoutes() {
           <Route
             path="cities"
             element={
-              <ProtectedRoute allowedRoles={["SUPERADMIN", "OWNER"]}>
+              <ProtectedRoute allowedRoles={["SUPERADMIN", "OWNER", "MANAGER"]}>
                 <Suspense fallback={null}>
                   <Cities />
                 </Suspense>

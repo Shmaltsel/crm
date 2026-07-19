@@ -164,9 +164,28 @@ function hasActiveQueue(): boolean {
 // ── Telegram event handlers ────────────────────────────────────────
 
 bot.on("callback_query:data", async (ctx) => {
-  const [reqId, answer] = ctx.callbackQuery.data.split("::");
-  pending.get(reqId)?.(answer);
-  pending.delete(reqId);
+  const data = ctx.callbackQuery.data;
+
+  // Спочатку перевіряємо чи це відповідь на ask_human (формат reqId::answer)
+  const [reqId, answer] = data.split("::");
+  if (pending.has(reqId)) {
+    pending.get(reqId)!(answer);
+    pending.delete(reqId);
+    await ctx.answerCallbackQuery();
+    await ctx.editMessageReplyMarkup(undefined);
+    return;
+  }
+
+  // Обробка кнопок плану: Ок / Правки / Скасувати
+  const APPROVAL_BUTTONS = ["✅ Ок", "✏️ Правки", "❌ Скасувати"];
+  if (APPROVAL_BUTTONS.includes(data)) {
+    const approvalPath = resolve(INBOX_DIR, "plan-approval.md");
+    writeFileSync(approvalPath, `# Plan Approval\n\n- **time**: ${new Date().toISOString()}\n- **decision**: ${data}\n`, "utf-8");
+    await ctx.answerCallbackQuery(`Записано: ${data}`);
+    await ctx.editMessageReplyMarkup(undefined);
+    return;
+  }
+
   await ctx.answerCallbackQuery();
   await ctx.editMessageReplyMarkup(undefined);
 });
@@ -369,6 +388,30 @@ server.tool(
       }
     }
     return { content: [{ type: "text", text: "" }] };
+  }
+);
+
+// ── check_plan_approval ────────────────────────────────────────────
+
+server.tool(
+  "check_plan_approval",
+  "Перевірити чи людина затвердила план. Повертає 'approved'/'rejected'/'pending'.",
+  {},
+  async () => {
+    const approvalPath = resolve(INBOX_DIR, "plan-approval.md");
+    if (existsSync(approvalPath)) {
+      const content = readFileSync(approvalPath, "utf-8");
+      const decisionMatch = content.match(/\*\*decision\*\*:\s*(.+)/);
+      if (decisionMatch) {
+        const decision = decisionMatch[1].trim();
+        const { unlinkSync } = await import("fs");
+        unlinkSync(approvalPath);
+        if (decision === "✅ Ок") return { content: [{ type: "text", text: "approved" }] };
+        if (decision === "❌ Скасувати") return { content: [{ type: "text", text: "rejected" }] };
+        if (decision === "✏️ Правки") return { content: [{ type: "text", text: "revision" }] };
+      }
+    }
+    return { content: [{ type: "text", text: "pending" }] };
   }
 );
 

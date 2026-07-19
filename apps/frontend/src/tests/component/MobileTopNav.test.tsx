@@ -28,7 +28,7 @@ function Wrapper({ children }: { children: ReactNode }) {
 describe("MobileTopNav", () => {
   it("рендерить назву розділу за маршрутом /schools", () => {
     render(<MobileTopNav />, { wrapper: Wrapper });
-    expect(screen.getByText("Школи")).toBeTruthy();
+    expect(screen.getByText("Заклади")).toBeTruthy();
   });
 
   it("рендерить назву міста", () => {

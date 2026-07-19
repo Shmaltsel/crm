@@ -45,7 +45,7 @@ describe('§1.4 Frontend RBAC — ProtectedRoute', () => {
   });
 
   const forbiddenForFieldStaff = [
-    { path: '/cities', roles: ['SUPERADMIN', 'OWNER'] },
+    { path: '/cities', roles: ['SUPERADMIN', 'OWNER', 'MANAGER'] },
     { path: '/employees', roles: ['SUPERADMIN'] },
     { path: '/dashboard', roles: ['SUPERADMIN', 'OWNER', 'MANAGER'] },
     { path: '/city-leaderboard', roles: ['SUPERADMIN', 'OWNER', 'MANAGER'] },
@@ -84,7 +84,7 @@ describe('§1.4 Frontend RBAC — ProtectedRoute', () => {
   });
 
   it('SUPERADMIN на /cities → бачить контент', async () => {
-    const { getByTestId } = renderProtected('SUPERADMIN', '/cities', ['SUPERADMIN', 'OWNER']);
+    const { getByTestId } = renderProtected('SUPERADMIN', '/cities', ['SUPERADMIN', 'OWNER', 'MANAGER']);
     await waitFor(() => {
       expect(getByTestId('protected-content')).toBeDefined();
     });
@@ -105,7 +105,7 @@ describe('§1.4 Frontend RBAC — ProtectedRoute', () => {
   });
 
   it('Неавторизований → redirect на /login', async () => {
-    const { queryByTestId } = renderProtected(null, '/cities', ['SUPERADMIN']);
+    const { queryByTestId } = renderProtected(null, '/cities', ['SUPERADMIN', 'OWNER', 'MANAGER']);
     await waitFor(() => {
       expect(queryByTestId('protected-content')).toBeNull();
       expect(queryByTestId('login-page')).toBeDefined();

@@ -112,7 +112,7 @@ export default function CityLeaderboard() {
     queryFn: () =>
       api
         .get<CityLeaderboardEntry[]>("/analytics/city-leaderboard", {
-          params: { metric, year, schoolType: schoolType === 'all' ? undefined : schoolType === 'school' ? 'Школи' : 'Садочки' },
+          params: { metric, year, schoolType: schoolType === 'all' ? undefined : schoolType === 'school' ? 'Школа' : 'Садочок' },
         })
         .then((r) => r.data),
     staleTime: 5 * 60 * 1000,
@@ -140,25 +140,6 @@ export default function CityLeaderboard() {
               <option value="month">Цей місяць</option>
               <option value="all">За весь час</option>
             </select>
-        <div className="flex items-center gap-1 bg-surface-muted rounded-lg p-1 ml-2">
-          {[
-            { key: 'all' as const, label: 'Всі' },
-            { key: 'school' as const, label: 'Школи' },
-            { key: 'kindergarten' as const, label: 'Садочки' },
-          ].map((t) => (
-            <button
-              key={t.key}
-              onClick={() => setSchoolType(t.key)}
-              className={"px-3 py-1.5 rounded-md text-sm font-medium transition-colors " + (
-                schoolType === t.key
-                  ? "bg-surface text-content-primary shadow-sm"
-                  : "text-content-secondary hover:text-content-primary"
-              )}
-            >
-              {t.label}
-            </button>
-          ))}
-        </div>
           </div>
           {staffLoading ? (
             <div className="bg-surface rounded-card border border-border shadow-card p-6">
@@ -239,6 +220,26 @@ export default function CityLeaderboard() {
             {m.label}
           </button>
         ))}
+
+        <div className="flex items-center gap-1 bg-surface-muted rounded-lg p-1">
+          {[
+            { key: 'all' as const, label: 'Всі' },
+            { key: 'school' as const, label: 'Школи' },
+            { key: 'kindergarten' as const, label: 'Садочки' },
+          ].map((t) => (
+            <button
+              key={t.key}
+              onClick={() => setSchoolType(t.key)}
+              className={"px-3 py-1.5 rounded-md text-sm font-medium transition-colors " + (
+                schoolType === t.key
+                  ? "bg-surface text-content-primary shadow-sm"
+                  : "text-content-secondary hover:text-content-primary"
+              )}
+            >
+              {t.label}
+            </button>
+          ))}
+        </div>
 
         <select
           value={year}
