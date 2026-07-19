@@ -291,6 +291,31 @@ bot.on("message:text", async (ctx) => {
     return;
   }
 
+  // ── /approve — затвердити поточний план ──
+  if (text === "/approve" || text === "/ok") {
+    const approvalPath = resolve(INBOX_DIR, "plan-approval.md");
+    writeFileSync(approvalPath, `# Plan Approval\n\n- **time**: ${new Date().toISOString()}\n- **decision**: approved\n`, "utf-8");
+    await ctx.reply("✅ План затверджено.");
+    return;
+  }
+
+  // ── /reject — відхилити поточний план ──
+  if (text === "/reject" || text === "/cancel") {
+    const approvalPath = resolve(INBOX_DIR, "plan-approval.md");
+    writeFileSync(approvalPath, `# Plan Approval\n\n- **time**: ${new Date().toISOString()}\n- **decision**: rejected\n`, "utf-8");
+    await ctx.reply("❌ План відхилено.");
+    return;
+  }
+
+  // ── /revision — попросити правки ──
+  if (text.startsWith("/revision ")) {
+    const reason = text.slice(10).trim();
+    const approvalPath = resolve(INBOX_DIR, "plan-approval.md");
+    writeFileSync(approvalPath, `# Plan Approval\n\n- **time**: ${new Date().toISOString()}\n- **decision**: revision\n- **reason**: ${reason || "без пояснення"}\n`, "utf-8");
+    await ctx.reply(`✏️ Запитано правки: ${reason || "без пояснення"}`);
+    return;
+  }
+
   // Звичайний текст — відповідь на ask_human
   const entry = [...pending.entries()].find(([id]) => id.startsWith("text:"));
   if (entry) {

@@ -5,18 +5,19 @@
  * Використання:
  *   node tools/queue-tools/telegram-notify.js "Текст"
  *   node tools/queue-tools/telegram-notify.js --file path/to/message.md
- *   node tools/queue-tools/telegram-notify.js --approve "Текст плану"
+ *   node tools/queue-tools/telegram-notify.js --plan "Текст плану"
+ *
+ * --plan додає в кінець повідомлення інструкцію: "/approve щоб затвердити"
  *
  * Читає TELEGRAM_BOT_TOKEN та TELEGRAM_CHAT_ID з tools/human-bridge/.env
  */
 
-import { readFileSync, mkdirSync, existsSync, writeFileSync } from "fs";
+import { readFileSync } from "fs";
 import { resolve, dirname } from "path";
 import { fileURLToPath } from "url";
 
 const ROOT = resolve(import.meta.dirname, "../..");
 const ENV_PATH = resolve(ROOT, "tools", "human-bridge", ".env");
-const INBOX_DIR = resolve(ROOT, ".agents", "inbox");
 
 function loadEnv() {
   const raw = readFileSync(ENV_PATH, "utf-8");
@@ -36,7 +37,7 @@ function loadEnv() {
   return vars;
 }
 
-async function sendMessage(text, buttons) {
+async function sendMessage(text) {
   const env = loadEnv();
   const token = env.TELEGRAM_BOT_TOKEN;
   const chatId = env.TELEGRAM_CHAT_ID;
@@ -46,23 +47,15 @@ async function sendMessage(text, buttons) {
     process.exit(1);
   }
 
-  const body = {
-    chat_id: chatId,
-    text,
-    parse_mode: "Markdown",
-    disable_web_page_preview: true,
-  };
-
-  if (buttons && buttons.length > 0) {
-    const kb = { inline_keyboard: buttons.map((btn) => [{ text: btn, callback_data: btn }]) };
-    body.reply_markup = kb;
-  }
-
   const url = `https://api.telegram.org/bot${token}/sendMessage`;
   const resp = await fetch(url, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(body),
+    body: JSON.stringify({
+      chat_id: chatId,
+      text,
+      disable_web_page_preview: true,
+    }),
   });
 
   if (!resp.ok) {
@@ -71,9 +64,7 @@ async function sendMessage(text, buttons) {
     process.exit(1);
   }
 
-  const result = await resp.json();
-  console.log(`✅ Повідомлення надіслано в Telegram (message_id: ${result.result?.message_id})`);
-  return result.result;
+  console.log("✅ Повідомлення надіслано в Telegram");
 }
 
 async function main() {
@@ -82,16 +73,16 @@ async function main() {
   if (args.length === 0) {
     console.error("Використання: node telegram-notify.js <текст>");
     console.error("             node telegram-notify.js --file <path>");
-    console.error("             node telegram-notify.js --approve <текст плану>");
+    console.error("             node telegram-notify.js --plan <текст плану>");
     process.exit(1);
   }
 
   if (args[0] === "--file" && args[1]) {
     const content = readFileSync(resolve(ROOT, args[1]), "utf-8");
     await sendMessage(content);
-  } else if (args[0] === "--approve") {
+  } else if (args[0] === "--plan") {
     const text = args.slice(1).join(" ");
-    await sendMessage(text, ["✅ Ок", "✏️ Правки", "❌ Скасувати"]);
+    await sendMessage(text + "\n\n---\nДля затвердження: /approve\nДля правок: /revision <що змінити>\nДля відхилення: /reject");
   } else {
     await sendMessage(args.join(" "));
   }
