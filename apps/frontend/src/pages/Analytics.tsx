@@ -362,6 +362,20 @@ export default function Analytics() {
     return [...new Set(rawCityMonthData.map((r) => r.project))].filter(Boolean);
   }, [rawCityMonthData]);
 
+  // Авто-селект: при першому отриманні даних обираємо всі міста
+  useEffect(() => {
+    if (cityNames.length > 0 && activeCities.size === 0) {
+      setActiveCities(new Set(cityNames));
+    }
+  }, [cityNames]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Авто-селект: при першому отриманні даних обираємо всі проєкти
+  useEffect(() => {
+    if (projectNames.length > 0 && activeProjects.size === 0) {
+      setActiveProjects(new Set(projectNames));
+    }
+  }, [projectNames]); // eslint-disable-line react-hooks/exhaustive-deps
+
   const toggleProject = (name: string) => {
     setActiveProjects((prev) => {
       const next = new Set(prev);
@@ -1678,8 +1692,10 @@ export default function Analytics() {
                   {isZoomed && (
                     <button
                       onClick={() => {
-                        const totalLen = forecastData.entries.length;
-                        setZoomRange([Math.max(0, totalLen - 12), totalLen - 1]);
+                        const entries = forecastData.entries;
+                        const totalLen = entries.length;
+                        const startIdx = Math.max(0, totalLen - 12);
+                        setZoomKeysSafe([entries[startIdx].key, entries[totalLen - 1].key]);
                       }}
                       className="mt-1.5 text-[10px] text-content-muted hover:text-content-secondary transition px-1"
                     >
