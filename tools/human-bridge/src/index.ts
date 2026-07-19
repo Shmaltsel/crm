@@ -383,301 +383,299 @@ bot.on("message:text", async (ctx) => {
 
 bot.start();
 
-// ── MCP Server ─────────────────────────────────────────────────────
+// ── MCP Server Factory ─────────────────────────────────────────────
 
-const server = new McpServer({ name: "human-bridge", version: "2.0.0" });
+function createMcpServer() {
+  const srv = new McpServer({ name: "human-bridge", version: "2.0.0" });
 
-// ── ask_human ──────────────────────────────────────────────────────
+  // ── ask_human ──────────────────────────────────────────────────────
 
-server.tool(
-  "ask_human",
-  "Постав питання людині в Telegram. З варіантами — кнопки, без — чекає текст.",
-  { question: z.string(), options: z.array(z.string()).optional() },
-  async ({ question, options }) => {
-    const reqId = (options ? "opt:" : "text:") + reqCounter++;
-    const answer = await new Promise<string>((resolve) => {
-      pending.set(reqId, resolve);
-      if (options?.length) {
-        const kb = new InlineKeyboard();
-        options.forEach((o) => kb.text(o, `${reqId}::${o}`).row());
-        bot.api.sendMessage(CHAT_ID, `❓ ${question}`, { reply_markup: kb });
-      } else {
-        bot.api.sendMessage(CHAT_ID, `❓ ${question}\n\n(відповідай текстом у чат)`);
-      }
-    });
-    return { content: [{ type: "text", text: answer }] };
-  }
-);
-
-// ── notify ─────────────────────────────────────────────────────────
-
-server.tool(
-  "notify",
-  "Надіслати повідомлення в Telegram без очікування відповіді.",
-  { message: z.string() },
-  async ({ message }) => {
-    await bot.api.sendMessage(CHAT_ID, message);
-    return { content: [{ type: "text", text: "sent" }] };
-  }
-);
-
-// ── wait_for_goal ──────────────────────────────────────────────────
-
-server.tool(
-  "wait_for_goal",
-  "Блокуючий виклик: спочатку перевіряє inbox (/plan), якщо порожньо — чекає на нове /plan-повідомлення.",
-  {},
-  async () => {
-    // Спочатку перевіряємо persistent inbox
-    const inboxPath = resolve(INBOX_DIR, "pending-goal.md");
-    if (existsSync(inboxPath)) {
-      const content = readFileSync(inboxPath, "utf-8");
-      const goalMatch = content.match(/\*\*goal\*\*:\s*(.+)/);
-      if (goalMatch) {
-        const goal = goalMatch[1].trim();
-        unlinkSync(inboxPath);
-        return { content: [{ type: "text", text: goal }] };
-      }
-    }
-
-    // Inbox порожній — чекаємо на /plan
-    const goal = await new Promise<string>((resolve) => {
-      goalWaiters.push(resolve);
-    });
-    return { content: [{ type: "text", text: goal }] };
-  }
-);
-
-// ── check_inbox ────────────────────────────────────────────────────
-
-server.tool(
-  "check_inbox",
-  "Перевірити чи є невиконана ціль з /plan в inbox. Повертає goal або порожній рядок.",
-  {},
-  async () => {
-    const inboxPath = resolve(INBOX_DIR, "pending-goal.md");
-    if (existsSync(inboxPath)) {
-      const content = readFileSync(inboxPath, "utf-8");
-      const goalMatch = content.match(/\*\*goal\*\*:\s*(.+)/);
-      if (goalMatch) {
-        const goal = goalMatch[1].trim();
-        unlinkSync(inboxPath);
-        return { content: [{ type: "text", text: goal }] };
-      }
-    }
-    return { content: [{ type: "text", text: "" }] };
-  }
-);
-
-// ── check_plan_approval ────────────────────────────────────────────
-
-server.tool(
-  "check_plan_approval",
-  "Перевірити чи людина затвердила план. Повертає 'approved'/'rejected'/'pending'.",
-  {},
-  async () => {
-    const approvalPath = resolve(INBOX_DIR, "plan-approval.md");
-    if (existsSync(approvalPath)) {
-      const content = readFileSync(approvalPath, "utf-8");
-      const decisionMatch = content.match(/\*\*decision\*\*:\s*(.+)/);
-      if (decisionMatch) {
-        const decision = decisionMatch[1].trim();
-        unlinkSync(approvalPath);
-        if (decision === "✅ Ок") return { content: [{ type: "text", text: "approved" }] };
-        if (decision === "❌ Скасувати") return { content: [{ type: "text", text: "rejected" }] };
-        if (decision === "✏️ Правки") return { content: [{ type: "text", text: "revision" }] };
-      }
-    }
-    return { content: [{ type: "text", text: "pending" }] };
-  }
-);
-
-// ── ask_agent ──────────────────────────────────────────────────────
-
-server.tool(
-  "ask_agent",
-  "Консультація з іншим агентом через mailbox. Пише в файл-мейлбокс і чекає відповіді (таймаут 10 хв).",
-  {
-    target: z.enum(["mimo", "opencode"]),
-    question: z.string(),
-    proposal: z.string().optional(),
-    feature: z.string().optional(),
-  },
-  async ({ target, question, proposal, feature }) => {
-    const mailboxPath = resolve(MAILBOX_DIR, `${target}.md`);
-    const entryId = `msg-${Date.now()}`;
-    const responseMarker = `## Response ${entryId}`;
-    const requestBlock = `## Request ${entryId}`;
-    const timestamp = new Date().toISOString();
-
-    // ── Frequency monitoring ──
-    const featureSlug = feature || "unknown";
-    const currentCount = (askAgentCounts.get(featureSlug) || 0) + 1;
-    askAgentCounts.set(featureSlug, currentCount);
-
-    let warningSuffix = "";
-    if (currentCount > MAX_AGENT_ITERATIONS) {
-      // Circuit breaker: ескалація в ask_human замість чергового mailbox
-      await bot.api.sendMessage(
-        CHAT_ID,
-        `🔴 Circuit breaker: ${currentCount} ask_agent на фічі "${featureSlug}" — перевищено ліміт ${MAX_AGENT_ITERATIONS}. Ескалація в людину.`
-      );
-      const reqId = `circuit:${reqCounter++}`;
+  srv.tool(
+    "ask_human",
+    "Постав питання людині в Telegram. З варіантами — кнопки, без — чекає текст.",
+    { question: z.string(), options: z.array(z.string()).optional() },
+    async ({ question, options }) => {
+      const reqId = (options ? "opt:" : "text:") + reqCounter++;
       const answer = await new Promise<string>((resolve) => {
         pending.set(reqId, resolve);
-        bot.api.sendMessage(
-          CHAT_ID,
-          `❓ [Circuit Breaker] ${question}\n\n(відповідай текстом)`,
-        );
+        if (options?.length) {
+          const kb = new InlineKeyboard();
+          options.forEach((o) => kb.text(o, `${reqId}::${o}`).row());
+          bot.api.sendMessage(CHAT_ID, `❓ ${question}`, { reply_markup: kb });
+        } else {
+          bot.api.sendMessage(CHAT_ID, `❓ ${question}\n\n(відповідай текстом у чат)`);
+        }
       });
       return { content: [{ type: "text", text: answer }] };
     }
-    if (currentCount > 2) {
-      warningSuffix = `\n\n⚠️ Часті ask_agent на цій фічі (${currentCount} викликів) — можливо контракт Wave 0 недостатньо чіткий`;
+  );
+
+  // ── notify ─────────────────────────────────────────────────────────
+
+  srv.tool(
+    "notify",
+    "Надіслати повідомлення в Telegram без очікування відповіді.",
+    { message: z.string() },
+    async ({ message }) => {
+      await bot.api.sendMessage(CHAT_ID, message);
+      return { content: [{ type: "text", text: "sent" }] };
     }
+  );
 
-    // Записати запит в mailbox з файловим локом
-    const block = [
-      ``,
-      requestBlock,
-      `- **from**: ${target === "mimo" ? "opencode" : "mimo"}`,
-      `- **to**: ${target}`,
-      `- **time**: ${timestamp}`,
-      `- **status**: pending`,
-      ``,
-      `### Question`,
-      question,
-      ``,
-      proposal ? `### Proposal\n${proposal}\n` : "",
-      `### Response ${entryId}`,
-      `_очікується..._`,
-      ``,
-      `---`,
-    ].join("\n");
+  // ── wait_for_goal ──────────────────────────────────────────────────
 
-    await withFileLock(mailboxPath, () => {
-      if (existsSync(mailboxPath)) {
-        const existing = readFileSync(mailboxPath, "utf-8");
-        writeFileSync(mailboxPath, existing + block, "utf-8");
-      } else {
-        writeFileSync(mailboxPath, `# Mailbox для ${target}\n` + block, "utf-8");
-      }
-    });
-
-    // Сповістити людину
-    await bot.api.sendMessage(
-      CHAT_ID,
-      `📬 Запит до ${target}: ${question}${warningSuffix}`
-    );
-
-    // Чекати відповіді (таймаут 10 хв) — шукаємо по entryId marker
-    const TIMEOUT_MS = 10 * 60 * 1000;
-    const start = Date.now();
-    let response = null;
-
-    while (Date.now() - start < TIMEOUT_MS) {
-      await new Promise((r) => setTimeout(r, 3000));
-      if (existsSync(mailboxPath)) {
-        const content = readFileSync(mailboxPath, "utf-8");
-        // Шукаємо саме наш marker: "### Response <entryId>" + НЕ _очікується
-        const markerRegex = new RegExp(
-          `${responseMarker.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}\\n(?!_очікується)([\\s\\S]*?)(?=\\n## Request|\\n---\\n|$)`
-        );
-        const m = content.match(markerRegex);
-        if (m) {
-          response = m[1].trim();
-          break;
+  srv.tool(
+    "wait_for_goal",
+    "Блокуючий виклик: спочатку перевіряє inbox (/plan), якщо порожньо — чекає на нове /plan-повідомлення.",
+    {},
+    async () => {
+      const inboxPath = resolve(INBOX_DIR, "pending-goal.md");
+      if (existsSync(inboxPath)) {
+        const content = readFileSync(inboxPath, "utf-8");
+        const goalMatch = content.match(/\*\*goal\*\*:\s*(.+)/);
+        if (goalMatch) {
+          const goal = goalMatch[1].trim();
+          unlinkSync(inboxPath);
+          return { content: [{ type: "text", text: goal }] };
         }
       }
+      const goal = await new Promise<string>((resolve) => {
+        goalWaiters.push(resolve);
+      });
+      return { content: [{ type: "text", text: goal }] };
     }
+  );
 
-    if (!response) {
-      // Ескалація в ask_human
+  // ── check_inbox ────────────────────────────────────────────────────
+
+  srv.tool(
+    "check_inbox",
+    "Перевірити чи є невиконана ціль з /plan в inbox. Повертає goal або порожній рядок.",
+    {},
+    async () => {
+      const inboxPath = resolve(INBOX_DIR, "pending-goal.md");
+      if (existsSync(inboxPath)) {
+        const content = readFileSync(inboxPath, "utf-8");
+        const goalMatch = content.match(/\*\*goal\*\*:\s*(.+)/);
+        if (goalMatch) {
+          const goal = goalMatch[1].trim();
+          unlinkSync(inboxPath);
+          return { content: [{ type: "text", text: goal }] };
+        }
+      }
+      return { content: [{ type: "text", text: "" }] };
+    }
+  );
+
+  // ── check_plan_approval ────────────────────────────────────────────
+
+  srv.tool(
+    "check_plan_approval",
+    "Перевірити чи людина затвердила план. Повертає 'approved'/'rejected'/'pending'.",
+    {},
+    async () => {
+      const approvalPath = resolve(INBOX_DIR, "plan-approval.md");
+      if (existsSync(approvalPath)) {
+        const content = readFileSync(approvalPath, "utf-8");
+        const decisionMatch = content.match(/\*\*decision\*\*:\s*(.+)/);
+        if (decisionMatch) {
+          const decision = decisionMatch[1].trim();
+          unlinkSync(approvalPath);
+          if (decision === "✅ Ок") return { content: [{ type: "text", text: "approved" }] };
+          if (decision === "❌ Скасувати") return { content: [{ type: "text", text: "rejected" }] };
+          if (decision === "✏️ Правки") return { content: [{ type: "text", text: "revision" }] };
+        }
+      }
+      return { content: [{ type: "text", text: "pending" }] };
+    }
+  );
+
+  // ── ask_agent ──────────────────────────────────────────────────────
+
+  srv.tool(
+    "ask_agent",
+    "Консультація з іншим агентом через mailbox. Пише в файл-мейлбокс і чекає відповіді (таймаут 10 хв).",
+    {
+      target: z.enum(["mimo", "opencode"]),
+      question: z.string(),
+      proposal: z.string().optional(),
+      feature: z.string().optional(),
+    },
+    async ({ target, question, proposal, feature }) => {
+      const mailboxPath = resolve(MAILBOX_DIR, `${target}.md`);
+      const entryId = `msg-${Date.now()}`;
+      const responseMarker = `## Response ${entryId}`;
+      const requestBlock = `## Request ${entryId}`;
+      const timestamp = new Date().toISOString();
+
+      const featureSlug = feature || "unknown";
+      const currentCount = (askAgentCounts.get(featureSlug) || 0) + 1;
+      askAgentCounts.set(featureSlug, currentCount);
+
+      let warningSuffix = "";
+      if (currentCount > MAX_AGENT_ITERATIONS) {
+        await bot.api.sendMessage(
+          CHAT_ID,
+          `🔴 Circuit breaker: ${currentCount} ask_agent на фічі "${featureSlug}" — перевищено ліміт ${MAX_AGENT_ITERATIONS}. Ескалація в людину.`
+        );
+        const reqId = `circuit:${reqCounter++}`;
+        const answer = await new Promise<string>((resolve) => {
+          pending.set(reqId, resolve);
+          bot.api.sendMessage(
+            CHAT_ID,
+            `❓ [Circuit Breaker] ${question}\n\n(відповідай текстом)`,
+          );
+        });
+        return { content: [{ type: "text", text: answer }] };
+      }
+      if (currentCount > 2) {
+        warningSuffix = `\n\n⚠️ Часті ask_agent на цій фічі (${currentCount} викликів) — можливо контракт Wave 0 недостатньо чіткий`;
+      }
+
+      const block = [
+        ``,
+        requestBlock,
+        `- **from**: ${target === "mimo" ? "opencode" : "mimo"}`,
+        `- **to**: ${target}`,
+        `- **time**: ${timestamp}`,
+        `- **status**: pending`,
+        ``,
+        `### Question`,
+        question,
+        ``,
+        proposal ? `### Proposal\n${proposal}\n` : "",
+        `### Response ${entryId}`,
+        `_очікується..._`,
+        ``,
+        `---`,
+      ].join("\n");
+
+      await withFileLock(mailboxPath, () => {
+        if (existsSync(mailboxPath)) {
+          const existing = readFileSync(mailboxPath, "utf-8");
+          writeFileSync(mailboxPath, existing + block, "utf-8");
+        } else {
+          writeFileSync(mailboxPath, `# Mailbox для ${target}\n` + block, "utf-8");
+        }
+      });
+
       await bot.api.sendMessage(
         CHAT_ID,
-        `⚠️ ${target} не відповів за 10 хв. Ескалація: ${question}`
+        `📬 Запит до ${target}: ${question}${warningSuffix}`
       );
-      const reqId = `escalation:${reqCounter++}`;
-      response = await new Promise<string>((resolve) => {
-        pending.set(reqId, resolve);
-        bot.api.sendMessage(
+
+      const TIMEOUT_MS = 10 * 60 * 1000;
+      const start = Date.now();
+      let response = null;
+
+      while (Date.now() - start < TIMEOUT_MS) {
+        await new Promise((r) => setTimeout(r, 3000));
+        if (existsSync(mailboxPath)) {
+          const content = readFileSync(mailboxPath, "utf-8");
+          const markerRegex = new RegExp(
+            `${responseMarker.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}\\n(?!_очікується)([\\s\\S]*?)(?=\\n## Request|\\n---\\n|$)`
+          );
+          const m = content.match(markerRegex);
+          if (m) {
+            response = m[1].trim();
+            break;
+          }
+        }
+      }
+
+      if (!response) {
+        await bot.api.sendMessage(
           CHAT_ID,
-          `❓ [Ескалація] ${question}\n\n(відповідай текстом)`,
+          `⚠️ ${target} не відповів за 10 хв. Ескалація: ${question}`
         );
-      });
+        const reqId = `escalation:${reqCounter++}`;
+        response = await new Promise<string>((resolve) => {
+          pending.set(reqId, resolve);
+          bot.api.sendMessage(
+            CHAT_ID,
+            `❓ [Ескалація] ${question}\n\n(відповідай текстом)`,
+          );
+        });
+      }
+
+      return { content: [{ type: "text", text: response || "немає відповіді" }] };
     }
+  );
 
-    return { content: [{ type: "text", text: response || "немає відповіді" }] };
-  }
-);
+  // ── assign_task (batch) ────────────────────────────────────────────
 
-// ── assign_task (batch) ────────────────────────────────────────────
+  srv.tool(
+    "assign_task",
+    "Надіслати задачу(і) в Telegram та запустити OpenCode. Приймає один task_id або масив task_id.",
+    {
+      tasks: z.array(z.string()).optional(),
+      task: z.string().optional(),
+      prompt: z.string(),
+      description: z.string().optional(),
+    },
+    async ({ tasks, task, prompt, description }) => {
+      const taskIds = tasks || (task ? [task] : [`task-${Date.now()}`]);
 
-server.tool(
-  "assign_task",
-  "Надіслати задачу(і) в Telegram та запустити OpenCode. Приймає один task_id або масив task_id.",
-  {
-    tasks: z.array(z.string()).optional(),
-    task: z.string().optional(),
-    prompt: z.string(),
-    description: z.string().optional(),
-  },
-  async ({ tasks, task, prompt, description }) => {
-    const taskIds = tasks || (task ? [task] : [`task-${Date.now()}`]);
+      const telegramMsg = [
+        `🚀 **Задачі призначені**`,
+        ``,
+        `ID: ${taskIds.join(", ")}`,
+        description ? `\nОпис: ${description}` : "",
+        `\nПромпт:\n${prompt}`,
+      ].join("\n");
 
-    const telegramMsg = [
-      `🚀 **Задачі призначені**`,
-      ``,
-      `ID: ${taskIds.join(", ")}`,
-      description ? `\nОпис: ${description}` : "",
-      `\nПромпт:\n${prompt}`,
-    ].join("\n");
+      await bot.api.sendMessage(CHAT_ID, telegramMsg);
 
-    await bot.api.sendMessage(CHAT_ID, telegramMsg);
+      const results: Array<{ taskId: string; status: string; pid: number }> = [];
 
-    const results: Array<{ taskId: string; status: string; pid: number }> = [];
+      for (const taskId of taskIds) {
+        const child = spawn("opencode", ["run", prompt], {
+          cwd: process.cwd(),
+          shell: true,
+          detached: true,
+        });
+        child.unref();
+        results.push({ taskId, status: "spawned", pid: child.pid! });
+      }
 
-    for (const taskId of taskIds) {
-      const child = spawn("opencode", ["run", prompt], {
-        cwd: process.cwd(),
-        shell: true,
-        detached: true,
-      });
-      child.unref();
-      results.push({ taskId, status: "spawned", pid: child.pid! });
+      return {
+        content: [{ type: "text", text: JSON.stringify(results) }],
+      };
     }
+  );
 
-    return {
-      content: [{ type: "text", text: JSON.stringify(results) }],
-    };
-  }
-);
+  return srv;
+}
+
+const server = createMcpServer();
 
 // ── Start ──────────────────────────────────────────────────────────
 
 const TRANSPORT = process.env.HB_TRANSPORT || "stdio";
 const PORT = parseInt(process.env.HB_SSE_PORT || "3100", 10);
-
 if (TRANSPORT === "sse") {
-  const transports = new Map<string, StreamableHTTPServerTransport>();
+  const sessions = new Map<string, { transport: StreamableHTTPServerTransport; server: McpServer }>();
 
   const httpServer = createServer(async (req, res) => {
     const url = new URL(req.url || "/", `http://localhost:${PORT}`);
 
     if (url.pathname === "/health" && req.method === "GET") {
       res.writeHead(200, { "Content-Type": "application/json" });
-      res.end(JSON.stringify({ status: "ok", connected: transports.size }));
+      res.end(JSON.stringify({ status: "ok", connected: sessions.size }));
       return;
     }
 
     if (url.pathname === "/mcp") {
       if (req.method === "POST") {
         const sessionId = req.headers["mcp-session-id"] as string | undefined;
-        let transport: StreamableHTTPServerTransport;
 
-        if (sessionId && transports.has(sessionId)) {
-          transport = transports.get(sessionId)!;
-        } else if (!sessionId) {
+        if (sessionId && sessions.has(sessionId)) {
+          const { transport } = sessions.get(sessionId)!;
+          await transport.handleRequest(req, res);
+          return;
+        }
+
+        if (!sessionId) {
           let body: unknown;
           try {
             const chunks: Buffer[] = [];
@@ -695,51 +693,48 @@ if (TRANSPORT === "sse") {
             return;
           }
 
-          transport = new StreamableHTTPServerTransport({
+          const freshServer = createMcpServer();
+          const transport = new StreamableHTTPServerTransport({
             sessionIdGenerator: () => randomUUID(),
             onsessioninitialized: (sid) => {
-              transports.set(sid, transport);
+              sessions.set(sid, { transport, server: freshServer });
             },
           });
 
           transport.onclose = () => {
             const sid = transport.sessionId;
-            if (sid) transports.delete(sid);
+            if (sid) sessions.delete(sid);
           };
 
-          await server.connect(transport);
+          await freshServer.connect(transport);
           await transport.handleRequest(req, res, body);
-          return;
-        } else {
-          res.writeHead(400, { "Content-Type": "application/json" });
-          res.end(JSON.stringify({ jsonrpc: "2.0", error: { code: -32000, message: "Bad Request: invalid session" }, id: null }));
           return;
         }
 
-        await transport.handleRequest(req, res);
+        res.writeHead(400, { "Content-Type": "application/json" });
+        res.end(JSON.stringify({ jsonrpc: "2.0", error: { code: -32000, message: "Bad Request: invalid session" }, id: null }));
         return;
       }
 
       if (req.method === "GET") {
         const sessionId = req.headers["mcp-session-id"] as string | undefined;
-        if (!sessionId || !transports.has(sessionId)) {
+        if (!sessionId || !sessions.has(sessionId)) {
           res.writeHead(400);
           res.end("Invalid or missing session ID");
           return;
         }
-        await transports.get(sessionId)!.handleRequest(req, res);
+        await sessions.get(sessionId)!.transport.handleRequest(req, res);
         return;
       }
 
       if (req.method === "DELETE") {
         const sessionId = req.headers["mcp-session-id"] as string | undefined;
-        if (!sessionId || !transports.has(sessionId)) {
+        if (!sessionId || !sessions.has(sessionId)) {
           res.writeHead(400);
           res.end("Invalid or missing session ID");
           return;
         }
-        const transport = transports.get(sessionId)!;
-        await transport.handleRequest(req, res);
+        await sessions.get(sessionId)!.transport.handleRequest(req, res);
         return;
       }
     }
