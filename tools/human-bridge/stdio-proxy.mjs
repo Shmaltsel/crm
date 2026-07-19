@@ -23,7 +23,7 @@ function parseSSE(buffer) {
 
 async function connectSSE() {
   try {
-    const headers = {};
+    const headers = { "Accept": "text/event-stream" };
     if (sessionId) headers["mcp-session-id"] = sessionId;
     const resp = await fetch(MCP_URL, { method: "GET", headers });
     if (!resp.ok) return;
@@ -44,7 +44,10 @@ async function connectSSE() {
 }
 
 async function post(msg) {
-  const headers = { "Content-Type": "application/json" };
+  const headers = {
+    "Content-Type": "application/json",
+    "Accept": "application/json, text/event-stream",
+  };
   if (sessionId) headers["mcp-session-id"] = sessionId;
 
   const resp = await fetch(MCP_URL, { method: "POST", headers, body: JSON.stringify(msg) });
@@ -78,10 +81,11 @@ async function post(msg) {
 }
 
 const rl = createInterface({ input: process.stdin });
+let queue = Promise.resolve();
 rl.on("line", (line) => {
   try {
     const msg = JSON.parse(line);
-    post(msg).catch((err) => {
+    queue = queue.then(() => post(msg)).catch((err) => {
       process.stderr.write(`proxy error: ${err.message}\n`);
     });
   } catch {}
