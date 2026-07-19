@@ -3,6 +3,38 @@
 @tailwind components;
 @tailwind utilities;
 
+:root {
+  --color-surface: #ffffff;
+  --color-surface-subtle: #f8fafc;
+  --color-surface-muted: #f1f5f9;
+  --color-content-primary: #1e293b;
+  --color-content-secondary: #475569;
+  --color-content-muted: #94a3b8;
+  --color-border: #e2e8f0;
+  --color-border-strong: #cbd5e1;
+  --color-brand: #2563eb;
+  --color-brand-hover: #1d4ed8;
+  --color-danger: #be123c;
+  --color-danger-bg: #fff1f2;
+  --color-success: #059669;
+}
+
+.dark {
+  --color-surface: #0f172a;
+  --color-surface-subtle: #1e293b;
+  --color-surface-muted: #334155;
+  --color-content-primary: #f1f5f9;
+  --color-content-secondary: #cbd5e1;
+  --color-content-muted: #64748b;
+  --color-border: #334155;
+  --color-border-strong: #475569;
+  --color-brand: #3b82f6;
+  --color-brand-hover: #60a5fa;
+  --color-danger: #fb7185;
+  --color-danger-bg: #1c1917;
+  --color-success: #34d399;
+}
+
 @layer base {
   html, body {
     overscroll-behavior: none;

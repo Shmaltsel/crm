@@ -1,11 +1,12 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
-import { Eye, EyeOff } from "lucide-react";
+import { Eye, EyeOff, Moon, Sun } from "lucide-react";
 
 import { api } from "../config/api";
 import { fadeVariants, staggerContainer, staggerItem, TRANSITION, useHoverCapable } from "../lib/motion";
 import { useAuth } from "../context/AuthContext";
+import { useTheme } from "../context/ThemeContext";
 
 const CIRCLE_VARIANTS = {
   hidden: { scale: 0, opacity: 1 },
@@ -42,6 +43,7 @@ export default function Login({ onLogin }: LoginProps) {
   const navigate = useNavigate();
   const hoverCapable = useHoverCapable();
   const { user } = useAuth();
+  const { theme, toggleTheme } = useTheme();
 
   const [loggedInUser, setLoggedInUser] = useState<User | null>(null);
 
@@ -77,7 +79,14 @@ export default function Login({ onLogin }: LoginProps) {
   };
 
   return (
-    <div className="flex items-center justify-center min-h-screen bg-surface-subtle p-4">
+    <div className="flex items-center justify-center min-h-screen bg-[var(--color-surface-subtle)] p-4 relative">
+      <button
+        onClick={toggleTheme}
+        className="absolute top-4 right-4 p-2 rounded-full bg-[var(--color-surface)] border border-[var(--color-border)] text-[var(--color-content-muted)] hover:text-[var(--color-content-primary)] hover:border-[var(--color-border-strong)] transition-colors"
+        aria-label={theme === "light" ? "Перемкнути на темну тему" : "Перемкнути на світлу тему"}
+      >
+        {theme === "light" ? <Moon className="w-5 h-5" /> : <Sun className="w-5 h-5" />}
+      </button>
       <AnimatePresence>
         {isTransitioning && (
           <motion.div
@@ -91,7 +100,7 @@ export default function Login({ onLogin }: LoginProps) {
               borderRadius: "9999px",
               willChange: "transform",
             }}
-            className="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-50 bg-brand"
+            className="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-50 bg-[var(--color-brand)]"
           />
         )}
       </AnimatePresence>
@@ -104,9 +113,9 @@ export default function Login({ onLogin }: LoginProps) {
               : { opacity: 1, scale: 1 }
         }
         transition={{ duration: 0.4 }}
-        className="p-6 sm:p-8 bg-surface rounded-card shadow-modal w-full max-w-sm sm:max-w-md"
+        className="p-6 sm:p-8 bg-[var(--color-surface)] rounded-card shadow-modal w-full max-w-sm sm:max-w-md"
       >
-        <h1 className="text-2xl font-bold text-center text-content-primary mb-6">
+        <h1 className="text-2xl font-bold text-center text-[var(--color-content-primary)] mb-6">
           Вхід у CRM
         </h1>
 
@@ -114,7 +123,7 @@ export default function Login({ onLogin }: LoginProps) {
           <motion.div
             initial={{ opacity: 0, y: -10 }}
             animate={{ opacity: 1, y: 0 }}
-            className="mb-4 p-3 bg-danger-50 text-danger-600 rounded-control text-sm text-center"
+            className="mb-4 p-3 bg-[var(--color-danger-bg)] text-[var(--color-danger)] rounded-control text-sm text-center"
           >
             {error}
           </motion.div>
@@ -128,7 +137,7 @@ export default function Login({ onLogin }: LoginProps) {
             className="flex flex-col gap-4"
           >
             <motion.div variants={staggerItem}>
-              <label htmlFor="login-email" className="block text-sm font-medium text-content-primary mb-1.5">
+              <label htmlFor="login-email" className="block text-sm font-medium text-[var(--color-content-primary)] mb-1.5">
                 Email
               </label>
               <motion.input
@@ -139,14 +148,14 @@ export default function Login({ onLogin }: LoginProps) {
                 autoCapitalize="none"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                className="w-full px-3.5 py-3 border border-border-strong rounded-control focus:ring-2 focus:ring-brand/30 focus:border-brand outline-none text-base transition-colors bg-surface text-content-primary"
+                className="w-full px-3.5 py-3 border border-[var(--color-border-strong)] rounded-control focus:ring-2 focus:ring-[var(--color-brand)]/30 focus:border-[var(--color-brand)] outline-none text-base transition-colors bg-[var(--color-surface)] text-[var(--color-content-primary)]"
                 whileFocus={{ scale: 1.01 }}
                 transition={TRANSITION.focus}
                 required
               />
             </motion.div>
             <motion.div variants={staggerItem}>
-              <label htmlFor="login-password" className="block text-sm font-medium text-content-primary mb-1.5">
+              <label htmlFor="login-password" className="block text-sm font-medium text-[var(--color-content-primary)] mb-1.5">
                 Пароль
               </label>
               <div className="relative">
@@ -156,7 +165,7 @@ export default function Login({ onLogin }: LoginProps) {
                   autoComplete="current-password"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
-                  className="w-full px-3.5 py-3 pr-10 border border-border-strong rounded-control focus:ring-2 focus:ring-brand/30 focus:border-brand outline-none text-base transition-colors bg-surface text-content-primary"
+                  className="w-full px-3.5 py-3 pr-10 border border-[var(--color-border-strong)] rounded-control focus:ring-2 focus:ring-[var(--color-brand)]/30 focus:border-[var(--color-brand)] outline-none text-base transition-colors bg-[var(--color-surface)] text-[var(--color-content-primary)]"
                   whileFocus={{ scale: 1.01 }}
                   transition={TRANSITION.focus}
                   required
@@ -165,7 +174,7 @@ export default function Login({ onLogin }: LoginProps) {
                   type="button"
                   tabIndex={-1}
                   onClick={() => setShowPassword((v) => !v)}
-                  className="absolute right-2.5 top-1/2 -translate-y-1/2 text-content-muted hover:text-content-secondary transition-colors p-0.5"
+                  className="absolute right-2.5 top-1/2 -translate-y-1/2 text-[var(--color-content-muted)] hover:text-[var(--color-content-secondary)] transition-colors p-0.5"
                   aria-label={showPassword ? "Приховати пароль" : "Показати пароль"}
                 >
                   <AnimatePresence mode="wait" initial={false}>
@@ -189,7 +198,7 @@ export default function Login({ onLogin }: LoginProps) {
                 whileHover={hoverCapable ? { scale: 1.015 } : undefined}
                 whileTap={{ scale: 0.97 }}
                 transition={TRANSITION.hover}
-                className="mt-2 w-full bg-brand text-white font-medium px-5 py-3 rounded-control hover:bg-brand-hover transition disabled:opacity-80 disabled:cursor-not-allowed flex items-center justify-center gap-2 min-h-[48px]"
+                className="mt-2 w-full bg-[var(--color-brand)] text-white font-medium px-5 py-3 rounded-control hover:bg-[var(--color-brand-hover)] transition disabled:opacity-80 disabled:cursor-not-allowed flex items-center justify-center gap-2 min-h-[48px]"
               >
                 <AnimatePresence mode="wait" initial={false}>
                   {isLoading ? (
