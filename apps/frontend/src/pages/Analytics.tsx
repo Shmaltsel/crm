@@ -650,7 +650,19 @@ export default function Analytics() {
     if (source.length === 0) return [0, 0];
     const s = keyToIndex(zoomKeys[0], source);
     const e = keyToIndex(zoomKeys[1], source);
-    if (s === -1 && e === -1) return [Math.max(0, source.length - 12), source.length - 1];
+    if (s === -1 && e === -1) {
+      // Ключі не знайдені в поточному джерелі (напр. місячні ключі в денних даних) —
+      // оновлюємо zoomKeys щоб вони відповідали поточному джерелу
+      const fallbackStart = Math.max(0, source.length - 12);
+      const fallbackEnd = source.length - 1;
+      const nextStart = source[fallbackStart].key;
+      const nextEnd = source[fallbackEnd].key;
+      setZoomKeys((prev) => {
+        if (prev[0] === nextStart && prev[1] === nextEnd) return prev;
+        return [nextStart, nextEnd];
+      });
+      return [fallbackStart, fallbackEnd];
+    }
     if (s === -1) return [0, e];
     if (e === -1) return [s, source.length - 1];
     return [Math.min(s, e), Math.max(s, e)];
