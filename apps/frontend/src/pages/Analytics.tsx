@@ -333,6 +333,7 @@ export default function Analytics() {
   const [showTarget, setShowTarget] = useState(false);
   const [showRevenue, setShowRevenue] = useState(false);
   const [chartMode, setChartMode] = useState<'profit' | 'composite'>('profit');
+  const [granularity, setGranularity] = useState<'month' | 'day'>('month');
 
   const { data: cities } = useCities();
   const { data: rawCityMonthData, isLoading: revenueLoading } = useRevenueByCityMonth({
@@ -599,7 +600,6 @@ export default function Analytics() {
   const chartRef = useRef<HTMLDivElement>(null);
   const pinchRef = useRef<{ dist: number; range: [number, number] } | null>(null);
   const zoomTimerRef = useRef<ReturnType<typeof setTimeout>>();
-  const [granularity, setGranularity] = useState<'month' | 'day'>('month');
   const isMobile = typeof window !== 'undefined' && window.innerWidth < 768;
 
   const CHIP_COLORS: Record<string, { active: string; dot: string }> = {
