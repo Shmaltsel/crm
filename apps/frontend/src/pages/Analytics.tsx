@@ -607,6 +607,9 @@ export default function Analytics() {
     });
   }, []);
 
+  const [prevDataLength, setPrevDataLength] = useState(chartData.length);
+  const [prevEffectiveMax, setPrevEffectiveMax] = useState(effectiveMaxIdx);
+
   // Синхронізуємо при зміні даних (render-phase adjust-during-render патерн)
   if (chartData.length !== prevDataLength || effectiveMaxIdx !== prevEffectiveMax) {
     setPrevDataLength(chartData.length);
@@ -653,8 +656,6 @@ export default function Analytics() {
     return [Math.min(s, e), Math.max(s, e)];
   }, [zoomKeys, granularity, dayChartData, forecastData.entries, keyToIndex]);
 
-  const [prevDataLength, setPrevDataLength] = useState(chartData.length);
-  const [prevEffectiveMax, setPrevEffectiveMax] = useState(effectiveMaxIdx);
   const [zoomAnimating, setZoomAnimating] = useState(false);
   const chartRef = useRef<HTMLDivElement>(null);
   const pinchRef = useRef<{ dist: number; keys: [string, string] } | null>(null);
