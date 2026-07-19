@@ -1,5 +1,5 @@
 import { describe, it, expect, vi } from "vitest";
-import { render, screen } from "@testing-library/react";
+import { render, screen, fireEvent } from "@testing-library/react";
 import CalendarHeader from "../../../features/calendar/components/CalendarHeader";
 import EventTooltip from "../../../features/calendar/components/EventTooltip";
 import type { Project, City } from "../../../types";
@@ -45,7 +45,7 @@ describe("CalendarHeader", () => {
 });
 
 describe("EventTooltip", () => {
-  it("рендерить назву школи та проєкт", () => {
+  it("рендерить назву школи та проєкт при hover", async () => {
     const event = {
       id: "e1",
       project: "Проєкт A",
@@ -54,17 +54,29 @@ describe("EventTooltip", () => {
       crew: { id: "c1", name: "Екіпаж 1", cityId: "city-1" },
     } as any;
 
-    render(<EventTooltip event={event} />);
-    expect(screen.getByText("Школа №1")).toBeInTheDocument();
+    render(
+      <EventTooltip event={event}>
+        <div data-testid="trigger">hover me</div>
+      </EventTooltip>
+    );
+    const trigger = screen.getByTestId("trigger");
+    fireEvent.mouseEnter(trigger);
+    expect(await screen.findByText("Школа №1")).toBeInTheDocument();
     expect(screen.getByText(/Проєкт A/)).toBeInTheDocument();
     expect(screen.getByText("10:00")).toBeInTheDocument();
   });
 
-  it("рендерить fallback при відсутніх даних", () => {
+  it("рендерить fallback при відсутніх даних", async () => {
     const event = { id: "e2", project: "Проєкт B", time: "" } as any;
 
-    render(<EventTooltip event={event} />);
-    expect(screen.getByText("Невідомий заклад")).toBeInTheDocument();
+    render(
+      <EventTooltip event={event}>
+        <div data-testid="trigger">hover me</div>
+      </EventTooltip>
+    );
+    const trigger = screen.getByTestId("trigger");
+    fireEvent.mouseEnter(trigger);
+    expect(await screen.findByText("Невідомий заклад")).toBeInTheDocument();
     expect(screen.getByText("—")).toBeInTheDocument();
   });
 });

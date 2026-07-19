@@ -10,6 +10,10 @@ vi.mock("../../context/AuthContext", () => ({
   useAuth: () => ({ user: null, loading: false, login: vi.fn(), logout: vi.fn() }),
 }));
 
+vi.mock("../../context/ThemeContext", () => ({
+  useTheme: () => ({ theme: "light" as const, toggleTheme: vi.fn() }),
+}));
+
 const renderLogin = (onLogin = vi.fn()) => {
   return render(
     <BrowserRouter>
