@@ -12,6 +12,7 @@ import {
   useCreateProject,
   useUpdateProject,
   useDeleteProject,
+  useExportEmployees,
 } from "../hooks/useEmployees";
 import { useCities } from "../hooks/useCities";
 import { useDebounce } from "../hooks/useDebounce";
@@ -46,14 +47,17 @@ const ROLE_FORMS: Record<Role, { title: string; genitivePlural: string; addAccus
   MANAGER: { title: "Менеджери", genitivePlural: "менеджерів", addAccusative: "менеджера" },
   DRIVER:  { title: "Водії",     genitivePlural: "водіїв",     addAccusative: "водія" },
   HOST:    { title: "Ведучі",    genitivePlural: "ведучих",    addAccusative: "ведучого" },
+  SUPERADMIN: { title: "Суперадміни", genitivePlural: "суперадмінів", addAccusative: "суперадміна" },
 };
 const ROLE_COLORS: Record<string, string> = {
   MANAGER: "bg-brand-50 text-brand-700 border-brand-200",
   DRIVER: "bg-success-50 text-success-700 border-success-200",
   HOST: "bg-purple-50 text-purple-700 border-purple-200",
+  SUPERADMIN: "bg-amber-50 text-amber-700 border-amber-200",
 };
 const ROLE_HEADER_COLORS: Record<string, string> = {
   MANAGER: "bg-brand", DRIVER: "bg-success", HOST: "bg-purple-600",
+  SUPERADMIN: "bg-amber-500",
 };
 const EMPTY_FORM = {
   fullName: "", phone: "", email: "", cityId: "", role: "MANAGER" as Role,
@@ -88,6 +92,7 @@ function EmployeesSkeleton() {
         { label: "Менеджери", accent: "bg-brand/20" },
         { label: "Водії", accent: "bg-success/20" },
         { label: "Ведучі", accent: "bg-purple-500/20" },
+        { label: "Суперадміни", accent: "bg-amber-500/20" },
       ].map(({ label, accent }) => (
         <div key={label} className="mb-8">
           <div className="flex items-center gap-3 mb-4">
@@ -128,6 +133,7 @@ export default function Employees() {
   const createProject = useCreateProject();
   const updateProject = useUpdateProject();
   const deleteProject = useDeleteProject();
+  const exportEmployees = useExportEmployees();
   const toast = useToast();
   const { selectedCity: contextCity } = useSelectedCity();
   const { user: authUser } = useAuth();
@@ -230,7 +236,7 @@ export default function Employees() {
   }, [cityFilteredUsers, selectedRoles, selectedCity, debouncedSearch]);
 
   const grouped = useMemo(
-    () => (["MANAGER", "DRIVER", "HOST"] as Role[]).map((role) => ({
+    () => (["MANAGER", "DRIVER", "HOST", "SUPERADMIN"] as Role[]).map((role) => ({
       role,
       label: ROLE_FORMS[role]?.title ?? ROLE_LABELS[role],
       items: filteredUsers.filter((u) => u.role === role),
@@ -383,6 +389,11 @@ export default function Employees() {
           isSuperAdmin={isSuperAdmin}
           onAddUser={() => handleOpenModal()}
           onToggleFilter={() => setFilterPanelOpen((p) => !p)}
+          onExportCsv={() => exportEmployees.mutate(undefined, {
+            onSuccess: () => toast("CSV експортовано", "success"),
+            onError: () => toast("Помилка експорту", "error"),
+          })}
+          isExporting={exportEmployees.isPending}
           searchQuery={rawSearch}
           onSearchChange={(q) => updateParams({ search: q || null })}
         />

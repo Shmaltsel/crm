@@ -187,4 +187,28 @@ export class UsersService {
       data: { telegramChatId: chatId },
     });
   }
+
+  async exportCsv(): Promise<string> {
+    const users = await this.prisma.user.findMany({
+      select: {
+        id: true,
+        name: true,
+        email: true,
+        phone: true,
+        role: true,
+        city: { select: { name: true } },
+        car: true,
+        telegramId: true,
+      },
+      orderBy: { name: 'asc' },
+    });
+
+    const header = 'ID,Назва,Email,Телефон,Роль,Місто,Авто,Telegram';
+    const rows = users.map(
+      (u) =>
+        `"${u.id}","${u.name}","${u.email}","${u.phone || ''}","${u.role}","${u.city?.name || ''}","${u.car || ''}","${u.telegramId || ''}"`,
+    );
+
+    return [header, ...rows].join('\n');
+  }
 }

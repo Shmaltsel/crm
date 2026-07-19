@@ -1,10 +1,12 @@
-import { Search, Plus, SlidersHorizontal } from "lucide-react";
+import { Search, Plus, SlidersHorizontal, Download } from "lucide-react";
 import { Button } from "../ui/Button";
 
 interface EmployeesHeaderProps {
   isSuperAdmin: boolean;
   onAddUser: () => void;
   onToggleFilter: () => void;
+  onExportCsv: () => void;
+  isExporting: boolean;
   searchQuery: string;
   onSearchChange: (query: string) => void;
 }
@@ -13,6 +15,8 @@ export function EmployeesHeader({
   isSuperAdmin,
   onAddUser,
   onToggleFilter,
+  onExportCsv,
+  isExporting,
   searchQuery,
   onSearchChange,
 }: EmployeesHeaderProps) {
@@ -26,10 +30,16 @@ export function EmployeesHeader({
           </p>
         </div>
         {isSuperAdmin && (
-          <Button onClick={onAddUser} size="md">
-            <Plus className="w-4 h-4 mr-1.5" />
-            Створити користувача
-          </Button>
+          <div className="flex items-center gap-2">
+            <Button onClick={onExportCsv} size="md" variant="secondary" disabled={isExporting}>
+              <Download className="w-4 h-4 mr-1.5" />
+              {isExporting ? "Завантаження..." : "Експорт в CSV"}
+            </Button>
+            <Button onClick={onAddUser} size="md">
+              <Plus className="w-4 h-4 mr-1.5" />
+              Створити користувача
+            </Button>
+          </div>
         )}
       </div>
 

@@ -7,8 +7,10 @@ import {
   Param,
   Delete,
   UseGuards,
+  Res,
 } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiCookieAuth } from '@nestjs/swagger';
+import type { Response } from 'express';
 import { UsersService } from './users.service';
 import { AuthGuard } from '../auth/auth.guard';
 import { RolesGuard } from '../auth/guards/roles.guard';
@@ -28,6 +30,16 @@ export class UsersController {
   @Roles('SUPERADMIN', 'OWNER', 'MANAGER')
   getAll() {
     return this.usersService.getAllUsers();
+  }
+
+  @ApiOperation({ summary: 'Експорт користувачів у CSV' })
+  @Get('export')
+  @Roles('SUPERADMIN', 'OWNER', 'MANAGER')
+  async exportCsv(@Res() res: Response) {
+    const csv = await this.usersService.exportCsv();
+    res.setHeader('Content-Type', 'text/csv; charset=utf-8');
+    res.setHeader('Content-Disposition', 'attachment; filename="users.csv"');
+    res.send('\uFEFF' + csv);
   }
 
   @ApiOperation({ summary: 'Створити користувача' })

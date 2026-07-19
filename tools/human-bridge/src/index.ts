@@ -1,6 +1,7 @@
 import { config } from "dotenv";
 import { resolve, dirname } from "path";
 import { fileURLToPath } from "url";
+import { spawn } from "child_process";
 
 config({ path: resolve(dirname(fileURLToPath(import.meta.url)), "..", ".env") });
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
@@ -62,6 +63,32 @@ server.tool(
   async ({ message }) => {
     await bot.api.sendMessage(CHAT_ID, message);
     return { content: [{ type: "text", text: "sent" }] };
+  }
+);
+
+server.tool(
+  "assign_task",
+  "Надіслати задачу в Telegram та запустити OpenCode як дочірній процес.",
+  { prompt: z.string(), description: z.string().optional() },
+  async ({ prompt, description }) => {
+    const taskId = `task-${Date.now()}`;
+    const telegramMsg = `🚀 **Задача призначена**\n\nID: ${taskId}\n\n${description ? `Опис: ${description}\n\n` : ''}Промпт:\n${prompt}`;
+    await bot.api.sendMessage(CHAT_ID, telegramMsg);
+
+    const child = spawn("opencode", ["run", prompt], {
+      cwd: process.cwd(),
+      shell: true,
+      detached: true,
+    });
+
+    child.unref();
+
+    return {
+      content: [{
+        type: "text",
+        text: JSON.stringify({ taskId, status: "spawned", pid: child.pid }),
+      }],
+    };
   }
 );
 

@@ -1,5 +1,5 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { api } from "../config/api";
+import { api, exportUsersCsv } from "../config/api";
 import type { User, Project } from "../types";
 
 export interface UserFormData {
@@ -168,5 +168,11 @@ export function useDeleteProject() {
         Array.isArray(old) ? old.filter((p) => p.id !== id) : old,
       );
     },
+  });
+}
+
+export function useExportEmployees() {
+  return useMutation({
+    mutationFn: exportUsersCsv,
   });
 }
