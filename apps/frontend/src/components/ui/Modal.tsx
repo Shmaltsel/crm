@@ -12,6 +12,14 @@ interface ModalProps {
   maxWidth?: string;
 }
 
+const maxWidthMap: Record<string, string> = {
+  "max-w-md": "28rem",
+  "max-w-lg": "32rem",
+  "max-w-xl": "36rem",
+  "max-w-2xl": "42rem",
+  "max-w-3xl": "48rem",
+};
+
 export function Modal({ isOpen, onClose, title, children, maxWidth = "max-w-md" }: ModalProps) {
   const generatedId = useId();
   const headingId = `modal-${generatedId}`;
@@ -41,20 +49,20 @@ export function Modal({ isOpen, onClose, title, children, maxWidth = "max-w-md" 
           animate="visible"
           exit="exit"
           className="fixed inset-0 bg-backdrop md:backdrop-blur-sm z-50 flex items-end sm:items-center justify-center sm:p-4"
-          style={{ willChange: "transform, opacity" }}
-          onClick={(e) => e.target === e.currentTarget && onClose()}
           style={{
+            willChange: "transform, opacity",
             paddingTop: mobileOffsets.paddingTop,
             paddingBottom: mobileOffsets.paddingBottom,
           }}
+          onClick={(e) => e.target === e.currentTarget && onClose()}
         >
           <motion.div
             variants={modalContentVariants}
             initial="hidden"
             animate="visible"
             exit="exit"
-            className={`bg-surface rounded-t-3xl sm:rounded-modal shadow-modal w-full sm:${maxWidth} overflow-hidden max-h-[90vh] flex flex-col pb-nav`}
-            style={{ willChange: "transform" }}
+            className="bg-surface rounded-t-3xl sm:rounded-modal shadow-modal w-full overflow-hidden max-h-[90vh] flex flex-col pb-nav"
+            style={{ maxWidth: maxWidthMap[maxWidth] ?? "32rem", willChange: "transform" }}
           >
             <div className="sm:hidden w-10 h-1.5 bg-border-strong rounded-pill mx-auto mt-3" />
             <div className="p-5 sm:p-6 border-b border-border flex justify-between items-center bg-surface-subtle shrink-0">

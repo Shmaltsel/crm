@@ -149,7 +149,7 @@ export default function CityAnalytics({ events }: CityAnalyticsProps) {
                     animate={{ opacity: 1, y: 0, scale: 1 }}
                     exit={{ opacity: 0, y: -4, scale: 0.97 }}
                     transition={{ duration: 0.15, ease: "easeOut" }}
-                    className="absolute right-0 top-full mt-2 z-20 bg-surface rounded-xl shadow-lg border border-border p-4 w-72"
+                    className="absolute right-0 top-full mt-2 z-20 bg-surface rounded-xl shadow-lg border border-border p-4 max-w-[min(288px,calc(100vw-2rem))]"
                   >
                   <div className="flex flex-wrap gap-2 mb-4">
                     <button onClick={() => applyPreset(3)} className="px-3 py-1.5 rounded-pill text-xs bg-surface-muted hover:bg-neutral-200 font-medium transition-colors">3 міс.</button>

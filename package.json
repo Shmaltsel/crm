@@ -1,4 +1,4 @@
-{
+﻿{
   "name": "CRM",
   "private": true,
   "packageManager": "pnpm@11.8.0",
@@ -9,6 +9,7 @@
     "bridge:build": "pnpm --filter @svitlo/human-bridge build",
     "bridge:start": "pnpm --filter @svitlo/human-bridge start:sse",
     "bridge:dev": "pnpm --filter @svitlo/human-bridge dev",
+    "bridge:dispatch": "node tools/human-bridge/auto-dispatch.mjs",
     "agent:gate": "turbo run lint typecheck test",
     "test": "concurrently --kill-others-on-fail \"pnpm --filter backend test\" \"pnpm --filter frontend test:run\"",
     "test:unit": "concurrently \"pnpm --filter backend test\" \"pnpm --filter frontend test:run\"",

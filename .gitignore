@@ -86,3 +86,4 @@ tools/human-bridge/dist
 .mimocode/
 _analysis_bundle/
 nul
+.agents/dispatch.log

@@ -65,10 +65,18 @@ export default function NotificationBell() {
     if (!bellRef.current) return {};
     const r = bellRef.current.getBoundingClientRect();
     const spaceBelow = window.innerHeight - r.bottom;
-    if (spaceBelow >= 380) {
-      return { position: "fixed", top: r.bottom + 8, right: window.innerWidth - r.right };
-    }
-    return { position: "fixed", bottom: window.innerHeight - r.top + 8, right: window.innerWidth - r.right };
+    const spaceLeft = r.left;
+    const dropdownWidth = 320;
+
+    const verticalStyle = spaceBelow >= 380
+      ? { top: r.bottom + 8 }
+      : { bottom: window.innerHeight - r.top + 8 };
+
+    const horizontalStyle = spaceLeft >= dropdownWidth
+      ? { right: window.innerWidth - r.right }
+      : { left: r.left };
+
+    return { position: "fixed", ...verticalStyle, ...horizontalStyle };
   };
 
   return (
@@ -93,7 +101,7 @@ export default function NotificationBell() {
         <>
           <div className="fixed inset-0 z-[60]" onClick={close} />
           <div
-            className="notif-dropdown w-80 bg-nav border border-slate-700/50 rounded-xl shadow-2xl z-[61] max-h-[70vh] flex flex-col"
+            className="notif-dropdown w-80 max-w-[min(320px,calc(100vw-2rem))] bg-nav border border-slate-700/50 rounded-xl shadow-2xl z-[61] max-h-[70vh] flex flex-col"
             style={getDropdownStyle()}
           >
         <div className="flex items-center justify-between px-4 py-3 border-b border-slate-700/50 shrink-0">
