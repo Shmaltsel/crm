@@ -671,38 +671,20 @@ export default function Analytics() {
     return source.findIndex((e) => e.key === key);
   }, []);
 
-  const monthKeyToDayRange = useCallback((monthKey: string, days: ChartEntry[]): [number, number] => {
-    // "2026-07" → [індекс першого дня липня, індекс останнього дня липня]
-    const start = days.findIndex((d) => d.key.startsWith(monthKey));
-    if (start === -1) return [-1, -1];
-    let end = start;
-    while (end + 1 < days.length && days[end + 1].key.startsWith(monthKey)) end++;
-    return [start, end];
-  }, []);
-
-  const dayKeyToMonthRange = useCallback((dayKey: string, months: ChartEntry[]): number => {
-    // "2026-07-15" → індекс місяця "2026-07"
-    const monthPart = dayKey.slice(0, 7);
-    return months.findIndex((m) => m.key === monthPart);
-  }, []);
-
   const visibleRange = useMemo((): [number, number] => {
     const source = granularity === 'day' ? dayChartData : forecastData.entries;
-    if (source.length === 0) return [0, 0];
+    if (source.length < 2) return [0, Math.max(0, source.length - 1)];
     const s = keyToIndex(zoomKeys[0], source);
     const e = keyToIndex(zoomKeys[1], source);
     if (s === -1 && e === -1) {
-      // Ключі не знайдені в поточному джерелі (напр. місячні ключі в денних даних) —
-      // оновлюємо zoomKeys щоб вони відповідали поточному джерелу
-      const fallbackStart = Math.max(0, source.length - 12);
       const fallbackEnd = source.length - 1;
-      const nextStart = source[fallbackStart].key;
+      const nextStart = source[0].key;
       const nextEnd = source[fallbackEnd].key;
       setZoomKeys((prev) => {
         if (prev[0] === nextStart && prev[1] === nextEnd) return prev;
         return [nextStart, nextEnd];
       });
-      return [fallbackStart, fallbackEnd];
+      return [0, fallbackEnd];
     }
     if (s === -1) return [0, e];
     if (e === -1) return [s, source.length - 1];
@@ -759,12 +741,21 @@ export default function Analytics() {
     });
   }, [showForecast, canForecast, forecastData.entries, chartData]);
 
+  const handleGranularityToggle = useCallback(() => {
+    const newGranularity = granularity === 'month' ? 'day' : 'month';
+    if (newGranularity === 'day' && period === 'all') return;
+    setGranularity(newGranularity);
+    const source = newGranularity === 'day' ? dayChartData : forecastData.entries;
+    if (source.length > 0) {
+      setZoomKeysSafe([source[0].key, source[source.length - 1].key]);
+    }
+  }, [granularity, period, dayChartData, forecastData.entries, setZoomKeysSafe]);
+
   const clampRange = useCallback(
-    (start: number, end: number, sourceLen: number, isDayMode: boolean = false): [number, number] => {
+    (start: number, end: number, sourceLen: number): [number, number] => {
       const max = sourceLen - 1;
-      // У month-режимі: мінімум 12 місяців (щоб завжди було видно хоча б 1 рік)
-      // У day-режимі: мінімум 1 день
-      const MIN_SPAN = isDayMode ? 1 : 12;
+      if (max < 2) return [0, max];
+      const MIN_SPAN = 2;
       let s = Math.max(0, Math.min(max, Math.round(start)));
       let e = Math.max(0, Math.min(max, Math.round(end)));
       if (e - s < MIN_SPAN) {
@@ -787,52 +778,22 @@ export default function Analytics() {
       const source = granularity === 'day' ? dayChartData : forecastData.entries;
       const sourceLen = source.length;
 
-      // Обчислюємо новий діапазон
       const [curS, curE] = visibleRangeRef.current;
       const span = curE - curS;
       const step = Math.max(1, Math.floor(span / 4));
-      const newSpan = shrink ? span - 2 * step : span + 2 * step;
       const [ns, ne] = shrink
-        ? clampRange(curS + step, curE - step, sourceLen, granularity === 'day')
-        : clampRange(curS - step, curE + step, sourceLen, granularity === 'day');
+        ? clampRange(curS + step, curE - step, sourceLen)
+        : clampRange(curS - step, curE + step, sourceLen);
 
-      // Обчислюємо фінальні ключі з урахуванням можливого перемикання granularity
-      let finalKeys: [string, string] | null = null;
-      let newGranularity: 'month' | 'day' | null = null;
-
-      const currentGran = granularity;
-      if (currentGran === 'month' && newSpan <= 6 && dayChartData.length > 0 && source[ns] && source[ne]) {
-        // month → day
-        const [dayS] = monthKeyToDayRange(source[ns].key, dayChartData);
-        const [, dayE] = monthKeyToDayRange(source[ne].key, dayChartData);
-        if (dayS !== -1 && dayE !== -1) {
-          finalKeys = [dayChartData[dayS].key, dayChartData[dayE].key];
-          newGranularity = 'day';
-        }
-      } else if (currentGran === 'day' && newSpan >= 8 && source[ns] && source[ne]) {
-        // day → month
-        const mIdxS = dayKeyToMonthRange(source[ns].key, chartData);
-        const mIdxE = dayKeyToMonthRange(source[ne].key, chartData);
-        if (mIdxS !== -1 && mIdxE !== -1) {
-          finalKeys = [chartData[mIdxS].key, chartData[mIdxE].key];
-          newGranularity = 'month';
-        }
+      if (source[ns] && source[ne]) {
+        setZoomKeysSafe([source[ns].key, source[ne].key]);
       }
-
-      // Якщо granularity не змінюється — просто оновлюємо ключі
-      if (!finalKeys && source[ns] && source[ne]) {
-        finalKeys = [source[ns].key, source[ne].key];
-      }
-
-      // Один виклик setZoomKeys + один setGranularity
-      if (finalKeys) setZoomKeysSafe(finalKeys);
-      if (newGranularity) setGranularity(newGranularity);
 
       zoomTimerRef.current = setTimeout(() => {
         setZoomAnimating(false);
       }, 200);
     },
-    [clampRange, granularity, dayChartData, forecastData.entries, chartData, monthKeyToDayRange, dayKeyToMonthRange, setZoomKeysSafe],
+    [clampRange, granularity, dayChartData, forecastData.entries, setZoomKeysSafe],
   );
 
   useEffect(() => {
@@ -873,31 +834,10 @@ export default function Analytics() {
         const center = (origS + origE) / 2;
         const origSpan = origE - origS;
         const newSpan = Math.round(origSpan / ratio);
-        const [ns, ne] = clampRange(center - newSpan / 2, center + newSpan / 2, sourceLen, granularity === 'day');
+        const [ns, ne] = clampRange(center - newSpan / 2, center + newSpan / 2, sourceLen);
 
         if (source[ns] && source[ne]) {
-          // Обчислюємо фінальні ключі з урахуванням можливого перемикання granularity
-          let finalKeys: [string, string] = [source[ns].key, source[ne].key];
-          let newGranularity: 'month' | 'day' | null = null;
-
-          if (granularity === 'month' && newSpan <= 6 && dayChartData.length > 0) {
-            const [dayS] = monthKeyToDayRange(source[ns].key, dayChartData);
-            const [, dayE] = monthKeyToDayRange(source[ne].key, dayChartData);
-            if (dayS !== -1 && dayE !== -1) {
-              finalKeys = [dayChartData[dayS].key, dayChartData[dayE].key];
-              newGranularity = 'day';
-            }
-          } else if (granularity === 'day' && newSpan >= 8) {
-            const mIdxS = dayKeyToMonthRange(source[ns].key, chartData);
-            const mIdxE = dayKeyToMonthRange(source[ne].key, chartData);
-            if (mIdxS !== -1 && mIdxE !== -1) {
-              finalKeys = [chartData[mIdxS].key, chartData[mIdxE].key];
-              newGranularity = 'month';
-            }
-          }
-
-          setZoomKeysSafe(finalKeys);
-          if (newGranularity) setGranularity(newGranularity);
+          setZoomKeysSafe([source[ns].key, source[ne].key]);
         }
 
         zoomTimerRef.current = setTimeout(() => {
@@ -905,7 +845,7 @@ export default function Analytics() {
         }, 200);
       }
     },
-    [clampRange, granularity, dayChartData, forecastData.entries, chartData, keyToIndex, monthKeyToDayRange, dayKeyToMonthRange, setZoomKeysSafe],
+    [clampRange, granularity, dayChartData, forecastData.entries, keyToIndex, setZoomKeysSafe],
   );
 
   const handleTouchEnd = useCallback(() => {
@@ -1388,6 +1328,28 @@ export default function Analytics() {
                   </button>
                 </div>
               </div>
+              {period !== 'all' && (
+                <div className="border-l border-border-strong/20 pl-1.5 ml-0.5">
+                  <div className="flex rounded-full border border-border-strong overflow-hidden text-[10px]">
+                    <button
+                      onClick={handleGranularityToggle}
+                      className={`px-2.5 py-1 transition-[background-color,color] duration-200 ${
+                        granularity === 'month' ? 'bg-surface shadow-sm text-content-primary' : 'text-content-secondary'
+                      }`}
+                    >
+                      По місяцях
+                    </button>
+                    <button
+                      onClick={handleGranularityToggle}
+                      className={`px-2.5 py-1 transition-[background-color,color] duration-200 ${
+                        granularity === 'day' ? 'bg-surface shadow-sm text-content-primary' : 'text-content-secondary'
+                      }`}
+                    >
+                      По днях
+                    </button>
+                  </div>
+                </div>
+              )}
             </div>
             <button
               onClick={() => setShowMobileFilters((v) => !v)}
@@ -1437,6 +1399,29 @@ export default function Analytics() {
                       </button>
                     </div>
                   </div>
+                  {period !== 'all' && (
+                    <div>
+                      <p className="text-[10px] uppercase tracking-wide text-content-muted font-medium mb-2">Гранулярність</p>
+                      <div className="flex rounded-xl border border-border-strong overflow-hidden text-xs">
+                        <button
+                          onClick={handleGranularityToggle}
+                          className={`flex-1 px-3 py-2 transition-[background-color,color] duration-200 ${
+                            granularity === 'month' ? 'bg-surface shadow-sm text-content-primary font-medium' : 'text-content-secondary'
+                          }`}
+                        >
+                          По місяцях
+                        </button>
+                        <button
+                          onClick={handleGranularityToggle}
+                          className={`flex-1 px-3 py-2 transition-[background-color,color] duration-200 ${
+                            granularity === 'day' ? 'bg-surface shadow-sm text-content-primary font-medium' : 'text-content-secondary'
+                          }`}
+                        >
+                          По днях
+                        </button>
+                      </div>
+                    </div>
+                  )}
                   <div>
                     <p className="text-[10px] uppercase tracking-wide text-content-muted font-medium mb-2">Показати</p>
                     <div className="flex flex-wrap gap-2">
@@ -1865,10 +1850,10 @@ export default function Analytics() {
                   {isZoomed && (
                     <button
                       onClick={() => {
-                        const entries = forecastData.entries;
-                        const totalLen = entries.length;
-                        const startIdx = Math.max(0, totalLen - 12);
-                        setZoomKeysSafe([entries[startIdx].key, entries[totalLen - 1].key]);
+                        const entries = granularity === 'day' ? dayChartData : forecastData.entries;
+                        if (entries.length > 0) {
+                          setZoomKeysSafe([entries[0].key, entries[entries.length - 1].key]);
+                        }
                       }}
                       className="mt-1.5 text-[10px] text-content-muted hover:text-content-secondary transition px-1"
                     >

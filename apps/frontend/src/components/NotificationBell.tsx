@@ -64,19 +64,18 @@ export default function NotificationBell() {
   const getDropdownStyle = (): React.CSSProperties => {
     if (!bellRef.current) return {};
     const r = bellRef.current.getBoundingClientRect();
+    const ddW = 320;
+    const gap = 8;
+    const pad = 12;
+
     const spaceBelow = window.innerHeight - r.bottom;
-    const spaceLeft = r.left;
-    const dropdownWidth = 320;
+    const openDown = spaceBelow >= 380;
+    const top = openDown ? r.bottom + gap : undefined;
+    const bottom = !openDown ? window.innerHeight - r.top + gap : undefined;
 
-    const verticalStyle = spaceBelow >= 380
-      ? { top: r.bottom + 8 }
-      : { bottom: window.innerHeight - r.top + 8 };
+    const left = Math.max(pad, Math.min(r.left, window.innerWidth - ddW - pad));
 
-    const horizontalStyle = spaceLeft >= dropdownWidth
-      ? { right: window.innerWidth - r.right }
-      : { left: r.left };
-
-    return { position: "fixed", ...verticalStyle, ...horizontalStyle };
+    return { position: "fixed" as const, top, bottom, left };
   };
 
   return (
