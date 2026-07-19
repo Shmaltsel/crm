@@ -1,15 +1,8 @@
-## TODO
-
-## In progress
+# Черга задач (auto-generated, не редагувати вручну)
 
 ## Done
-- TASK-4: Backend — ендпоінт GET /users/export (CSV) — DONE
-- TASK-5: Frontend — хук useExportEmployees та API-запит — DONE
-- TASK-6: Frontend — кнопка "Експорт в CSV" на сторінці Employees — DONE
-- TASK-7: Frontend — відображення суперадмінів на сторінці Працівники — DONE
-- TASK-8: human-bridge MCP — додати інструмент assign_task — DONE
-- ТЕСТ: Колаборативний план MiMoCode + OpenCode — DONE
-- STEP 1: CSS variables для теми — DONE
-- STEP 2: ThemeContext — DONE
-- STEP 3: dark: класи в Login.tsx — DONE
-- STEP 4: Перемикач теми на Login — DONE
+- **TASK-1**: "Queue tools: build-index.js та lint-queue.js" (mimo) [W0]
+- **TASK-2**: "Директорії .agents/tasks, proposals, decisions, mailbox" (mimo) [W0]
+- **TASK-3**: "human-bridge: /plan обробка, wait_for_goal, ask_agent, batch assign_task" (mimo) [W0] ⛔ blocked by: TASK-1, TASK-2
+- **TASK-4**: "handoff.md з секцією Contract diff" (mimo) [W0]
+- **TASK-5**: "Оновлення skills та AGENTS.md" (mimo) [W0] ⛔ blocked by: TASK-1

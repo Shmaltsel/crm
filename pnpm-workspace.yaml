@@ -1,6 +1,7 @@
 packages:
-  - 'apps/*'
-  - 'packages/*'
+  - "apps/*"
+  - "packages/*"
+  - "tools/*"
 allowBuilds:
   '@mongodb-js/zstd': true
   '@percy/core': true

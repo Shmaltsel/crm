@@ -83,3 +83,8 @@ skills/
 experience/
 knowledge/
 doc/
+tools/human-bridge/.env
+tools/human-bridge/dist
+.mimocode/
+_analysis_bundle/
+nul

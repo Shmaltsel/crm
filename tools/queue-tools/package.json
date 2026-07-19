@@ -1,0 +1,10 @@
+{
+  "name": "@svitlo/queue-tools",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build-index": "node build-index.js",
+    "lint": "node lint-queue.js"
+  }
+}
