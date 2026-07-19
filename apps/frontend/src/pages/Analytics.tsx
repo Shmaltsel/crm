@@ -590,15 +590,57 @@ export default function Analytics() {
   }, [smaData, chartData, activeLines, showForecast, canForecast]);
 
   const effectiveMaxIdx = showForecast && canForecast ? forecastData.entries.length - 1 : chartData.length - 1;
-  const [zoomRange, setZoomRange] = useState<[number, number]>(() => [
-    Math.max(0, chartData.length - 12),
-    chartData.length - 1,
+
+  // ── Zoom state: зберігаємо як діапазон дат (key), а індекси обчислюємо похідно ──
+  const lastMonth = chartData[chartData.length - 1];
+  const firstMonth = chartData[0];
+  const [zoomKeys, setZoomKeys] = useState<[string, string]>(() => [
+    firstMonth?.key ?? "",
+    lastMonth?.key ?? "",
   ]);
+  // Синхронізуємо при зміні даних (напр. фільтр міста)
+  useEffect(() => {
+    if (chartData.length > 0) {
+      setZoomKeys([chartData[0].key, chartData[chartData.length - 1].key]);
+    }
+  }, [chartData.length]);
+
+  // ── Хелпери: конвертація key ↔ index для активного масиву ──
+  const keyToIndex = useCallback((key: string, source: ChartEntry[]): number => {
+    return source.findIndex((e) => e.key === key);
+  }, []);
+
+  const monthKeyToDayRange = useCallback((monthKey: string, days: ChartEntry[]): [number, number] => {
+    // "2026-07" → [індекс першого дня липня, індекс останнього дня липня]
+    const start = days.findIndex((d) => d.key.startsWith(monthKey));
+    if (start === -1) return [-1, -1];
+    let end = start;
+    while (end + 1 < days.length && days[end + 1].key.startsWith(monthKey)) end++;
+    return [start, end];
+  }, []);
+
+  const dayKeyToMonthRange = useCallback((dayKey: string, months: ChartEntry[]): number => {
+    // "2026-07-15" → індекс місяця "2026-07"
+    const monthPart = dayKey.slice(0, 7);
+    return months.findIndex((m) => m.key === monthPart);
+  }, []);
+
+  const visibleRange = useMemo((): [number, number] => {
+    const source = granularity === 'day' ? dayChartData : forecastData.entries;
+    if (source.length === 0) return [0, 0];
+    const s = keyToIndex(zoomKeys[0], source);
+    const e = keyToIndex(zoomKeys[1], source);
+    if (s === -1 && e === -1) return [Math.max(0, source.length - 12), source.length - 1];
+    if (s === -1) return [0, e];
+    if (e === -1) return [s, source.length - 1];
+    return [Math.min(s, e), Math.max(s, e)];
+  }, [zoomKeys, granularity, dayChartData, forecastData.entries, keyToIndex]);
+
   const [prevDataLength, setPrevDataLength] = useState(chartData.length);
   const [prevEffectiveMax, setPrevEffectiveMax] = useState(effectiveMaxIdx);
   const [zoomAnimating, setZoomAnimating] = useState(false);
   const chartRef = useRef<HTMLDivElement>(null);
-  const pinchRef = useRef<{ dist: number; range: [number, number] } | null>(null);
+  const pinchRef = useRef<{ dist: number; keys: [string, string] } | null>(null);
   const zoomTimerRef = useRef<ReturnType<typeof setTimeout>>();
   const isMobile = typeof window !== 'undefined' && window.innerWidth < 768;
 
@@ -615,7 +657,8 @@ export default function Analytics() {
   if (chartData.length !== prevDataLength || effectiveMaxIdx !== prevEffectiveMax) {
     setPrevDataLength(chartData.length);
     setPrevEffectiveMax(effectiveMaxIdx);
-    setZoomRange([Math.max(0, chartData.length - 12), effectiveMaxIdx]);
+    const last = chartData[chartData.length - 1];
+    if (last) setZoomKeys([chartData[Math.max(0, chartData.length - 12)].key, last.key]);
   }
 
   useEffect(() => {
@@ -625,22 +668,20 @@ export default function Analytics() {
   }, []);
 
   useEffect(() => {
-    setZoomRange(([s, e]) => {
-      const wasAtRealEnd = e === chartData.length - 1;
-      const wasAtForecastEnd = e === forecastData.entries.length - 1;
-      if (showForecast && canForecast && wasAtRealEnd) {
-        return [s, forecastData.entries.length - 1];
-      }
-      if (!showForecast && wasAtForecastEnd) {
-        return [s, chartData.length - 1];
-      }
-      return [s, e];
-    });
-  }, [showForecast, canForecast, forecastData.entries.length, chartData.length]);
+    // При зміні forecast toggle — розширюємо зум вправо якщо був на кінці
+    const source = granularity === 'day' ? dayChartData : forecastData.entries;
+    if (source.length === 0) return;
+    const lastSourceKey = source[source.length - 1].key;
+    if (showForecast && canForecast && zoomKeys[1] === chartData[chartData.length - 1]?.key) {
+      setZoomKeys([zoomKeys[0], forecastData.entries[forecastData.entries.length - 1]?.key ?? zoomKeys[1]]);
+    } else if (!showForecast && zoomKeys[1] === forecastData.entries[forecastData.entries.length - 1]?.key) {
+      setZoomKeys([zoomKeys[0], chartData[chartData.length - 1]?.key ?? zoomKeys[1]]);
+    }
+  }, [showForecast, canForecast, forecastData.entries.length, chartData.length, granularity, dayChartData, zoomKeys]);
 
   const clampRange = useCallback(
-    (start: number, end: number): [number, number] => {
-      const max = effectiveMaxIdx;
+    (start: number, end: number, sourceLen: number): [number, number] => {
+      const max = sourceLen - 1;
       const MIN_SPAN = 1;
       let s = Math.max(0, Math.min(max, Math.round(start)));
       let e = Math.max(0, Math.min(max, Math.round(end)));
@@ -650,7 +691,7 @@ export default function Analytics() {
       }
       return [s, e];
     },
-    [effectiveMaxIdx],
+    [],
   );
 
   const handleWheel = useCallback(
@@ -658,20 +699,51 @@ export default function Analytics() {
       ev.preventDefault();
       setZoomAnimating(true);
       if (zoomTimerRef.current != null) clearTimeout(zoomTimerRef.current);
-      setZoomRange(([s, e2]) => {
-        const span = e2 - s;
-        const shrink = ev.deltaY < 0;
-        const step = Math.max(1, Math.floor(span / 4));
-        if (shrink) return clampRange(s + step, e2 - step);
-        return clampRange(s - step, e2 + step);
-      });
-        const newSpan = shrink ? span - 2 * step : span + 2 * step;
-        setGranularity(newSpan <= 6 ? 'day' : 'month');
+
+      const shrink = ev.deltaY < 0;
+      const source = granularity === 'day' ? dayChartData : forecastData.entries;
+      const sourceLen = source.length;
+
+      // Обчислюємо новий діапазон
+      const [curS, curE] = visibleRange;
+      const span = curE - curS;
+      const step = Math.max(1, Math.floor(span / 4));
+      const newSpan = shrink ? span - 2 * step : span + 2 * step;
+      const [ns, ne] = shrink
+        ? clampRange(curS + step, curE - step, sourceLen)
+        : clampRange(curS - step, curE + step, sourceLen);
+
+      // Записуємо нові ключі
+      const src = granularity === 'day' ? dayChartData : forecastData.entries;
+      if (src[ns] && src[ne]) {
+        setZoomKeys([src[ns].key, src[ne].key]);
+      }
+
+      // Перемикаємо granularity з гістерезисом
+      const currentGran = granularity;
+      if (currentGran === 'month' && newSpan <= 6 && dayChartData.length > 0) {
+        // month → day: конвертуємо місячні ключі в денні
+        const [dayS] = monthKeyToDayRange(src[ns]?.key ?? "", dayChartData);
+        const [, dayE] = monthKeyToDayRange(src[ne]?.key ?? "", dayChartData);
+        if (dayS !== -1 && dayE !== -1) {
+          setGranularity('day');
+          setZoomKeys([dayChartData[dayS].key, dayChartData[dayE].key]);
+        }
+      } else if (currentGran === 'day' && newSpan >= 8) {
+        // day → month: конвертуємо денні ключі в місячні
+        const mIdxS = dayKeyToMonthRange(src[ns]?.key ?? "", chartData);
+        const mIdxE = dayKeyToMonthRange(src[ne]?.key ?? "", chartData);
+        if (mIdxS !== -1 && mIdxE !== -1) {
+          setGranularity('month');
+          setZoomKeys([chartData[mIdxS].key, chartData[mIdxE].key]);
+        }
+      }
+
       zoomTimerRef.current = setTimeout(() => {
         setZoomAnimating(false);
       }, 200);
     },
-    [clampRange],
+    [clampRange, granularity, dayChartData, forecastData.entries, chartData, visibleRange, monthKeyToDayRange, dayKeyToMonthRange],
   );
 
   useEffect(() => {
@@ -686,10 +758,10 @@ export default function Analytics() {
       if (e.touches.length === 2) {
         const dx = e.touches[0].clientX - e.touches[1].clientX;
         const dy = e.touches[0].clientY - e.touches[1].clientY;
-        pinchRef.current = { dist: Math.hypot(dx, dy), range: zoomRange };
+        pinchRef.current = { dist: Math.hypot(dx, dy), keys: [...zoomKeys] };
       }
     },
-    [zoomRange],
+    [zoomKeys],
   );
 
   const handleTouchMove = useCallback(
@@ -702,17 +774,45 @@ export default function Analytics() {
         const dy = e.touches[0].clientY - e.touches[1].clientY;
         const dist = Math.hypot(dx, dy);
         const ratio = dist / pinchRef.current.dist;
-        const [origS, origE] = pinchRef.current.range;
+        const [origKeyS, origKeyE] = pinchRef.current.keys;
+
+        const source = granularity === 'day' ? dayChartData : forecastData.entries;
+        const sourceLen = source.length;
+        const origS = keyToIndex(origKeyS, source);
+        const origE = keyToIndex(origKeyE, source);
+        if (origS === -1 || origE === -1) return;
         const center = (origS + origE) / 2;
         const origSpan = origE - origS;
         const newSpan = Math.round(origSpan / ratio);
-        setZoomRange(clampRange(center - newSpan / 2, center + newSpan / 2));
+        const [ns, ne] = clampRange(center - newSpan / 2, center + newSpan / 2, sourceLen);
+
+        if (source[ns] && source[ne]) {
+          setZoomKeys([source[ns].key, source[ne].key]);
+        }
+
+        // Перемикаємо granularity (та сама логіка що й для колеса)
+        if (granularity === 'month' && newSpan <= 6 && dayChartData.length > 0) {
+          const [dayS] = monthKeyToDayRange(source[ns]?.key ?? "", dayChartData);
+          const [, dayE] = monthKeyToDayRange(source[ne]?.key ?? "", dayChartData);
+          if (dayS !== -1 && dayE !== -1) {
+            setGranularity('day');
+            setZoomKeys([dayChartData[dayS].key, dayChartData[dayE].key]);
+          }
+        } else if (granularity === 'day' && newSpan >= 8) {
+          const mIdxS = dayKeyToMonthRange(source[ns]?.key ?? "", chartData);
+          const mIdxE = dayKeyToMonthRange(source[ne]?.key ?? "", chartData);
+          if (mIdxS !== -1 && mIdxE !== -1) {
+            setGranularity('month');
+            setZoomKeys([chartData[mIdxS].key, chartData[mIdxE].key]);
+          }
+        }
+
         zoomTimerRef.current = setTimeout(() => {
           setZoomAnimating(false);
         }, 200);
       }
     },
-    [clampRange],
+    [clampRange, granularity, dayChartData, forecastData.entries, chartData, keyToIndex, monthKeyToDayRange, dayKeyToMonthRange],
   );
 
   const handleTouchEnd = useCallback(() => {
@@ -725,8 +825,9 @@ export default function Analytics() {
 
   const zoomedChartData = useMemo(() => {
     const source = granularity === 'day' ? dayChartData : forecastData.entries;
-    return source.slice(zoomRange[0], zoomRange[1] + 1);
-  }, [dayChartData, forecastData.entries, zoomRange, granularity]);
+    const [s, e] = visibleRange;
+    return source.slice(s, e + 1);
+  }, [dayChartData, forecastData.entries, visibleRange, granularity]);
 
   const compositeChartData = useMemo(() => {
     if (chartMode !== 'composite') return zoomedChartData;
@@ -744,7 +845,7 @@ export default function Analytics() {
   const chartDataForRender = chartMode === 'composite' ? compositeChartData : zoomedChartData;
 
   const zoomSpan = chartDataForRender.length;
-  const isZoomed = zoomRange[0] !== 0 || zoomRange[1] !== effectiveMaxIdx;
+  const isZoomed = zoomKeys[0] !== chartData[0]?.key || zoomKeys[1] !== chartData[chartData.length - 1]?.key;
 
   const lineStats = useMemo(() => {
     if (!showStats || activeLines.length === 0) return { stats: new Map<string, { avg: number; max: number; min: number; maxIdx: number; minIdx: number; maxLineIndex: number; maxCollisionGroup: number; minLineIndex: number; minCollisionGroup: number }>(), maxCollisions: new Map<number, number[]>(), minCollisions: new Map<number, number[]>() };
