@@ -73,9 +73,11 @@ export class EventsService {
     if (query?.dateFrom || query?.dateTo) {
       where.date = {};
       if (query.dateFrom)
-        (where.date as Record<string, Date>).gte = new Date(query.dateFrom);
-      if (query.dateTo)
-        (where.date as Record<string, Date>).lte = new Date(query.dateTo);
+        (where.date as Record<string, Date>).gte = new Date(query.dateFrom + "T00:00:00.000Z");
+      if (query.dateTo) {
+        const endOfDay = new Date(query.dateTo + "T23:59:59.999Z");
+        (where.date as Record<string, Date>).lte = endOfDay;
+      }
     }
 
     const include = {

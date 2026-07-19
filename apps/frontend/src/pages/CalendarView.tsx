@@ -32,7 +32,7 @@ export default function CalendarView() {
   );
 
   const {
-    eventsLoading, isFetching, projects, cities, allUsers,
+    eventsLoading, isFetching, error: eventsError, projects, cities, allUsers,
     eventsByDate, projectColorMap, projectHexMap,
   } = useCalendarData(filterCityId, monthFrom, monthTo);
 
@@ -66,6 +66,12 @@ export default function CalendarView() {
       {isFetching && !eventsLoading && (
         <div className="fixed top-0 left-0 right-0 z-50 h-0.5 bg-brand/20">
           <div className="h-full bg-brand animate-[loadingBar_1.5s_ease-in-out_infinite]" />
+        </div>
+      )}
+
+      {eventsError && (
+        <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-lg text-sm text-red-600">
+          Помилка завантаження подій. Спробуйте оновити сторінку.
         </div>
       )}
 

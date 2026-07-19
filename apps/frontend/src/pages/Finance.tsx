@@ -2,11 +2,10 @@ import { useState, lazy, Suspense } from "react";
 import { useAuth } from "../context/AuthContext";
 import MySalary from "../features/salary/pages/MySalary";
 import TeamSalaries from "../features/salary/pages/TeamSalaries";
-import Company from "../features/salary/pages/Company";
 
 const Expenses = lazy(() => import("../features/salary/pages/Expenses"));
 
-type Tab = "my-salary" | "team" | "company" | "expenses";
+type Tab = "my-salary" | "team" | "expenses";
 
 function PeekSkeleton() {
   return (
@@ -29,7 +28,6 @@ export default function Finance({ isPeek }: { isPeek?: boolean }) {
   const tabs: { key: Tab; label: string; managerOnly?: boolean }[] = [
     { key: "my-salary", label: "Мої нарахування" },
     { key: "team", label: "Нарахування команди", managerOnly: true },
-    { key: "company", label: "Фінанси компанії", managerOnly: true },
     { key: "expenses", label: "Витрати", managerOnly: true },
   ];
 
@@ -70,7 +68,6 @@ export default function Finance({ isPeek }: { isPeek?: boolean }) {
 
       {activeTab === "my-salary" && <MySalary />}
       {activeTab === "team" && isManagerOrAdmin && <TeamSalaries />}
-      {activeTab === "company" && isManagerOrAdmin && <Company />}
       {activeTab === "expenses" && isManagerOrAdmin && (
         <Suspense fallback={<div className="p-8 text-center text-sm text-content-muted">Завантаження...</div>}>
           <Expenses />

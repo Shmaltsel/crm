@@ -29,9 +29,6 @@ interface StaffMember {
 
 const METRICS: { key: string; label: string }[] = [
   { key: "events", label: "Події" },
-  { key: "revenue", label: "Дохід" },
-  { key: "profit", label: "Прибуток" },
-  { key: "children", label: "Діти" },
   { key: "schools", label: "Школи" },
 ];
 
@@ -122,7 +119,7 @@ export default function CityLeaderboard() {
     ? Math.max(...data.map((d) => d[metric as keyof CityLeaderboardEntry] as number), 1)
     : 1;
 
-  const formatValue = metric === "revenue" || metric === "profit" ? fmtMoney : fmt;
+  const formatValue = fmt;
 
   return (
     <div className="p-4 md:p-8 bg-surface-subtle min-h-screen">

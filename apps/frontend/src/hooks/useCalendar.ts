@@ -23,7 +23,7 @@ export function useCalendarProjects() {
   return useQuery<Project[]>({
     queryKey: ["projects"],
     queryFn: () =>
-      api.get<{ data: Project[] }>("/projects").then((r) => r.data),
+      api.get<Project[]>("/projects").then((r) => r.data),
     staleTime: 5 * 60 * 1000,
   });
 }

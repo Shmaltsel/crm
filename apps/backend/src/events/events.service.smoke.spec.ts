@@ -140,8 +140,8 @@ describe('Smoke: EventsService', () => {
       expect.objectContaining({
         where: expect.objectContaining({
           date: {
-            gte: new Date('2025-09-01'),
-            lte: new Date('2025-09-30'),
+            gte: new Date('2025-09-01T00:00:00.000Z'),
+            lte: new Date('2025-09-30T23:59:59.999Z'),
           },
         }),
       }),

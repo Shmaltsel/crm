@@ -3,11 +3,11 @@ import { createPortal } from "react-dom";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { motion, AnimatePresence } from "framer-motion";
-import { api } from "../../../config/api";
 import type { Project } from "../../../types";
 import { eventSchema, type EventFormValues } from "./EventSchema";
 import { backdropVariants, modalContentVariants } from "../../../lib/motion";
 import { useMobileModalOffsets } from "./useMobileModalOffsets";
+import { useProjects } from "../../../hooks/useEmployees";
 
 interface EventModalProps {
   isOpen: boolean;
@@ -35,7 +35,7 @@ export default function EventModal({
     document.addEventListener('keydown', handler);
     return () => document.removeEventListener('keydown', handler);
   }, [isOpen, onClose]);
-  const [projects, setProjects] = useState<Project[]>([]);
+  const { data: projects = [] } = useProjects();
   const [priceTouched, setPriceTouched] = useState(false);
 
   const {
@@ -77,15 +77,9 @@ export default function EventModal({
         contactPhone: "",
         ...defaultValues,
       });
-      setProjects([]);
-      api.get<Project[]>("/projects")
-        .then((res) => {
-          setProjects(res.data);
-          if (!defaultValues?.project && res.data.length > 0) {
-            setValue("project", res.data[0].name);
-          }
-        })
-        .catch(console.error);
+      if (!defaultValues?.project && projects.length > 0) {
+        setValue("project", projects[0].name);
+      }
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isOpen]);
