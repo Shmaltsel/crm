@@ -1,5 +1,5 @@
 import { useState, useMemo, useCallback, useRef, useEffect } from "react";
-import { motion } from "framer-motion";
+import { motion, AnimatePresence } from "framer-motion";
 import { useAuth } from "../context/AuthContext";
 import { useCities } from "../hooks/useCities";
 import {
@@ -335,6 +335,7 @@ export default function Analytics() {
   const [showRevenue, setShowRevenue] = useState(false);
   const [chartMode, setChartMode] = useState<'profit' | 'composite'>('profit');
   const [granularity, setGranularity] = useState<'month' | 'day'>('month');
+  const [showMobileFilters, setShowMobileFilters] = useState(false);
 
   const { data: cities } = useCities();
   const { data: rawCityMonthData, isLoading: revenueLoading } = useRevenueByCityMonth({
@@ -432,16 +433,30 @@ export default function Analytics() {
       (a, b) => a.year * 12 + a.month - (b.year * 12 + b.month),
     );
 
+    if (!aggregateByCity) {
+      for (const entry of entries) {
+        for (const project of activeProjects) {
+          for (const city of activeCities) {
+            const lk = `profit_${project}_${city}`;
+            const rv = `revenue_${project}_${city}`;
+            if (!(lk in entry)) entry[lk] = 0;
+            if (!(rv in entry)) entry[rv] = 0;
+          }
+        }
+      }
+    }
+
     for (const e of entries) {
       e.label = formatAxisLabel(e, entries.length);
     }
 
     return { chartData: entries };
-  }, [filteredData, activeCities, aggregateByCity]);
+  }, [filteredData, activeCities, activeProjects, aggregateByCity]);
 
 
   const dayChartData = useMemo(() => {
-    if (!rawDayData || granularity !== 'day') return chartData;
+    if (granularity !== 'day') return chartData;
+    if (!rawDayData) return [];
     const byKey = new Map<string, ChartEntry>();
     for (const row of rawDayData) {
       const d = new Date(row.date);
@@ -618,7 +633,6 @@ export default function Analytics() {
     return { entries: allEntries, forecastStartIndex: lastRealIndex, insufficientLines };
   }, [smaData, chartData, activeLines, showForecast, canForecast]);
 
-  const effectiveMaxIdx = showForecast && canForecast ? forecastData.entries.length - 1 : chartData.length - 1;
 
   // ── Zoom state: зберігаємо як діапазон дат (key), а індекси обчислюємо похідно ──
   const lastMonth = chartData[chartData.length - 1];
@@ -637,12 +651,10 @@ export default function Analytics() {
   }, []);
 
   const [prevDataLength, setPrevDataLength] = useState(chartData.length);
-  const [prevEffectiveMax, setPrevEffectiveMax] = useState(effectiveMaxIdx);
 
   // Синхронізуємо при зміні даних (render-phase adjust-during-render патерн)
-  if (chartData.length !== prevDataLength || effectiveMaxIdx !== prevEffectiveMax) {
+  if (chartData.length !== prevDataLength) {
     setPrevDataLength(chartData.length);
-    setPrevEffectiveMax(effectiveMaxIdx);
     const last = chartData[chartData.length - 1];
     if (last) {
       const nextStart = chartData[Math.max(0, chartData.length - 12)].key;
@@ -696,6 +708,11 @@ export default function Analytics() {
     if (e === -1) return [s, source.length - 1];
     return [Math.min(s, e), Math.max(s, e)];
   }, [zoomKeys, granularity, dayChartData, forecastData.entries, keyToIndex]);
+
+  const visibleRangeRef = useRef(visibleRange);
+  useEffect(() => {
+    visibleRangeRef.current = visibleRange;
+  });
 
   const [zoomAnimating, setZoomAnimating] = useState(false);
   const chartRef = useRef<HTMLDivElement>(null);
@@ -771,7 +788,7 @@ export default function Analytics() {
       const sourceLen = source.length;
 
       // Обчислюємо новий діапазон
-      const [curS, curE] = visibleRange;
+      const [curS, curE] = visibleRangeRef.current;
       const span = curE - curS;
       const step = Math.max(1, Math.floor(span / 4));
       const newSpan = shrink ? span - 2 * step : span + 2 * step;
@@ -815,7 +832,7 @@ export default function Analytics() {
         setZoomAnimating(false);
       }, 200);
     },
-    [clampRange, granularity, dayChartData, forecastData.entries, chartData, visibleRange, monthKeyToDayRange, dayKeyToMonthRange, setZoomKeysSafe],
+    [clampRange, granularity, dayChartData, forecastData.entries, chartData, monthKeyToDayRange, dayKeyToMonthRange, setZoomKeysSafe],
   );
 
   useEffect(() => {
@@ -1249,7 +1266,7 @@ export default function Analytics() {
         <div className={`mobile-card mb-5 transition-opacity ${revenueLoading ? 'opacity-60' : ''}`}>
           <div className="flex items-center justify-between mb-3">
             <h3 className="font-bold text-content-primary text-sm">{chartMode === 'composite' ? 'Дохід vs Витрати' : 'Прибуток по місяцях'}</h3>
-            <div className="flex items-center gap-1.5">
+            <div className="hidden md:flex items-center gap-1.5">
               {chartMode === 'profit' && canForecast && (
                 <button
                   onClick={() => setShowForecast((v) => !v)}
@@ -1372,13 +1389,145 @@ export default function Analytics() {
                 </div>
               </div>
             </div>
+            <button
+              onClick={() => setShowMobileFilters((v) => !v)}
+              className={`md:hidden flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs border transition-all duration-200 ${
+                showMobileFilters
+                  ? 'border-brand/40 bg-brand/10 text-brand'
+                  : 'border-border-strong bg-surface text-content-secondary'
+              }`}
+            >
+              <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"/></svg>
+              Фільтри
+              {[showForecast, showTrend, showStats, showYoY, showAnomalies, showTarget, showRevenue, aggregateByCity].filter(Boolean).length > 0 && (
+                <span className="w-4 h-4 rounded-full bg-brand text-white text-[9px] font-bold flex items-center justify-center leading-none">
+                  {[showForecast, showTrend, showStats, showYoY, showAnomalies, showTarget, showRevenue, aggregateByCity].filter(Boolean).length}
+                </span>
+              )}
+            </button>
           </div>
+          <AnimatePresence>
+            {showMobileFilters && (
+              <motion.div
+                initial={{ height: 0, opacity: 0 }}
+                animate={{ height: "auto", opacity: 1 }}
+                exit={{ height: 0, opacity: 0 }}
+                transition={{ duration: 0.25, ease: "easeInOut" }}
+                className="md:hidden overflow-hidden mb-3"
+              >
+                <div className="bg-surface-subtle rounded-2xl border border-border p-4 space-y-4">
+                  <div>
+                    <p className="text-[10px] uppercase tracking-wide text-content-muted font-medium mb-2">Режим</p>
+                    <div className="flex rounded-xl border border-border-strong overflow-hidden text-xs">
+                      <button
+                        onClick={() => setChartMode('profit')}
+                        className={`flex-1 px-3 py-2 transition-[background-color,color] duration-200 ${
+                          chartMode === 'profit' ? 'bg-surface shadow-sm text-content-primary font-medium' : 'text-content-secondary'
+                        }`}
+                      >
+                        Прибуток
+                      </button>
+                      <button
+                        onClick={() => setChartMode('composite')}
+                        className={`flex-1 px-3 py-2 transition-[background-color,color] duration-200 ${
+                          chartMode === 'composite' ? 'bg-surface shadow-sm text-content-primary font-medium' : 'text-content-secondary'
+                        }`}
+                      >
+                        Дохід vs Витрати
+                      </button>
+                    </div>
+                  </div>
+                  <div>
+                    <p className="text-[10px] uppercase tracking-wide text-content-muted font-medium mb-2">Показати</p>
+                    <div className="flex flex-wrap gap-2">
+                      {chartMode === 'profit' && canForecast && (
+                        <button onClick={() => setShowForecast((v) => !v)} className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs border transition-all duration-200 ${showForecast ? CHIP_COLORS.forecast.active : 'border-border-strong bg-surface text-content-secondary'}`}>
+                          <span className={`w-2 h-2 rounded-full ${showForecast ? CHIP_COLORS.forecast.dot : 'bg-content-muted'}`} />
+                          Прогноз
+                        </button>
+                      )}
+                      {chartMode === 'profit' && activeLines.length > 0 && (
+                        <>
+                          <button onClick={() => setShowTrend((v) => !v)} className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs border transition-all duration-200 ${showTrend ? CHIP_COLORS.trend.active : 'border-border-strong bg-surface text-content-secondary'}`}>
+                            <span className={`w-2 h-2 rounded-full ${showTrend ? CHIP_COLORS.trend.dot : 'bg-content-muted'}`} />
+                            Тренд
+                          </button>
+                          <button onClick={() => setShowStats((v) => !v)} className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs border transition-all duration-200 ${showStats ? CHIP_COLORS.stats.active : 'border-border-strong bg-surface text-content-secondary'}`}>
+                            <span className={`w-2 h-2 rounded-full ${showStats ? CHIP_COLORS.stats.dot : 'bg-content-muted'}`} />
+                            Статистика
+                          </button>
+                          <button onClick={() => setShowAnomalies((v) => !v)} className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs border transition-all duration-200 ${showAnomalies ? CHIP_COLORS.anomalies.active : 'border-border-strong bg-surface text-content-secondary'}`}>
+                            <span className={`w-2 h-2 rounded-full ${showAnomalies ? CHIP_COLORS.anomalies.dot : 'bg-content-muted'}`} />
+                            Аномалії
+                          </button>
+                          <button onClick={() => setShowRevenue((v) => !v)} className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs border transition-all duration-200 ${showRevenue ? CHIP_COLORS.revenue.active : 'border-border-strong bg-surface text-content-secondary'}`}>
+                            <span className={`w-2 h-2 rounded-full ${showRevenue ? CHIP_COLORS.revenue.dot : 'bg-content-muted'}`} />
+                            Дохід
+                          </button>
+                        </>
+                      )}
+                      {chartMode === 'profit' && activeLines.length > 0 && period !== "all" && (
+                        <button onClick={() => setShowYoY((v) => !v)} className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs border transition-all duration-200 ${showYoY ? CHIP_COLORS.yoy.active : 'border-border-strong bg-surface text-content-secondary'}`}>
+                          <span className={`w-2 h-2 rounded-full ${showYoY ? CHIP_COLORS.yoy.dot : 'bg-content-muted'}`} />
+                          Рік/рік
+                        </button>
+                      )}
+                      {chartMode === 'profit' && targets && targets.length > 0 && (
+                        <button onClick={() => setShowTarget((v) => !v)} className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs border transition-all duration-200 ${showTarget ? CHIP_COLORS.target.active : 'border-border-strong bg-surface text-content-secondary'}`}>
+                          <span className={`w-2 h-2 rounded-full ${showTarget ? CHIP_COLORS.target.dot : 'bg-content-muted'}`} />
+                          Ціль
+                        </button>
+                      )}
+                      <button onClick={() => setAggregateByCity((v) => !v)} className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs border border-border-strong bg-surface text-content-secondary transition-all duration-200">
+                        <span className="w-2 h-2 rounded-full" style={{ backgroundColor: aggregateByCity ? "hsl(155, 68%, 42%)" : "hsl(217, 72%, 53%)" }} />
+                        {aggregateByCity ? "По містах" : "По проєктах"}
+                      </button>
+                    </div>
+                  </div>
+                  {!aggregateByCity && projectNames.length > 0 && (
+                    <div>
+                      <p className="text-[10px] uppercase tracking-wide text-content-muted font-medium mb-2">Проєкти</p>
+                      <div className="flex flex-wrap gap-2">
+                        {projectNames.map((name, pi) => {
+                          const active = activeProjects.has(name);
+                          const color = CITY_COLORS[pi % CITY_COLORS.length];
+                          return (
+                            <button key={name} onClick={() => toggleProject(name)} className={`flex items-center gap-2 px-3 py-1.5 rounded-full text-xs border transition-all duration-200 ${active ? 'border-border-strong bg-surface shadow-sm' : 'border-transparent bg-transparent text-content-muted'}`}>
+                              <span className="w-2.5 h-2.5 rounded-full shrink-0 border" style={{ backgroundColor: active ? color : 'transparent', borderColor: color }} />
+                              <span className="truncate max-w-[120px]">{name}</span>
+                            </button>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  )}
+                  {cityNames.length > 0 && (
+                    <div>
+                      <p className="text-[10px] uppercase tracking-wide text-content-muted font-medium mb-2">Міста</p>
+                      <div className="flex flex-wrap gap-2">
+                        {cityNames.map((name, ci) => {
+                          const active = activeCities.has(name);
+                          const cityColor = aggregateByCity ? CITY_COLORS[ci % CITY_COLORS.length] : '#64748b';
+                          return (
+                            <button key={name} onClick={() => toggleCity(name)} className={`flex items-center gap-2 px-3 py-1.5 rounded-full text-xs border transition-all duration-200 ${active ? 'border-border-strong bg-surface shadow-sm' : 'border-transparent bg-transparent text-content-muted'}`}>
+                              <span className="w-2.5 h-2.5 rounded-full shrink-0 border" style={{ backgroundColor: active ? cityColor : 'transparent', borderColor: cityColor }} />
+                              <span className="truncate max-w-[120px]">{name}</span>
+                            </button>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </motion.div>
+            )}
+          </AnimatePresence>
           {zoomedChartData.length === 0 ? (
             <ChartEmptyState text="Немає даних за цей період" />
           ) : (
             <>
-              <div className="flex md:flex-row flex-col gap-3">
-                <div className="flex md:flex-col flex-row flex-wrap gap-1 shrink-0 pt-1 md:max-w-none max-w-[260px]">
+              <div className="flex md:flex-row gap-3">
+                <div className="hidden md:flex md:flex-col flex-wrap gap-1 shrink-0 pt-1">
                   {!aggregateByCity && (
                     <>
                       <span className="text-[10px] uppercase tracking-wide text-content-muted font-medium px-2 hidden md:block">Проєкти</span>
