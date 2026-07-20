@@ -757,7 +757,7 @@ export default function Analytics() {
     (start: number, end: number, sourceLen: number): [number, number] => {
       const max = sourceLen - 1;
       if (max < 2) return [0, max];
-      const MIN_SPAN = 2;
+      const MIN_SPAN = granularity === 'day' ? 29 : 0;
       let s = Math.max(0, Math.min(max, Math.round(start)));
       let e = Math.max(0, Math.min(max, Math.round(end)));
       if (e - s < MIN_SPAN) {
@@ -767,7 +767,7 @@ export default function Analytics() {
       }
       return [s, e];
     },
-    [],
+    [granularity],
   );
 
   // Геометрія plot-area AreaChart: YAxis width=50 + margin.left=0 зліва, margin.right=28 справа.
@@ -882,12 +882,19 @@ export default function Analytics() {
           setZoomKeysSafe([source[ns].key, source[ne].key]);
         }
 
+        const touchSpan = ne - ns;
+        if (granularity === 'month' && period !== 'all' && touchSpan <= 6 && touchSpan >= 0) {
+          setGranularity('day');
+        } else if (granularity === 'day' && touchSpan > 8) {
+          setGranularity('month');
+        }
+
         zoomTimerRef.current = setTimeout(() => {
           setZoomAnimating(false);
         }, 200);
       }
     },
-    [clampRange, granularity, dayChartData, forecastData.entries, keyToIndex, setZoomKeysSafe, clientXToAnchor],
+    [clampRange, granularity, period, dayChartData, forecastData.entries, keyToIndex, setZoomKeysSafe, clientXToAnchor],
   );
 
   const handleTouchEnd = useCallback(() => {
@@ -915,7 +922,35 @@ export default function Analytics() {
     const startIdx = Math.max(0, s);
     const endIdx = Math.min(source.length - 1, e);
     const visibleSource = source.slice(startIdx, endIdx + 1);
-    if (visibleSource.length <= TARGET_POINT_COUNT) return visibleSource;
+
+    if (visibleSource.length < TARGET_POINT_COUNT && visibleSource.length > 1) {
+      const result: ChartEntry[] = [];
+      for (let i = 0; i < TARGET_POINT_COUNT; i++) {
+        const pos = (i / (TARGET_POINT_COUNT - 1)) * (visibleSource.length - 1);
+        const lo = Math.floor(pos);
+        const hi = Math.min(lo + 1, visibleSource.length - 1);
+        const t = pos - lo;
+        const srcLo = visibleSource[lo];
+        const srcHi = visibleSource[hi];
+        const entry: ChartEntry = {
+          key: t < 0.001 ? srcLo.key : (t > 0.999 ? srcHi.key : `${srcLo.key}__${srcHi.key}`),
+          year: srcLo.year,
+          month: srcLo.month,
+          label: srcLo.label,
+        };
+        if (srcLo.day !== undefined) entry.day = srcLo.day;
+        for (const k of Object.keys(srcLo)) {
+          if (['key', 'label', 'year', 'month', 'day'].includes(k)) continue;
+          const a = Number(srcLo[k]) || 0;
+          const b = Number(srcHi[k]) || 0;
+          entry[k] = a + (b - a) * t;
+        }
+        result.push(entry);
+      }
+      return result;
+    }
+
+    if (visibleSource.length <= 1) return visibleSource;
 
     const bucketSize = visibleSource.length / TARGET_POINT_COUNT;
     const resampled: ChartEntry[] = [];
