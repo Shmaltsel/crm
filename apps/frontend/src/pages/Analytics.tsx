@@ -1986,6 +1986,69 @@ export default function Analytics() {
                       </AreaChart>
                     </ResponsiveContainer>
                   </div>
+                  {zoomedChartData.length > 2 && (
+                    <div className="px-1 pt-2">
+                      <div className="flex items-center justify-between mb-1.5">
+                        <span className="text-[11px] font-medium text-content-secondary">Діапазон для KPI</span>
+                        {subRange !== null && (
+                          <button
+                            onClick={() => setSubRange(null)}
+                            className="text-[10px] text-content-muted hover:text-content-secondary transition px-1"
+                          >
+                            Скинути
+                          </button>
+                        )}
+                      </div>
+                      <div className="relative h-8 select-none">
+                        <div className="absolute inset-0 flex items-center">
+                          <div className="w-full h-[3px] rounded-full bg-border-strong" />
+                          <div
+                            className="absolute h-[3px] rounded-full bg-brand"
+                            style={{
+                              left: `${((subRange ? subRange[0] : 0) / (zoomedChartData.length - 1)) * 100}%`,
+                              width: `${(((subRange ? subRange[1] : zoomedChartData.length - 1) - (subRange ? subRange[0] : 0)) / (zoomedChartData.length - 1)) * 100}%`,
+                            }}
+                          />
+                        </div>
+                        <input
+                          type="range"
+                          min={0}
+                          max={zoomedChartData.length - 1}
+                          step={1}
+                          value={subRange ? subRange[0] : 0}
+                          onChange={(e) => {
+                            const v = Number(e.target.value);
+                            const end = subRange ? subRange[1] : zoomedChartData.length - 1;
+                            setSubRange(v <= end ? [v, end] : [v, v]);
+                          }}
+                          aria-label="Початок діапазону"
+                          className="subrange-input"
+                        />
+                        <input
+                          type="range"
+                          min={0}
+                          max={zoomedChartData.length - 1}
+                          step={1}
+                          value={subRange ? subRange[1] : zoomedChartData.length - 1}
+                          onChange={(e) => {
+                            const v = Number(e.target.value);
+                            const start = subRange ? subRange[0] : 0;
+                            setSubRange(v >= start ? [start, v] : [v, v]);
+                          }}
+                          aria-label="Кінець діапазону"
+                          className="subrange-input"
+                        />
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-[9px] text-content-muted truncate max-w-[45%]">
+                          {zoomedChartData[subRange ? subRange[0] : 0]?.label}
+                        </span>
+                        <span className="text-[9px] text-content-muted truncate max-w-[45%] text-right">
+                          {zoomedChartData[subRange ? subRange[1] : zoomedChartData.length - 1]?.label}
+                        </span>
+                      </div>
+                    </div>
+                  )}
                   {(isZoomed || selectedEntryKey) && (
                     <button
                       onClick={() => {
@@ -2004,70 +2067,6 @@ export default function Analytics() {
               </div>
             </>
           )}
-        </div>
-      )}
-
-      {zoomedChartData.length > 2 && (
-        <div className="mobile-card mb-5">
-          <div className="flex items-center justify-between mb-2">
-            <span className="text-[11px] font-medium text-content-secondary">Діапазон для KPI</span>
-            {subRange !== null && (
-              <button
-                onClick={() => setSubRange(null)}
-                className="text-[10px] text-content-muted hover:text-content-secondary transition px-1"
-              >
-                ← Повний діапазон
-              </button>
-            )}
-          </div>
-          <div className="relative h-8 select-none">
-            <div className="absolute inset-0 flex items-center">
-              <div className="w-full h-[3px] rounded-full bg-border-strong" />
-              <div
-                className="absolute h-[3px] rounded-full bg-brand"
-                style={{
-                  left: `${((subRange ? subRange[0] : 0) / (zoomedChartData.length - 1)) * 100}%`,
-                  width: `${(((subRange ? subRange[1] : zoomedChartData.length - 1) - (subRange ? subRange[0] : 0)) / (zoomedChartData.length - 1)) * 100}%`,
-                }}
-              />
-            </div>
-            <input
-              type="range"
-              min={0}
-              max={zoomedChartData.length - 1}
-              step={1}
-              value={subRange ? subRange[0] : 0}
-              onChange={(e) => {
-                const v = Number(e.target.value);
-                const end = subRange ? subRange[1] : zoomedChartData.length - 1;
-                setSubRange(v <= end ? [v, end] : [v, v]);
-              }}
-              aria-label="Початок діапазону"
-              className="subrange-input"
-            />
-            <input
-              type="range"
-              min={0}
-              max={zoomedChartData.length - 1}
-              step={1}
-              value={subRange ? subRange[1] : zoomedChartData.length - 1}
-              onChange={(e) => {
-                const v = Number(e.target.value);
-                const start = subRange ? subRange[0] : 0;
-                setSubRange(v >= start ? [start, v] : [v, v]);
-              }}
-              aria-label="Кінець діапазону"
-              className="subrange-input"
-            />
-          </div>
-          <div className="flex justify-between mt-1">
-            <span className="text-[9px] text-content-muted truncate max-w-[45%]">
-              {zoomedChartData[subRange ? subRange[0] : 0]?.label}
-            </span>
-            <span className="text-[9px] text-content-muted truncate max-w-[45%] text-right">
-              {zoomedChartData[subRange ? subRange[1] : zoomedChartData.length - 1]?.label}
-            </span>
-          </div>
         </div>
       )}
 
