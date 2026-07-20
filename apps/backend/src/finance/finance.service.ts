@@ -118,24 +118,32 @@ export class FinanceService {
     cityId,
     project,
     minimal = false,
+    granularity,
+    bucketCount,
+    dateFrom,
+    dateTo,
   }: {
     period?: string;
     cityId?: string;
     project?: string;
     minimal?: boolean;
+    granularity?: string;
+    bucketCount?: number;
+    dateFrom?: string;
+    dateTo?: string;
   }): Promise<FinanceDashboardResult> {
     const version = await this.cacheVersion.getVersion('finance');
-    const cacheKey = `finance:v${version}:${cityId ?? ''}:${period ?? ''}:${project ?? ''}:${minimal}`;
+    const cacheKey = `finance:v${version}:${cityId ?? ''}:${period ?? ''}:${project ?? ''}:${minimal}:${granularity ?? ''}:${bucketCount ?? ''}:${dateFrom ?? ''}:${dateTo ?? ''}`;
     const cached =
       await this.cacheManager.get<FinanceDashboardResult>(cacheKey);
     if (cached) return cached;
 
-    const dateFrom = this.resolveDateFrom(period);
-    const filters = this.buildSqlFilters({ dateFrom, cityId, project });
+    const dateFromResolved = this.resolveDateFrom(period) ?? (dateFrom ? new Date(dateFrom) : undefined);
+    const filters = this.buildSqlFilters({ dateFrom: dateFromResolved, cityId, project });
 
     const baseEventWhere: Prisma.EventWhereInput = {
       status: 'RE_SALE',
-      ...(dateFrom ? { date: { gte: dateFrom } } : {}),
+      ...(dateFromResolved ? { date: { gte: dateFromResolved } } : {}),
       ...(cityId ? { cityId } : {}),
       ...(project ? { project } : {}),
     };
@@ -157,7 +165,7 @@ export class FinanceService {
       }),
       this.prisma.manualExpense.findMany({
         where: {
-          ...(dateFrom ? { date: { gte: dateFrom } } : {}),
+          ...(dateFromResolved ? { date: { gte: dateFromResolved } } : {}),
           ...(cityId ? { cityId } : {}),
         },
         select: { category: true, name: true, amount: true, date: true },
@@ -284,7 +292,7 @@ export class FinanceService {
       this.prisma.city.findMany({ select: { id: true, name: true } }),
     ]);
 
-    const monthly = monthlyRaw.map((row) => ({
+    let monthly = monthlyRaw.map((row) => ({
       month: new Date(row.year, row.month - 1, 1).toLocaleString('uk-UA', {
         month: 'short',
         year: '2-digit',
@@ -292,6 +300,20 @@ export class FinanceService {
       revenue: row.revenue,
       profit: row.profit,
     }));
+
+    if (bucketCount && bucketCount > 0 && monthly.length > bucketCount) {
+      const bucketSize = monthly.length / bucketCount;
+      monthly = Array.from({ length: bucketCount }, (_, i) => {
+        const from = Math.floor(i * bucketSize);
+        const to = Math.floor((i + 1) * bucketSize);
+        const slice = monthly.slice(from, to === from ? from + 1 : to);
+        return {
+          month: slice[0]?.month ?? '',
+          revenue: slice.reduce((s, m) => s + m.revenue, 0),
+          profit: slice.reduce((s, m) => s + m.profit, 0),
+        };
+      });
+    }
     const expectedRevenue = Number(plannedAgg._sum.price ?? 0);
     const filterOptions = {
       projects: projectsRaw.map((p) => p.project).filter(Boolean),

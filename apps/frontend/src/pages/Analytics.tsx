@@ -904,11 +904,43 @@ export default function Analytics() {
     setSelectedEntryKey((prev) => prev === entry.key ? null : entry.key);
   }, []);
 
+  const TARGET_POINT_COUNT = useMemo(() => (chartData.length > 0 ? chartData.length : 12), [chartData]);
+
   const zoomedChartData = useMemo(() => {
     const source = granularity === 'day' ? dayChartData : forecastData.entries;
+    if (source.length === 0) return [];
     const [s, e] = visibleRange;
-    return source.slice(s, e + 1);
-  }, [dayChartData, forecastData.entries, visibleRange, granularity]);
+    if (s <= 0 && e >= source.length - 1) return source;
+
+    const startIdx = Math.max(0, s);
+    const endIdx = Math.min(source.length - 1, e);
+    const visibleSource = source.slice(startIdx, endIdx + 1);
+    if (visibleSource.length <= TARGET_POINT_COUNT) return visibleSource;
+
+    const bucketSize = visibleSource.length / TARGET_POINT_COUNT;
+    const resampled: ChartEntry[] = [];
+    for (let i = 0; i < TARGET_POINT_COUNT; i++) {
+      const from = Math.floor(i * bucketSize);
+      const to = Math.floor((i + 1) * bucketSize);
+      const slice = visibleSource.slice(from, to === from ? from + 1 : to);
+      if (slice.length === 0) continue;
+      const first = slice[0];
+      const last = slice[slice.length - 1];
+      const bucket: ChartEntry = {
+        ...first,
+        key: `${first.key}__${last.key}`,
+        label: first.label,
+      };
+      for (const line of activeLines) {
+        const pKey = `profit_${line.key}`;
+        const rKey = `revenue_${line.key}`;
+        bucket[pKey] = slice.reduce((sum, ent) => sum + (Number(ent[pKey]) || 0), 0);
+        bucket[rKey] = slice.reduce((sum, ent) => sum + (Number(ent[rKey]) || 0), 0);
+      }
+      resampled.push(bucket);
+    }
+    return resampled;
+  }, [dayChartData, forecastData.entries, visibleRange, granularity, activeLines, chartData.length]);
 
   const [subRange, setSubRange] = useState<[number, number] | null>(null);
   const [prevZoomedLength, setPrevZoomedLength] = useState(zoomedChartData.length);
@@ -1797,7 +1829,8 @@ export default function Analytics() {
                                 isAnomaly={showAnomalies && anomalies?.has(props.index as number) === true}
                                 lineIndex={props.index === stats.maxIdx ? stats.maxLineIndex : stats.minLineIndex}
                                 collisionGroup={props.index === stats.maxIdx ? stats.maxCollisionGroup : stats.minCollisionGroup}
-                              isMobile={isMobile} />
+                                isMobile={isMobile}
+                              />
                               );
                             } : showAnomalies ? (props: Record<string, unknown>) => {
                               const anomalies = anomalyMap.get(line.key);
@@ -1810,7 +1843,8 @@ export default function Analytics() {
                                   payload={props.payload as ChartEntry}
                                   lineKey={line.key}
                                   isAnomaly
-                                isMobile={isMobile} />
+                                  isMobile={isMobile}
+                                />
                               ) : (zoomSpan <= 12 ? <circle cx={props.cx as number} cy={props.cy as number} r={2.5} fill={line.color} strokeWidth={0} /> : null);
                             } : zoomSpan <= 12 ? { r: 2.5, fill: line.color, strokeWidth: 0 } : false}
                             activeDot={<CustomActiveDot color={line.color} />}

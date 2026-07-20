@@ -1,4 +1,5 @@
-import { IsOptional, IsString } from 'class-validator';
+import { IsOptional, IsString, IsInt, Min } from 'class-validator';
+import { Type } from 'class-transformer';
 
 export class FinanceDashboardQueryDto {
   @IsOptional()
@@ -16,4 +17,22 @@ export class FinanceDashboardQueryDto {
   @IsOptional()
   @IsString()
   minimal?: string;
+
+  @IsOptional()
+  @IsString()
+  granularity?: 'month' | 'day' | 'auto';
+
+  @IsOptional()
+  @Type(() => Number)
+  @IsInt()
+  @Min(1)
+  bucketCount?: number;
+
+  @IsOptional()
+  @IsString()
+  dateFrom?: string;
+
+  @IsOptional()
+  @IsString()
+  dateTo?: string;
 }
