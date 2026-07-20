@@ -779,13 +779,12 @@ export default function Analytics() {
 
   const handleGranularityToggle = useCallback(() => {
     const newGranularity = granularity === 'month' ? 'day' : 'month';
-    if (newGranularity === 'day' && period === 'all') return;
     setGranularity(newGranularity);
     const source = newGranularity === 'day' ? dayChartData : forecastData.entries;
     if (source.length > 0) {
       setZoomKeysSafe([source[0].key, source[source.length - 1].key]);
     }
-  }, [granularity, period, dayChartData, forecastData.entries, setZoomKeysSafe]);
+  }, [granularity, dayChartData, forecastData.entries, setZoomKeysSafe]);
 
   const clampRange = useCallback(
     (start: number, end: number, sourceLen: number): [number, number] => {
@@ -851,7 +850,7 @@ export default function Analytics() {
       }
 
       const actualSpan = ne - ns;
-      if (granularity === 'month' && period !== 'all' && actualSpan <= 2 && actualSpan >= 0) {
+      if (granularity === 'month' && actualSpan <= 2 && actualSpan >= 0) {
         const startMonth = source[ns];
         const endMonth = source[ne];
         const startISO = `${startMonth.year}-${String(startMonth.month).padStart(2, '0')}-01`;
@@ -923,7 +922,7 @@ export default function Analytics() {
         }
 
         const touchSpan = ne - ns;
-        if (granularity === 'month' && period !== 'all' && touchSpan <= 2 && touchSpan >= 0) {
+        if (granularity === 'month' && touchSpan <= 2 && touchSpan >= 0) {
           const startMonth = source[ns];
           const endMonth = source[ne];
           const startISO = `${startMonth.year}-${String(startMonth.month).padStart(2, '0')}-01`;
