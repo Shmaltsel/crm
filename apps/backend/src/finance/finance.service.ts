@@ -226,7 +226,8 @@ export class FinanceService {
       return { year: y, month: m, category: cat, value };
     });
 
-    const expenseByMonthMap = new Map<string, Record<string, number | string>>();
+    type ExpenseMonthRow = { month: string; [k: string]: number | string };
+    const expenseByMonthMap = new Map<string, ExpenseMonthRow>();
     for (const row of monthCatRows) {
       const monthLabel = new Date(row.year, row.month - 1, 1).toLocaleString('uk-UA', {
         month: 'short',
@@ -238,10 +239,8 @@ export class FinanceService {
       const entry = expenseByMonthMap.get(monthLabel)!;
       entry[row.category] = (Number(entry[row.category] ?? 0)) + row.value;
     }
-    const expenseByMonth = Array.from(expenseByMonthMap.values()).sort((a, b) => {
-      const aMonth = String(a.month);
-      const bMonth = String(b.month);
-      return aMonth.localeCompare(bMonth);
+    const expenseByMonth: ExpenseMonthRow[] = Array.from(expenseByMonthMap.values()).sort((a, b) => {
+      return String(a.month).localeCompare(String(b.month));
     });
 
     const catTotals: Record<string, number> = {};
