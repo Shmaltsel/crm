@@ -679,6 +679,7 @@ export default function Analytics() {
     const s = keyToIndex(zoomKeys[0], source);
     const e = keyToIndex(zoomKeys[1], source);
     if (s === -1 && e === -1) {
+      if (pendingDayRange) return [0, Math.max(0, source.length - 1)];
       const fallbackEnd = source.length - 1;
       const nextStart = source[0].key;
       const nextEnd = source[fallbackEnd].key;
@@ -691,7 +692,7 @@ export default function Analytics() {
     if (s === -1) return [0, e];
     if (e === -1) return [s, source.length - 1];
     return [Math.min(s, e), Math.max(s, e)];
-  }, [zoomKeys, granularity, dayChartData, forecastData.entries, keyToIndex]);
+  }, [zoomKeys, granularity, dayChartData, forecastData.entries, keyToIndex, pendingDayRange]);
 
   const visibleRangeRef = useRef(visibleRange);
   useEffect(() => {
@@ -703,6 +704,23 @@ export default function Analytics() {
   const pinchRef = useRef<{ dist: number; keys: [string, string] } | null>(null);
   const zoomTimerRef = useRef<ReturnType<typeof setTimeout>>();
   const isMobile = typeof window !== 'undefined' && window.innerWidth < 768;
+  const [pendingDayRange, setPendingDayRange] = useState<[string, string] | null>(null);
+
+  useEffect(() => {
+    if (granularity !== 'day' || !pendingDayRange) return;
+    if (dayChartData.length === 0) return;
+    const [startISO, endISO] = pendingDayRange;
+    let s = dayChartData.findIndex((d) => d.key >= startISO);
+    if (s === -1) s = 0;
+    let e = -1;
+    for (let i = dayChartData.length - 1; i >= 0; i--) {
+      if (dayChartData[i].key <= endISO) { e = i; break; }
+    }
+    if (e === -1) e = dayChartData.length - 1;
+    if (e < s) { s = 0; e = dayChartData.length - 1; }
+    setZoomKeysSafe([dayChartData[s].key, dayChartData[e].key]);
+    setPendingDayRange(null);
+  }, [granularity, pendingDayRange, dayChartData, setZoomKeysSafe]);
 
   const CHIP_COLORS: Record<string, { active: string; dot: string }> = {
     forecast: { active: 'border-[hsl(38,92%,50%)]/40 bg-[hsl(38,92%,50%)]/10 text-[hsl(38,92%,30%)]', dot: 'bg-warning' },
@@ -818,26 +836,12 @@ export default function Analytics() {
 
       const actualSpan = ne - ns;
       if (granularity === 'month' && period !== 'all' && actualSpan <= 2 && actualSpan >= 0) {
-        // Зберегти звужений діапазон при переході month→day
         const startMonth = source[ns];
         const endMonth = source[ne];
-        const startPrefix = startMonth.key;
-        const endPrefix = endMonth.key;
-        const daySource = dayChartData;
-        if (daySource.length > 0) {
-          let dayStart = daySource.findIndex((d) => d.key >= startPrefix);
-          if (dayStart === -1) dayStart = 0;
-          let dayEnd = -1;
-          for (let i = daySource.length - 1; i >= 0; i--) {
-            if (daySource[i].key <= endPrefix + '-31') { dayEnd = i; break; }
-          }
-          if (dayEnd === -1) dayEnd = daySource.length - 1;
-          if (dayEnd >= dayStart) {
-            setZoomKeysSafe([daySource[dayStart].key, daySource[dayEnd].key]);
-          } else {
-            setZoomKeysSafe([daySource[0].key, daySource[daySource.length - 1].key]);
-          }
-        }
+        const startISO = `${startMonth.year}-${String(startMonth.month).padStart(2, '0')}-01`;
+        const lastDay = new Date(endMonth.year, endMonth.month, 0).getDate();
+        const endISO = `${endMonth.year}-${String(endMonth.month).padStart(2, '0')}-${String(lastDay).padStart(2, '0')}`;
+        setPendingDayRange([startISO, endISO]);
         setGranularity('day');
       } else if (granularity === 'day' && actualSpan > 8) {
         setGranularity('month');
@@ -904,26 +908,12 @@ export default function Analytics() {
 
         const touchSpan = ne - ns;
         if (granularity === 'month' && period !== 'all' && touchSpan <= 2 && touchSpan >= 0) {
-          // Зберегти звужений діапазон при переході month→day
           const startMonth = source[ns];
           const endMonth = source[ne];
-          const startPrefix = startMonth.key;
-          const endPrefix = endMonth.key;
-          const daySource = dayChartData;
-          if (daySource.length > 0) {
-            let dayStart = daySource.findIndex((d) => d.key >= startPrefix);
-            if (dayStart === -1) dayStart = 0;
-            let dayEnd = -1;
-            for (let i = daySource.length - 1; i >= 0; i--) {
-              if (daySource[i].key <= endPrefix + '-31') { dayEnd = i; break; }
-            }
-            if (dayEnd === -1) dayEnd = daySource.length - 1;
-            if (dayEnd >= dayStart) {
-              setZoomKeysSafe([daySource[dayStart].key, daySource[dayEnd].key]);
-            } else {
-              setZoomKeysSafe([daySource[0].key, daySource[daySource.length - 1].key]);
-            }
-          }
+          const startISO = `${startMonth.year}-${String(startMonth.month).padStart(2, '0')}-01`;
+          const lastDay = new Date(endMonth.year, endMonth.month, 0).getDate();
+          const endISO = `${endMonth.year}-${String(endMonth.month).padStart(2, '0')}-${String(lastDay).padStart(2, '0')}`;
+          setPendingDayRange([startISO, endISO]);
           setGranularity('day');
         } else if (granularity === 'day' && touchSpan > 8) {
           setGranularity('month');
