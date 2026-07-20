@@ -4,8 +4,9 @@ import MySalary from "../features/salary/pages/MySalary";
 import TeamSalaries from "../features/salary/pages/TeamSalaries";
 
 const Expenses = lazy(() => import("../features/salary/pages/Expenses"));
+const Company = lazy(() => import("../features/salary/pages/Company"));
 
-type Tab = "my-salary" | "team" | "expenses";
+type Tab = "my-salary" | "team" | "expenses" | "company";
 
 function PeekSkeleton() {
   return (
@@ -24,14 +25,20 @@ function PeekSkeleton() {
 export default function Finance({ isPeek }: { isPeek?: boolean }) {
   const { user } = useAuth();
   const isManagerOrAdmin = user?.role === "MANAGER" || user?.role === "SUPERADMIN" || user?.role === "OWNER";
+  const isSuperadmin = user?.role === "SUPERADMIN";
 
-  const tabs: { key: Tab; label: string; managerOnly?: boolean }[] = [
+  const tabs: { key: Tab; label: string; managerOnly?: boolean; superOnly?: boolean }[] = [
     { key: "my-salary", label: "Мої нарахування" },
     { key: "team", label: "Нарахування команди", managerOnly: true },
     { key: "expenses", label: "Витрати", managerOnly: true },
+    { key: "company", label: "Баланс компанії", superOnly: true },
   ];
 
-  const availableTabs = tabs.filter((t) => !t.managerOnly || isManagerOrAdmin);
+  const availableTabs = tabs.filter((t) => {
+    if (t.superOnly) return isSuperadmin;
+    if (t.managerOnly) return isManagerOrAdmin;
+    return true;
+  });
   const [activeTab, setActiveTab] = useState<Tab>(availableTabs[0]?.key ?? "my-salary");
 
   if (isPeek) {
@@ -71,6 +78,11 @@ export default function Finance({ isPeek }: { isPeek?: boolean }) {
       {activeTab === "expenses" && isManagerOrAdmin && (
         <Suspense fallback={<div className="p-8 text-center text-sm text-content-muted">Завантаження...</div>}>
           <Expenses />
+        </Suspense>
+      )}
+      {activeTab === "company" && isSuperadmin && (
+        <Suspense fallback={<div className="p-8 text-center text-sm text-content-muted">Завантаження...</div>}>
+          <Company />
         </Suspense>
       )}
     </div>

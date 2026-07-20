@@ -73,6 +73,11 @@ class SalaryFundDto {
   @IsOptional()
   @IsString()
   cityId?: string;
+
+  @ApiPropertyOptional({ description: 'YYYY-MM-DD — фільтр по конкретній даті' })
+  @IsOptional()
+  @IsString()
+  date?: string;
 }
 
 class RevenueByDayDto {
@@ -231,6 +236,7 @@ export class AnalyticsController {
       query.month,
       query.year,
       effectiveCityId,
+      query.date,
     );
   }
 
