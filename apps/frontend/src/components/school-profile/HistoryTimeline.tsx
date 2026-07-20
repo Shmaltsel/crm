@@ -32,7 +32,9 @@ export default memo(function HistoryTimeline({
     const historyItems: MergedItem[] = (currentEvent?.history ?? []).map(
       (h) => ({ ...h, isPending: false }),
     );
-    const pendingItems: MergedItem[] = isFieldStaff ? [] : schoolComments.map((sc) => ({
+    const pendingItems: MergedItem[] = isFieldStaff ? [] : schoolComments
+      .filter((sc) => sc.type !== "NOTE")
+      .map((sc) => ({
       id: sc.id,
       action: "Коментар до події",
       comment: sc.text,
