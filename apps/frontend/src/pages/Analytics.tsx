@@ -722,6 +722,14 @@ export default function Analytics() {
     setPendingDayRange(null);
   }, [granularity, pendingDayRange, dayChartData, setZoomKeysSafe]);
 
+  useEffect(() => {
+    if (granularity === 'day') {
+      setShowForecast(false);
+      setShowYoY(false);
+      setShowTrend(false);
+    }
+  }, [granularity]);
+
   const CHIP_COLORS: Record<string, { active: string; dot: string }> = {
     forecast: { active: 'border-[hsl(38,92%,50%)]/40 bg-[hsl(38,92%,50%)]/10 text-[hsl(38,92%,30%)]', dot: 'bg-warning' },
     trend: { active: 'border-brand/40 bg-brand/10 text-[hsl(217,72%,30%)]', dot: 'bg-brand' },
@@ -1438,7 +1446,7 @@ export default function Analytics() {
                   Прогноз
                 </button>
               )}
-              {chartMode === 'profit' && activeLines.length > 0 && (
+              {chartMode === 'profit' && activeLines.length > 0 && granularity !== 'day' && (
                 <button
                   onClick={() => setShowTrend((v) => !v)}
                   className={`flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] border transition-[background-color,box-shadow,border-color] duration-200 ease-out hover:shadow-sm ${
@@ -1464,7 +1472,7 @@ export default function Analytics() {
                   Статистика
                 </button>
               )}
-              {chartMode === 'profit' && activeLines.length > 0 && period !== "all" && (
+              {chartMode === 'profit' && activeLines.length > 0 && period !== "all" && granularity !== 'day' && (
                 <button
                   onClick={() => setShowYoY((v) => !v)}
                   className={`flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] border transition-[background-color,box-shadow,border-color] duration-200 ease-out hover:shadow-sm ${
@@ -1649,12 +1657,14 @@ export default function Analytics() {
                           Прогноз
                         </button>
                       )}
+                      {chartMode === 'profit' && activeLines.length > 0 && granularity !== 'day' && (
+                        <button onClick={() => setShowTrend((v) => !v)} className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs border transition-all duration-200 ${showTrend ? CHIP_COLORS.trend.active : 'border-border-strong bg-surface text-content-secondary'}`}>
+                          <span className={`w-2 h-2 rounded-full ${showTrend ? CHIP_COLORS.trend.dot : 'bg-content-muted'}`} />
+                          Тренд
+                        </button>
+                      )}
                       {chartMode === 'profit' && activeLines.length > 0 && (
                         <>
-                          <button onClick={() => setShowTrend((v) => !v)} className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs border transition-all duration-200 ${showTrend ? CHIP_COLORS.trend.active : 'border-border-strong bg-surface text-content-secondary'}`}>
-                            <span className={`w-2 h-2 rounded-full ${showTrend ? CHIP_COLORS.trend.dot : 'bg-content-muted'}`} />
-                            Тренд
-                          </button>
                           <button onClick={() => setShowStats((v) => !v)} className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs border transition-all duration-200 ${showStats ? CHIP_COLORS.stats.active : 'border-border-strong bg-surface text-content-secondary'}`}>
                             <span className={`w-2 h-2 rounded-full ${showStats ? CHIP_COLORS.stats.dot : 'bg-content-muted'}`} />
                             Статистика
@@ -1669,7 +1679,7 @@ export default function Analytics() {
                           </button>
                         </>
                       )}
-                      {chartMode === 'profit' && activeLines.length > 0 && period !== "all" && (
+                      {chartMode === 'profit' && activeLines.length > 0 && period !== "all" && granularity !== 'day' && (
                         <button onClick={() => setShowYoY((v) => !v)} className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs border transition-all duration-200 ${showYoY ? CHIP_COLORS.yoy.active : 'border-border-strong bg-surface text-content-secondary'}`}>
                           <span className={`w-2 h-2 rounded-full ${showYoY ? CHIP_COLORS.yoy.dot : 'bg-content-muted'}`} />
                           Рік/рік
