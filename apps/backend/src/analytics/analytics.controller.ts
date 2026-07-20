@@ -236,7 +236,6 @@ export class AnalyticsController {
       query.month,
       query.year,
       effectiveCityId,
-      query.date,
     );
   }
 
