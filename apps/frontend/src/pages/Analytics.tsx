@@ -904,8 +904,6 @@ export default function Analytics() {
     setSelectedEntryKey((prev) => prev === entry.key ? null : entry.key);
   }, []);
 
-  const TARGET_POINT_COUNT = useMemo(() => (chartData.length > 0 ? chartData.length : 12), [chartData]);
-
   const zoomedChartData = useMemo(() => {
     const source = granularity === 'day' ? dayChartData : forecastData.entries;
     if (source.length === 0) return [];
@@ -915,31 +913,10 @@ export default function Analytics() {
     const startIdx = Math.max(0, s);
     const endIdx = Math.min(source.length - 1, e);
     const visibleSource = source.slice(startIdx, endIdx + 1);
-    if (visibleSource.length <= TARGET_POINT_COUNT) return visibleSource;
 
-    const bucketSize = visibleSource.length / TARGET_POINT_COUNT;
-    const resampled: ChartEntry[] = [];
-    for (let i = 0; i < TARGET_POINT_COUNT; i++) {
-      const from = Math.floor(i * bucketSize);
-      const to = Math.floor((i + 1) * bucketSize);
-      const slice = visibleSource.slice(from, to === from ? from + 1 : to);
-      if (slice.length === 0) continue;
-      const first = slice[0];
-      const last = slice[slice.length - 1];
-      const bucket: ChartEntry = {
-        ...first,
-        key: `${first.key}__${last.key}`,
-        label: first.label,
-      };
-      for (const line of activeLines) {
-        const pKey = `profit_${line.key}`;
-        const rKey = `revenue_${line.key}`;
-        bucket[pKey] = slice.reduce((sum, ent) => sum + (Number(ent[pKey]) || 0), 0);
-        bucket[rKey] = slice.reduce((sum, ent) => sum + (Number(ent[rKey]) || 0), 0);
-      }
-      resampled.push(bucket);
-    }
-    return resampled;
+    if (visibleSource.length <= 1) return visibleSource;
+
+    return visibleSource;
   }, [dayChartData, forecastData.entries, visibleRange, granularity, activeLines, chartData.length]);
 
   const [subRange, setSubRange] = useState<[number, number] | null>(null);
