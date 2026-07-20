@@ -770,6 +770,24 @@ export default function Analytics() {
     [],
   );
 
+  // Геометрія plot-area AreaChart: YAxis width=50 + margin.left=0 зліва, margin.right=28 справа.
+  const PLOT_LEFT = 50;
+  const PLOT_RIGHT = 28;
+
+  // Абсолютний (дробовий) індекс у source під заданою clientX з урахуванням поточного вікна [curS, curE].
+  const clientXToAnchor = useCallback(
+    (clientX: number, curS: number, curE: number): number => {
+      const el = chartRef.current;
+      if (!el) return (curS + curE) / 2;
+      const rect = el.getBoundingClientRect();
+      const plotWidth = rect.width - PLOT_LEFT - PLOT_RIGHT;
+      if (plotWidth <= 0) return (curS + curE) / 2;
+      const frac = Math.max(0, Math.min(1, (clientX - rect.left - PLOT_LEFT) / plotWidth));
+      return curS + frac * (curE - curS);
+    },
+    [],
+  );
+
   const handleWheel = useCallback(
     (ev: WheelEvent) => {
       ev.preventDefault();
@@ -783,18 +801,25 @@ export default function Analytics() {
       const [curS, curE] = visibleRangeRef.current;
       const span = curE - curS;
       const step = Math.max(1, Math.floor(span / 4));
-      const [ns, ne] = shrink
-        ? clampRange(curS + step, curE - step, sourceLen)
-        : clampRange(curS - step, curE + step, sourceLen);
+      const newSpan = shrink ? span - 2 * step : span + 2 * step;
+
+      // Точка під курсором лишається на своїй екранній позиції.
+      const anchor = clientXToAnchor(ev.clientX, curS, curE);
+      const leftRatio = span > 0 ? (anchor - curS) / span : 0.5;
+      const [ns, ne] = clampRange(
+        anchor - leftRatio * newSpan,
+        anchor + (1 - leftRatio) * newSpan,
+        sourceLen,
+      );
 
       if (source[ns] && source[ne]) {
         setZoomKeysSafe([source[ns].key, source[ne].key]);
       }
 
-      const newSpan = ne - ns;
-      if (granularity === 'month' && period !== 'all' && newSpan <= 6 && newSpan >= 0) {
+      const actualSpan = ne - ns;
+      if (granularity === 'month' && period !== 'all' && actualSpan <= 6 && actualSpan >= 0) {
         setGranularity('day');
-      } else if (granularity === 'day' && newSpan > 8) {
+      } else if (granularity === 'day' && actualSpan > 8) {
         setGranularity('month');
       }
 
@@ -802,7 +827,7 @@ export default function Analytics() {
         setZoomAnimating(false);
       }, 200);
     },
-    [clampRange, granularity, period, dayChartData, forecastData.entries, setZoomKeysSafe],
+    [clampRange, granularity, period, dayChartData, forecastData.entries, setZoomKeysSafe, clientXToAnchor],
   );
 
   useEffect(() => {
@@ -840,10 +865,18 @@ export default function Analytics() {
         const origS = keyToIndex(origKeyS, source);
         const origE = keyToIndex(origKeyE, source);
         if (origS === -1 || origE === -1) return;
-        const center = (origS + origE) / 2;
         const origSpan = origE - origS;
         const newSpan = Math.round(origSpan / ratio);
-        const [ns, ne] = clampRange(center - newSpan / 2, center + newSpan / 2, sourceLen);
+
+        // Центр зуму — середина між двома пальцями, а не середина вікна.
+        const midX = (e.touches[0].clientX + e.touches[1].clientX) / 2;
+        const anchor = clientXToAnchor(midX, origS, origE);
+        const leftRatio = origSpan > 0 ? (anchor - origS) / origSpan : 0.5;
+        const [ns, ne] = clampRange(
+          anchor - leftRatio * newSpan,
+          anchor + (1 - leftRatio) * newSpan,
+          sourceLen,
+        );
 
         if (source[ns] && source[ne]) {
           setZoomKeysSafe([source[ns].key, source[ne].key]);
@@ -854,7 +887,7 @@ export default function Analytics() {
         }, 200);
       }
     },
-    [clampRange, granularity, dayChartData, forecastData.entries, keyToIndex, setZoomKeysSafe],
+    [clampRange, granularity, dayChartData, forecastData.entries, keyToIndex, setZoomKeysSafe, clientXToAnchor],
   );
 
   const handleTouchEnd = useCallback(() => {
