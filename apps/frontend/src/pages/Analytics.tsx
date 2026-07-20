@@ -704,7 +704,15 @@ export default function Analytics() {
   const chartRef = useRef<HTMLDivElement>(null);
   const pinchRef = useRef<{ dist: number; keys: [string, string] } | null>(null);
   const zoomTimerRef = useRef<ReturnType<typeof setTimeout>>();
-  const isMobile = typeof window !== 'undefined' && window.innerWidth < 768;
+  const [viewport, setViewport] = useState<{ w: number }>(() => ({
+    w: typeof window !== 'undefined' ? window.innerWidth : 1024,
+  }));
+  useEffect(() => {
+    const onResize = () => setViewport({ w: window.innerWidth });
+    window.addEventListener('resize', onResize);
+    return () => window.removeEventListener('resize', onResize);
+  }, []);
+  const isMobile = viewport.w < 768;
 
   useEffect(() => {
     if (granularity !== 'day' || !pendingDayRange) return;
@@ -1061,6 +1069,44 @@ export default function Analytics() {
   const zoomSpan = chartDataForRender.length;
   const currentSource = granularity === 'day' ? dayChartData : forecastData.entries;
   const isZoomed = currentSource.length > 0 && (zoomKeys[0] !== currentSource[0]?.key || zoomKeys[1] !== currentSource[currentSource.length - 1]?.key);
+
+  const axisConfig = useMemo(() => {
+    const plotW = (chartRef.current?.getBoundingClientRect().width ?? viewport.w) - 50 - 28;
+    const n = chartDataForRender.length;
+    if (!isMobile) {
+      return { mode: 'default' as const };
+    }
+    const perLabelPx = 44;
+    const maxLabels = Math.max(3, Math.floor(plotW / perLabelPx));
+    if (n <= maxLabels) {
+      return { mode: 'angled' as const, interval: 0, angle: -45 };
+    }
+    if (n / maxLabels <= 2.2) {
+      return { mode: 'angled' as const, interval: Math.ceil(n / maxLabels) - 1, angle: -45 };
+    }
+    const anchors = Math.min(5, maxLabels);
+    return { mode: 'anchors' as const, anchorCount: anchors };
+  }, [isMobile, viewport.w, chartDataForRender.length, zoomSpan]);
+
+  const anchorIdxSet = useMemo(() => {
+    if (axisConfig.mode !== 'anchors') return null;
+    const n = chartDataForRender.length;
+    const k = axisConfig.anchorCount;
+    const set = new Set<number>();
+    for (let i = 0; i < k; i++) set.add(Math.round((i * (n - 1)) / (k - 1)));
+    return set;
+  }, [axisConfig, chartDataForRender.length]);
+
+  const AnchorTick = (props: { x?: number; y?: number; payload?: { index: number; value: string } }) => {
+    const { x, y, payload } = props;
+    if (!payload) return null;
+    if (anchorIdxSet && !anchorIdxSet.has(payload.index)) return null;
+    return (
+      <text x={x} y={(y ?? 0) + 12} textAnchor="middle" fontSize={11} fill="#64748b">
+        {payload.value}
+      </text>
+    );
+  };
 
   const lineStats = useMemo(() => {
     if (!showStats || activeLines.length === 0) return { stats: new Map<string, { avg: number; max: number; min: number; maxIdx: number; minIdx: number; maxLineIndex: number; maxCollisionGroup: number; minLineIndex: number; minCollisionGroup: number }>(), maxCollisions: new Map<number, number[]>(), minCollisions: new Map<number, number[]>() };
@@ -1839,12 +1885,24 @@ export default function Analytics() {
                         <XAxis
                           type="category"
                           dataKey="label"
-                          tick={{ fontSize: 11, fill: "#64748b" }}
+                          tick={axisConfig.mode === 'anchors'
+                            ? <AnchorTick />
+                            : { fontSize: 11, fill: "#64748b" }}
                           axisLine={{ stroke: "#e2e8f0" }}
                           tickLine={false}
-                          interval={granularity === 'day'
-                            ? (zoomSpan > 90 ? 28 : zoomSpan > 60 ? 14 : zoomSpan > 30 ? 7 : zoomSpan > 14 ? 3 : 0)
-                            : (zoomSpan > 36 ? 5 : zoomSpan > 24 ? 3 : zoomSpan > 12 ? 1 : 0)}
+                          interval={
+                            axisConfig.mode === 'default'
+                              ? (granularity === 'day'
+                                  ? (zoomSpan > 90 ? 28 : zoomSpan > 60 ? 14 : zoomSpan > 30 ? 7 : zoomSpan > 14 ? 3 : 0)
+                                  : (zoomSpan > 36 ? 5 : zoomSpan > 24 ? 3 : zoomSpan > 12 ? 1 : 0))
+                              : axisConfig.mode === 'angled'
+                                ? axisConfig.interval
+                                : 0
+                          }
+                          angle={axisConfig.mode === 'angled' ? axisConfig.angle : 0}
+                          textAnchor={axisConfig.mode === 'angled' ? 'end' : 'middle'}
+                          height={isMobile && axisConfig.mode === 'angled' ? 48 : 30}
+                          minTickGap={isMobile ? 4 : 5}
                         />
                         <YAxis
                           tick={{ fontSize: 11, fill: "#64748b" }}
