@@ -54,8 +54,8 @@ const EventPreparation = lazy(
 const AssignedCrew = lazy(
   () => import("../components/school-profile/AssignedCrew"),
 );
-const NotesCard = lazy(
-  () => import("../components/school-profile/NotesCard"),
+const CommentsTimeline = lazy(
+  () => import("../components/school-profile/CommentsTimeline"),
 );
 
 import EditSchoolModal from "../components/school-profile/modals/EditSchoolModal";
@@ -648,7 +648,7 @@ export default function SchoolProfile() {
                 <div className="bg-surface rounded-card shadow-card h-32 animate-pulse border border-border" />
               }
             >
-              <NotesCard schoolData={schoolData} />
+              <CommentsTimeline schoolId={id} defaultType="NOTE" />
             </Suspense>
           )}
         </section>
@@ -705,7 +705,7 @@ export default function SchoolProfile() {
                 <div className="bg-surface rounded-card shadow-card h-32 animate-pulse border border-border" />
               }
             >
-              <NotesCard schoolData={schoolData} />
+              <CommentsTimeline schoolId={id} defaultType="NOTE" />
             </Suspense>
           )}
 

@@ -26,12 +26,13 @@ const TYPE_ICONS: Record<CommentType, string> = {
 interface CommentsTimelineProps {
   schoolId: string;
   variant?: "card" | "chat";
+  defaultType?: CommentType;
 }
 
-export default function CommentsTimeline({ schoolId, variant = "card" }: CommentsTimelineProps) {
+export default function CommentsTimeline({ schoolId, variant = "card", defaultType }: CommentsTimelineProps) {
   const { user } = useAuth();
-  const [filter, setFilter] = useState<CommentType | undefined>(undefined);
-  const [newType, setNewType] = useState<CommentType>("NOTE");
+  const [filter, setFilter] = useState<CommentType | undefined>(defaultType);
+  const [newType, setNewType] = useState<CommentType>(defaultType ?? "NOTE");
   const [newText, setNewText] = useState("");
   const [page, setPage] = useState(1);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
