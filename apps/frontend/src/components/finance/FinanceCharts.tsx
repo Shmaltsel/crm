@@ -15,6 +15,7 @@ import {
   BarChart,
   Bar,
   LabelList,
+  Legend,
 } from "recharts";
 import type {
   FinanceDashboardData,
