@@ -380,7 +380,7 @@ const ExpenseChart = memo(function ExpenseChart({
             content={({ active, payload, label }) => {
               if (!active || !payload?.length) return null;
               return (
-                <div className="bg-white/90 backdrop-blur-md border border-border p-3 rounded-xl shadow-xl text-sm min-w-[140px]">
+                <div className="bg-white/95 md:backdrop-blur-md border border-border p-3 rounded-xl shadow-xl text-sm min-w-[140px]">
                   <p className="font-bold text-content-primary mb-2 border-b border-border pb-1.5">{label}</p>
                   {payload
                     .filter((p) => p.dataKey !== '__total' && Number(p.value) > 0)

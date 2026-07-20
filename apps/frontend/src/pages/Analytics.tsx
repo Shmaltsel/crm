@@ -882,12 +882,19 @@ export default function Analytics() {
           setZoomKeysSafe([source[ns].key, source[ne].key]);
         }
 
+        const touchSpan = ne - ns;
+        if (granularity === 'month' && period !== 'all' && touchSpan <= 6 && touchSpan >= 0) {
+          setGranularity('day');
+        } else if (granularity === 'day' && touchSpan > 8) {
+          setGranularity('month');
+        }
+
         zoomTimerRef.current = setTimeout(() => {
           setZoomAnimating(false);
         }, 200);
       }
     },
-    [clampRange, granularity, dayChartData, forecastData.entries, keyToIndex, setZoomKeysSafe, clientXToAnchor],
+    [clampRange, granularity, period, dayChartData, forecastData.entries, keyToIndex, setZoomKeysSafe, clientXToAnchor],
   );
 
   const handleTouchEnd = useCallback(() => {
@@ -915,7 +922,35 @@ export default function Analytics() {
     const startIdx = Math.max(0, s);
     const endIdx = Math.min(source.length - 1, e);
     const visibleSource = source.slice(startIdx, endIdx + 1);
-    if (visibleSource.length <= TARGET_POINT_COUNT) return visibleSource;
+
+    if (visibleSource.length < TARGET_POINT_COUNT && visibleSource.length > 1) {
+      const result: ChartEntry[] = [];
+      for (let i = 0; i < TARGET_POINT_COUNT; i++) {
+        const pos = (i / (TARGET_POINT_COUNT - 1)) * (visibleSource.length - 1);
+        const lo = Math.floor(pos);
+        const hi = Math.min(lo + 1, visibleSource.length - 1);
+        const t = pos - lo;
+        const srcLo = visibleSource[lo];
+        const srcHi = visibleSource[hi];
+        const entry: ChartEntry = {
+          key: t < 0.001 ? srcLo.key : (t > 0.999 ? srcHi.key : `${srcLo.key}__${srcHi.key}`),
+          year: srcLo.year,
+          month: srcLo.month,
+          label: srcLo.label,
+        };
+        if (srcLo.day !== undefined) entry.day = srcLo.day;
+        for (const k of Object.keys(srcLo)) {
+          if (['key', 'label', 'year', 'month', 'day'].includes(k)) continue;
+          const a = Number(srcLo[k]) || 0;
+          const b = Number(srcHi[k]) || 0;
+          entry[k] = a + (b - a) * t;
+        }
+        result.push(entry);
+      }
+      return result;
+    }
+
+    if (visibleSource.length <= 1) return visibleSource;
 
     const bucketSize = visibleSource.length / TARGET_POINT_COUNT;
     const resampled: ChartEntry[] = [];
@@ -1248,7 +1283,7 @@ export default function Analytics() {
         .sort((a, b) => b.revenue - a.revenue);
 
       return (
-        <div className="backdrop-blur-xl bg-white/75 border border-white/40 rounded-xl shadow-[0_8px_24px_-4px_rgba(0,0,0,0.12)] px-3 py-2.5 text-xs max-w-[240px]" style={flipStyle}>
+        <div className="md:backdrop-blur-xl bg-white/95 border border-white/40 rounded-xl shadow-[0_8px_24px_-4px_rgba(0,0,0,0.12)] px-3 py-2.5 text-xs max-w-[240px]" style={flipStyle}>
           <p className="font-medium text-content-primary mb-1.5 text-sm">{label}</p>
           {items.map((item, i) => (
             <div key={i} className={i > 0 ? "mt-1.5 pt-1.5 border-t border-black/5" : ""}>
@@ -1289,7 +1324,7 @@ export default function Analytics() {
         .sort((a, b) => b.total - a.total);
 
       return (
-        <div className="backdrop-blur-xl bg-white/75 border border-white/40 rounded-xl shadow-[0_8px_24px_-4px_rgba(0,0,0,0.12)] px-3 py-2.5 text-xs max-w-[240px]" style={flipStyle}>
+        <div className="md:backdrop-blur-xl bg-white/95 border border-white/40 rounded-xl shadow-[0_8px_24px_-4px_rgba(0,0,0,0.12)] px-3 py-2.5 text-xs max-w-[240px]" style={flipStyle}>
           <p className="font-medium text-content-primary mb-1.5 text-sm">{label}</p>
           {cityData.map((cd, i) => (
             <div key={i} className={i > 0 ? "mt-1.5 pt-1.5 border-t border-black/5" : ""}>
@@ -1311,7 +1346,7 @@ export default function Analytics() {
     }
 
     return (
-      <div className="backdrop-blur-xl bg-white/75 border border-white/40 rounded-xl shadow-[0_8px_-4px_rgba(0,0,0,0.12)] px-3 py-2.5 text-xs" style={flipStyle}>
+      <div className="md:backdrop-blur-xl bg-white/95 border border-white/40 rounded-xl shadow-[0_8px_-4px_rgba(0,0,0,0.12)] px-3 py-2.5 text-xs" style={flipStyle}>
         <p className="font-medium text-content-primary mb-1.5 text-sm">{label}</p>
         {payload
           .filter((p) => (p.value ?? 0) !== 0 && !String(p.dataKey).startsWith("sma_") && !String(p.dataKey).startsWith("prevYear_") && !String(p.dataKey).startsWith("forecast_") && !String(p.dataKey).startsWith("revenue_"))

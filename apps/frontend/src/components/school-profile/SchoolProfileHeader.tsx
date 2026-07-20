@@ -34,7 +34,7 @@ export default memo(function SchoolProfileHeader({ schoolData, onEdit, onAddEven
 
   return (
     <motion.div
-      className="sticky top-0 z-40 bg-gradient-subtle/80 backdrop-blur-md"
+      className="sticky top-0 z-40 bg-gradient-subtle"
       style={{ willChange: "transform" }}
     >
       <div className="mb-6">

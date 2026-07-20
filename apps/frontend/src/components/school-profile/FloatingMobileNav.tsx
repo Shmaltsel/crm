@@ -63,7 +63,7 @@ export default function FloatingMobileNav() {
 
   return (
     <>
-      <nav className="md:hidden fixed z-50 left-1/2 -translate-x-1/2 bottom-[calc(56px+env(safe-area-inset-bottom,0px))] bg-surface-muted/90 backdrop-blur-md rounded-full flex items-center gap-1 p-1 shadow-lg">
+      <nav className="md:hidden fixed z-50 left-1/2 -translate-x-1/2 bottom-[calc(56px+env(safe-area-inset-bottom,0px))] bg-surface-muted rounded-full flex items-center gap-1 p-1 shadow-lg">
         <AnimatePresence mode="popLayout">
           {SECTIONS.map((s) => (
             <motion.button
