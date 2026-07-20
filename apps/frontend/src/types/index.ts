@@ -327,6 +327,8 @@ export interface FinanceDashboardData {
   filters: FinanceFilterOptions;
   byProject?: FinanceByProject[];
   byExpenseCategory?: FinanceByCategory[];
+  expenseByMonth?: Array<{ month: string; [category: string]: number | string }>;
+  expenseCategories?: string[];
   topSchools?: FinanceTopSchool[];
   topEvents?: FinanceEventItem[];
   worstEvents?: FinanceEventItem[];

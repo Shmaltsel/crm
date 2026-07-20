@@ -225,9 +225,9 @@ describe('FinanceService', () => {
         _count: { eventId: 2 },
       });
       mockPrisma.expenseItem.findMany.mockResolvedValueOnce([
-        { category: 'Паливо', amount: 500 },
-        { category: 'Паливо', amount: 300 },
-        { category: 'Реклама', amount: 200 },
+        { category: 'Паливо', amount: 500, report: { event: { date: new Date('2026-01-15') } } },
+        { category: 'Паливо', amount: 300, report: { event: { date: new Date('2026-02-10') } } },
+        { category: 'Реклама', amount: 200, report: { event: { date: new Date('2026-01-20') } } },
       ]);
       mockPrisma.manualExpense.findMany.mockResolvedValueOnce([]);
       mockPrisma.$queryRaw
@@ -252,6 +252,73 @@ describe('FinanceService', () => {
       expect(fuel?.value).toBe(800);
       expect(ads?.value).toBe(200);
       expect(result.kpi.totalExpenses).toBe(1000);
+    });
+  });
+
+  describe('getDashboard — expenseByMonth', () => {
+    it('групує витрати по місяцях і категоріях, суми збігаються з byExpenseCategory', async () => {
+      mockPrisma.eventReport.aggregate.mockResolvedValueOnce({
+        _sum: { totalSum: 10000, remainderSum: 4000 },
+        _count: { eventId: 2 },
+      });
+      mockPrisma.expenseItem.findMany.mockResolvedValueOnce([
+        { category: 'Паливо', amount: 500, report: { event: { date: new Date('2026-01-15') } } },
+        { category: 'Паливо', amount: 300, report: { event: { date: new Date('2026-02-10') } } },
+        { category: 'Реклама', amount: 200, report: { event: { date: new Date('2026-01-20') } } },
+      ]);
+      mockPrisma.manualExpense.findMany.mockResolvedValueOnce([
+        { category: 'Оренда', amount: 1000, date: new Date('2026-01-05') },
+      ]);
+      mockPrisma.$queryRaw
+        .mockResolvedValueOnce([])
+        .mockResolvedValueOnce([])
+        .mockResolvedValueOnce([])
+        .mockResolvedValueOnce([]);
+      mockPrisma.event.aggregate.mockResolvedValueOnce({ _sum: { price: 0 } });
+      mockPrisma.event.findMany.mockResolvedValueOnce([]);
+      mockPrisma.city.findMany.mockResolvedValueOnce([]);
+      mockPrisma.eventReport.findMany
+        .mockResolvedValueOnce([])
+        .mockResolvedValueOnce([]);
+
+      const result = await service.getDashboard({});
+
+      // byExpenseCategory: Паливо=800, Реклама=200, Оренда=1000
+      expect(result.byExpenseCategory).toHaveLength(3);
+      const totalCat = result.byExpenseCategory!.reduce((s: number, c: any) => s + c.value, 0);
+      expect(totalCat).toBe(2000);
+
+      // expenseByMonth: є дані
+      expect(result.expenseByMonth!.length).toBeGreaterThanOrEqual(1);
+
+      // Загальна сума по expenseByMonth = byExpenseCategory total
+      let monthTotal = 0;
+      for (const row of result.expenseByMonth!) {
+        for (const cat of result.expenseCategories!) {
+          monthTotal += Number((row as any)[cat] ?? 0);
+        }
+      }
+      expect(monthTotal).toBe(totalCat);
+
+      // expenseCategories відсортовані за спаданням суми
+      expect(result.expenseCategories!.length).toBe(3);
+    });
+
+    it('minimal=true не повертає expenseByMonth', async () => {
+      mockPrisma.eventReport.aggregate.mockResolvedValueOnce({
+        _sum: { totalSum: 10000, remainderSum: 4000 },
+        _count: { eventId: 2 },
+      });
+      mockPrisma.expenseItem.findMany.mockResolvedValueOnce([]);
+      mockPrisma.manualExpense.findMany.mockResolvedValueOnce([]);
+      mockPrisma.$queryRaw.mockResolvedValueOnce([]);
+      mockPrisma.event.aggregate.mockResolvedValueOnce({ _sum: { price: 0 } });
+      mockPrisma.event.findMany.mockResolvedValueOnce([]);
+      mockPrisma.city.findMany.mockResolvedValueOnce([]);
+
+      const result = await service.getDashboard({ minimal: true });
+      expect(result).not.toHaveProperty('expenseByMonth');
+      expect(result).not.toHaveProperty('expenseCategories');
     });
   });
 

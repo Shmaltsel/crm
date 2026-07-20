@@ -95,6 +95,8 @@ export default function Expenses() {
 
   const totalExpenses = data.kpi?.totalExpenses ?? 0;
   const categories = [...(data.byExpenseCategory ?? [])].sort((a, b) => Number(b.value) - Number(a.value));
+  const expenseByMonth = data.expenseByMonth ?? [];
+  const expenseCategories = data.expenseCategories ?? [];
   const manualExpenses = manualData?.items ?? [];
 
   return (
@@ -126,11 +128,11 @@ export default function Expenses() {
 
       <ExpensesTotal value={totalExpenses} />
 
-      {categories.length > 0 && (
+      {expenseByMonth.length > 0 && (
         <Suspense fallback={<div className="h-64 bg-surface rounded-card animate-pulse" />}>
           <div className="bg-surface rounded-card shadow-soft border border-border p-5">
             <h3 className="text-sm font-semibold text-content-primary mb-4">Витрати по категоріях</h3>
-            <ExpenseChart byExpenseCategory={categories} />
+            <ExpenseChart data={expenseByMonth} categories={expenseCategories} />
           </div>
         </Suspense>
       )}

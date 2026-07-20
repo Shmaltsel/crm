@@ -24,6 +24,8 @@ export interface FinanceDashboardResult {
   filters: FinanceFilterOptions;
   byProject?: { name: string; value: number }[];
   byExpenseCategory?: { name: string; value: number }[];
+  expenseByMonth?: Array<{ month: string; [k: string]: number | string }>;
+  expenseCategories?: string[];
   topCities?: { name: string; revenue: number; profit: number }[];
   topSchools?: { name: string; count: number; revenue: number }[];
   topEvents?: {
@@ -146,14 +148,19 @@ export class FinanceService {
       }),
       this.prisma.expenseItem.findMany({
         where: { report: { event: baseEventWhere } },
-        select: { category: true, name: true, amount: true },
+        select: {
+          category: true,
+          name: true,
+          amount: true,
+          report: { select: { event: { select: { date: true } } } },
+        },
       }),
       this.prisma.manualExpense.findMany({
         where: {
           ...(dateFrom ? { date: { gte: dateFrom } } : {}),
           ...(cityId ? { cityId } : {}),
         },
-        select: { category: true, name: true, amount: true },
+        select: { category: true, name: true, amount: true, date: true },
       }),
     ]);
 
@@ -183,6 +190,67 @@ export class FinanceService {
         value,
       }),
     );
+
+    // Агрегація витрат по місяцях і категоріях
+    type MonthCatRow = { year: number; month: number; category: string; value: number };
+    const monthCatMap: Record<string, number> = {};
+
+    for (const exp of expensesRaw) {
+      const cat: string = exp.category || exp.name || 'Інше';
+      const amt: number = Number(exp.amount) || 0;
+      const d = exp.report?.event?.date;
+      if (!d) continue;
+      const dt = new Date(d);
+      const y = dt.getFullYear();
+      const m = dt.getMonth() + 1;
+      const key = `${y}-${String(m).padStart(2, '0')}-${cat}`;
+      monthCatMap[key] = (monthCatMap[key] ?? 0) + amt;
+    }
+    for (const exp of manualExpensesRaw) {
+      const cat: string = exp.category || exp.name || 'Інше';
+      const amt: number = Number(exp.amount) || 0;
+      if (!exp.date) continue;
+      const dt = new Date(exp.date);
+      const y = dt.getFullYear();
+      const m = dt.getMonth() + 1;
+      const key = `${y}-${String(m).padStart(2, '0')}-${cat}`;
+      monthCatMap[key] = (monthCatMap[key] ?? 0) + amt;
+    }
+
+    const monthCatRows: MonthCatRow[] = Object.entries(monthCatMap).map(([key, value]) => {
+      const dashIdx = key.indexOf('-', key.indexOf('-') + 1);
+      const ym = key.slice(0, dashIdx);
+      const cat = key.slice(dashIdx + 1);
+      const y = Number(ym.slice(0, 4));
+      const m = Number(ym.slice(5, 7));
+      return { year: y, month: m, category: cat, value };
+    });
+
+    const expenseByMonthMap = new Map<string, Record<string, number | string>>();
+    for (const row of monthCatRows) {
+      const monthLabel = new Date(row.year, row.month - 1, 1).toLocaleString('uk-UA', {
+        month: 'short',
+        year: '2-digit',
+      });
+      if (!expenseByMonthMap.has(monthLabel)) {
+        expenseByMonthMap.set(monthLabel, { month: monthLabel });
+      }
+      const entry = expenseByMonthMap.get(monthLabel)!;
+      entry[row.category] = (Number(entry[row.category] ?? 0)) + row.value;
+    }
+    const expenseByMonth = Array.from(expenseByMonthMap.values()).sort((a, b) => {
+      const aMonth = String(a.month);
+      const bMonth = String(b.month);
+      return aMonth.localeCompare(bMonth);
+    });
+
+    const catTotals: Record<string, number> = {};
+    for (const row of monthCatRows) {
+      catTotals[row.category] = (catTotals[row.category] ?? 0) + row.value;
+    }
+    const expenseCategories = Object.entries(catTotals)
+      .sort(([, a], [, b]) => b - a)
+      .map(([name]) => name);
     type MonthlyRow = {
       year: number;
       month: number;
@@ -360,6 +428,8 @@ export class FinanceService {
       monthly,
       byProject,
       byExpenseCategory,
+      expenseByMonth,
+      expenseCategories,
       topCities,
       topSchools,
       topEvents,

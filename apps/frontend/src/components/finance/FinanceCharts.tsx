@@ -20,7 +20,6 @@ import type {
   FinanceDashboardData,
   MonthlyFinance,
   FinanceByProject,
-  FinanceByCategory,
   FinanceTopSchool,
   FinanceEventItem,
 } from "../../types";
@@ -343,55 +342,88 @@ const ProjectPieChart = memo(function ProjectPieChart({
 });
 
 const ExpenseChart = memo(function ExpenseChart({
-  byExpenseCategory,
+  data,
+  categories,
 }: {
-  byExpenseCategory: FinanceByCategory[];
+  data: Array<{ month: string; [k: string]: number | string }>;
+  categories: string[];
 }) {
-  if (!byExpenseCategory?.length) return <EmptyState />;
+  if (!data?.length || !categories?.length) return <EmptyState />;
+
+  const enriched = data.map((row) => {
+    let total = 0;
+    for (const cat of categories) {
+      total += Number(row[cat] ?? 0);
+    }
+    return { ...row, __total: total };
+  });
+
   return (
-    <div className="h-[280px] w-full min-w-[300px] -ml-4">
+    <div className="h-[320px] w-full min-w-[300px]">
       <ResponsiveContainer width="100%" height="100%">
-        <BarChart
-          data={byExpenseCategory}
-          layout="vertical"
-          margin={{ top: 0, right: 80, left: 30, bottom: 0 }}
-        >
-          <CartesianGrid
-            strokeDasharray="3 3"
-            horizontal={true}
-            vertical={false}
-            stroke="#f1f5f9"
+        <BarChart data={enriched} margin={{ top: 20, right: 10, left: 0, bottom: 0 }}>
+          <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
+          <XAxis
+            dataKey="month"
+            tick={{ fontSize: 11, fill: "#64748b" }}
+            axisLine={{ stroke: "#e2e8f0" }}
+            tickLine={false}
           />
-          <XAxis type="number" hide />
           <YAxis
-            dataKey="name"
-            type="category"
+            tickFormatter={(v: number) => (v >= 1000 ? `${Math.round(v / 1000)}k` : String(v))}
+            tick={{ fontSize: 11, fill: "#64748b" }}
             axisLine={false}
             tickLine={false}
-            tick={{ fontSize: 12, fill: "#475569", fontWeight: 500 }}
-            width={120}
           />
-          <Tooltip content={<CustomTooltip />} cursor={{ fill: "#f8fafc" }} allowEscapeViewBox={{ x: true, y: true }} />
-          <Bar
-            dataKey="value"
-            name="Сума"
-            fill="#f43f5e"
-            radius={[0, 8, 8, 0]}
-            barSize={20}
-            isAnimationActive={true}
-            animationDuration={800}
-            animationEasing="ease-out"
-          >
-            {byExpenseCategory.map((_: FinanceByCategory, idx: number) => (
-              <Cell key={`cell-${idx}`} fill={PALETTE[idx % PALETTE.length]} />
-            ))}
-            <LabelList
-              dataKey="value"
-              position="right"
-              formatter={(v: number) => `${fmt(v)} грн`}
-              style={{ fontSize: 11, fill: "#475569", fontWeight: 600 }}
+          <Tooltip
+            content={({ active, payload, label }) => {
+              if (!active || !payload?.length) return null;
+              return (
+                <div className="bg-white/90 backdrop-blur-md border border-border p-3 rounded-xl shadow-xl text-sm min-w-[140px]">
+                  <p className="font-bold text-content-primary mb-2 border-b border-border pb-1.5">{label}</p>
+                  {payload
+                    .filter((p) => p.dataKey !== '__total' && Number(p.value) > 0)
+                    .sort((a, b) => Number(b.value) - Number(a.value))
+                    .map((p, i) => (
+                      <div key={i} className="flex items-center justify-between gap-3 mb-1 last:mb-0">
+                        <div className="flex items-center gap-1.5">
+                          <span className="w-2 h-2 rounded-full shrink-0" style={{ backgroundColor: p.color }} />
+                          <span className="text-content-secondary truncate">{String(p.dataKey)}</span>
+                        </div>
+                        <span className="font-bold text-content-primary">{fmt(p.value)} грн</span>
+                      </div>
+                    ))}
+                </div>
+              );
+            }}
+            cursor={{ fill: "#f8fafc" }}
+            allowEscapeViewBox={{ x: true, y: true }}
+          />
+          {categories.map((cat, idx) => (
+            <Bar
+              key={cat}
+              dataKey={cat}
+              stackId="exp"
+              fill={PALETTE[idx % PALETTE.length]}
+              radius={idx === categories.length - 1 ? [8, 8, 0, 0] : [0, 0, 0, 0]}
+              isAnimationActive={true}
+              animationDuration={800}
+              animationEasing="ease-out"
             />
-          </Bar>
+          ))}
+          <LabelList
+            dataKey="__total"
+            position="top"
+            formatter={(v: number) => (v > 0 ? `${fmt(v)}` : '')}
+            style={{ fontSize: 10, fill: "#64748b", fontWeight: 600 }}
+          />
+          <Legend
+            verticalAlign="bottom"
+            height={36}
+            formatter={(value: string) => value}
+            iconType="circle"
+            iconSize={8}
+          />
         </BarChart>
       </ResponsiveContainer>
     </div>
@@ -459,6 +491,8 @@ export default memo(function FinanceCharts({
     monthly,
     byProject,
     byExpenseCategory,
+    expenseByMonth,
+    expenseCategories,
     topSchools,
     topEvents,
     worstEvents,
@@ -599,7 +633,7 @@ export default memo(function FinanceCharts({
             </span>
             Статті витрат
           </h3>
-          <ExpenseChart byExpenseCategory={byExpenseCategory} />
+          <ExpenseChart data={expenseByMonth ?? []} categories={expenseCategories ?? []} />
         </div>
 
         <div className="bg-white rounded-[24px] shadow-sm border border-border p-5 md:p-7">
