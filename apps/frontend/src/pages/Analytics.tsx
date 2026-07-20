@@ -1987,19 +1987,8 @@ export default function Analytics() {
                     </ResponsiveContainer>
                   </div>
                   {zoomedChartData.length > 2 && (
-                    <div className="px-1 pt-2">
-                      <div className="flex items-center justify-between mb-1.5">
-                        <span className="text-[11px] font-medium text-content-secondary">Діапазон для KPI</span>
-                        {subRange !== null && (
-                          <button
-                            onClick={() => setSubRange(null)}
-                            className="text-[10px] text-content-muted hover:text-content-secondary transition px-1"
-                          >
-                            Скинути
-                          </button>
-                        )}
-                      </div>
-                      <div className="relative h-8 select-none">
+                    <div className="pt-2">
+                      <div className="relative h-8 select-none" style={{ marginLeft: 50, marginRight: 28 }}>
                         <div className="absolute inset-0 flex items-center">
                           <div className="w-full h-[3px] rounded-full bg-border-strong" />
                           <div
@@ -2039,7 +2028,7 @@ export default function Analytics() {
                           className="subrange-input"
                         />
                       </div>
-                      <div className="flex justify-between">
+                      <div className="flex justify-between" style={{ marginLeft: 50, marginRight: 28 }}>
                         <span className="text-[9px] text-content-muted truncate max-w-[45%]">
                           {zoomedChartData[subRange ? subRange[0] : 0]?.label}
                         </span>
@@ -2047,6 +2036,16 @@ export default function Analytics() {
                           {zoomedChartData[subRange ? subRange[1] : zoomedChartData.length - 1]?.label}
                         </span>
                       </div>
+                      {subRange !== null && (
+                        <div className="flex justify-end mt-1">
+                          <button
+                            onClick={() => setSubRange(null)}
+                            className="text-[10px] text-content-muted hover:text-content-secondary transition px-1"
+                          >
+                            Скинути
+                          </button>
+                        </div>
+                      )}
                     </div>
                   )}
                   {(isZoomed || selectedEntryKey) && (
