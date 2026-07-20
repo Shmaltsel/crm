@@ -75,6 +75,7 @@ query-cache-bundle.md
 apps/memory.md
 
 # --- AI-агентські конфіги та внутрішні робочі інструкції ---
+.claude/
 .github/copilot-instructions.md
 .kilo/
 .vscode/mcp.json
