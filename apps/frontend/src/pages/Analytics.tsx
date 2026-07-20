@@ -171,8 +171,9 @@ function buildChartEntry(year: number, month: number): ChartEntry {
 
 function formatAxisLabel(entry: ChartEntry, span: number): string {
   if (entry.day) return entry.label;
-  if (span > 18) return String(entry.year);
-  if (span > 6) return `${UA_MONTHS[entry.month - 1]} '${String(entry.year).slice(2)}`;
+  if (span > 24) return String(entry.year);
+  if (span > 12) return `${UA_MONTHS[entry.month - 1]} '${String(entry.year).slice(2)}`;
+  if (span > 6) return UA_MONTHS[entry.month - 1];
   return UA_MONTHS_FULL[entry.month - 1];
 }
 
@@ -511,9 +512,8 @@ export default function Analytics() {
     const span = entries.length;
     for (const e of entries) {
       const d = new Date(e.key);
-      if (span > 60) e.label = `${d.getDate()}.${d.getMonth()+1}`;
-      else if (span > 30) e.label = `${d.getDate()} ${UA_MONTHS[d.getMonth()]}`;
-      else e.label = `${d.getDate()} ${UA_MONTHS_FULL[d.getMonth()]}`;
+      if (span > 90) e.label = `${d.getDate()}.${d.getMonth()+1}`;
+      else e.label = `${d.getDate()} ${UA_MONTHS[d.getMonth()]}`;
     }
     return entries;
   }, [rawDayData, granularity, chartData, activeCities, activeProjects, aggregateByCity]);
@@ -817,7 +817,27 @@ export default function Analytics() {
       }
 
       const actualSpan = ne - ns;
-      if (granularity === 'month' && period !== 'all' && actualSpan <= 6 && actualSpan >= 0) {
+      if (granularity === 'month' && period !== 'all' && actualSpan <= 2 && actualSpan >= 0) {
+        // Зберегти звужений діапазон при переході month→day
+        const startMonth = source[ns];
+        const endMonth = source[ne];
+        const startPrefix = startMonth.key;
+        const endPrefix = endMonth.key;
+        const daySource = dayChartData;
+        if (daySource.length > 0) {
+          let dayStart = daySource.findIndex((d) => d.key >= startPrefix);
+          if (dayStart === -1) dayStart = 0;
+          let dayEnd = -1;
+          for (let i = daySource.length - 1; i >= 0; i--) {
+            if (daySource[i].key <= endPrefix + '-31') { dayEnd = i; break; }
+          }
+          if (dayEnd === -1) dayEnd = daySource.length - 1;
+          if (dayEnd >= dayStart) {
+            setZoomKeysSafe([daySource[dayStart].key, daySource[dayEnd].key]);
+          } else {
+            setZoomKeysSafe([daySource[0].key, daySource[daySource.length - 1].key]);
+          }
+        }
         setGranularity('day');
       } else if (granularity === 'day' && actualSpan > 8) {
         setGranularity('month');
@@ -883,7 +903,27 @@ export default function Analytics() {
         }
 
         const touchSpan = ne - ns;
-        if (granularity === 'month' && period !== 'all' && touchSpan <= 6 && touchSpan >= 0) {
+        if (granularity === 'month' && period !== 'all' && touchSpan <= 2 && touchSpan >= 0) {
+          // Зберегти звужений діапазон при переході month→day
+          const startMonth = source[ns];
+          const endMonth = source[ne];
+          const startPrefix = startMonth.key;
+          const endPrefix = endMonth.key;
+          const daySource = dayChartData;
+          if (daySource.length > 0) {
+            let dayStart = daySource.findIndex((d) => d.key >= startPrefix);
+            if (dayStart === -1) dayStart = 0;
+            let dayEnd = -1;
+            for (let i = daySource.length - 1; i >= 0; i--) {
+              if (daySource[i].key <= endPrefix + '-31') { dayEnd = i; break; }
+            }
+            if (dayEnd === -1) dayEnd = daySource.length - 1;
+            if (dayEnd >= dayStart) {
+              setZoomKeysSafe([daySource[dayStart].key, daySource[dayEnd].key]);
+            } else {
+              setZoomKeysSafe([daySource[0].key, daySource[daySource.length - 1].key]);
+            }
+          }
           setGranularity('day');
         } else if (granularity === 'day' && touchSpan > 8) {
           setGranularity('month');
@@ -922,6 +962,7 @@ export default function Analytics() {
     const visibleSource = source.slice(startIdx, endIdx + 1);
 
     if (visibleSource.length <= 1) return visibleSource;
+    if (granularity === 'day') return visibleSource;
 
     const MIN_INTERPOLATED = 8;
     if (visibleSource.length >= MIN_INTERPOLATED) return visibleSource;
