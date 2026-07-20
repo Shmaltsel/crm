@@ -757,7 +757,7 @@ export default function Analytics() {
     (start: number, end: number, sourceLen: number): [number, number] => {
       const max = sourceLen - 1;
       if (max < 2) return [0, max];
-      const MIN_SPAN = granularity === 'day' ? 29 : 0;
+      const MIN_SPAN = granularity === 'day' ? 29 : 1;
       let s = Math.max(0, Math.min(max, Math.round(start)));
       let e = Math.max(0, Math.min(max, Math.round(end)));
       if (e - s < MIN_SPAN) {
