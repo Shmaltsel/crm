@@ -901,7 +901,8 @@ export default function Analytics() {
   }, [chartMode, compositeChartData, zoomedChartData]);
 
   const zoomSpan = chartDataForRender.length;
-  const isZoomed = zoomKeys[0] !== chartData[0]?.key || zoomKeys[1] !== chartData[chartData.length - 1]?.key;
+  const currentSource = granularity === 'day' ? dayChartData : forecastData.entries;
+  const isZoomed = currentSource.length > 0 && (zoomKeys[0] !== currentSource[0]?.key || zoomKeys[1] !== currentSource[currentSource.length - 1]?.key);
 
   const lineStats = useMemo(() => {
     if (!showStats || activeLines.length === 0) return { stats: new Map<string, { avg: number; max: number; min: number; maxIdx: number; minIdx: number; maxLineIndex: number; maxCollisionGroup: number; minLineIndex: number; minCollisionGroup: number }>(), maxCollisions: new Map<number, number[]>(), minCollisions: new Map<number, number[]>() };
