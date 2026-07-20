@@ -910,6 +910,44 @@ export default function Analytics() {
     return source.slice(s, e + 1);
   }, [dayChartData, forecastData.entries, visibleRange, granularity]);
 
+  const [subRange, setSubRange] = useState<[number, number] | null>(null);
+  const [prevZoomedLength, setPrevZoomedLength] = useState(zoomedChartData.length);
+
+  if (zoomedChartData.length !== prevZoomedLength) {
+    setPrevZoomedLength(zoomedChartData.length);
+    setSubRange(null);
+  }
+
+  const kpiRangeData = useMemo(() => {
+    if (!subRange) return zoomedChartData;
+    const [a, b] = subRange;
+    return zoomedChartData.slice(a, b + 1);
+  }, [zoomedChartData, subRange]);
+
+  const subRangeKPIs = useMemo(() => {
+    if (!subRange) return null;
+    const keys = new Set(kpiRangeData.map((e) => e.key));
+    let profit = 0;
+    let revenue = 0;
+    if (granularity === 'day' && rawDayData) {
+      for (const row of rawDayData) {
+        if (keys.has(row.date) && activeCities.has(row.cityName)) {
+          profit += row.profit;
+          revenue += row.revenue;
+        }
+      }
+    } else {
+      for (const row of filteredData) {
+        const key = `${row.year}-${String(row.month).padStart(2, "0")}`;
+        if (keys.has(key) && activeCities.has(row.cityName)) {
+          profit += row.profit;
+          revenue += row.revenue;
+        }
+      }
+    }
+    return { profit, revenue, expenses: Math.max(0, revenue - profit) };
+  }, [subRange, kpiRangeData, granularity, rawDayData, filteredData, activeCities]);
+
   const compositeChartData = useMemo(() => {
     if (chartMode !== 'composite') return zoomedChartData;
     return zoomedChartData.map(entry => {
@@ -1295,9 +1333,9 @@ export default function Analytics() {
           initial="hidden"
           animate="visible"
         >
-          <KPICard label={selectedKPIs ? "Дохід за період" : zoomedKPIs ? "Дохід за період" : "Загальний дохід"} value={fmtMoney(selectedKPIs?.revenue ?? zoomedKPIs?.revenue ?? totalRevenue)} color="text-brand" numericValue={selectedKPIs?.revenue ?? zoomedKPIs?.revenue ?? totalRevenue} />
-          <KPICard label={selectedKPIs ? "Прибуток за період" : zoomedKPIs ? "Прибуток за період" : "Прибуток"} value={fmtMoney(selectedKPIs?.profit ?? zoomedKPIs?.profit ?? totalProfit)} color="text-success" numericValue={selectedKPIs?.profit ?? zoomedKPIs?.profit ?? totalProfit} />
-          <KPICard label={selectedKPIs ? "Витрати за період" : zoomedKPIs ? "Витрати за період" : "Витрати"} value={selectedKPIs ? fmtMoney(selectedKPIs.expenses) : zoomedKPIs ? fmtMoney(zoomedKPIs.expenses) : fmtMoney(totalExpenses)} color="text-danger" numericValue={selectedKPIs?.expenses ?? zoomedKPIs?.expenses ?? totalExpenses} />
+          <KPICard label={selectedKPIs ? "Дохід за період" : zoomedKPIs ? "Дохід за період" : "Загальний дохід"} value={fmtMoney(selectedKPIs?.revenue ?? subRangeKPIs?.revenue ?? zoomedKPIs?.revenue ?? totalRevenue)} color="text-brand" numericValue={selectedKPIs?.revenue ?? subRangeKPIs?.revenue ?? zoomedKPIs?.revenue ?? totalRevenue} />
+          <KPICard label={selectedKPIs ? "Прибуток за період" : zoomedKPIs ? "Прибуток за період" : "Прибуток"} value={fmtMoney(selectedKPIs?.profit ?? subRangeKPIs?.profit ?? zoomedKPIs?.profit ?? totalProfit)} color="text-success" numericValue={selectedKPIs?.profit ?? subRangeKPIs?.profit ?? zoomedKPIs?.profit ?? totalProfit} />
+          <KPICard label={selectedKPIs ? "Витрати за період" : zoomedKPIs ? "Витрати за період" : "Витрати"} value={selectedKPIs ? fmtMoney(selectedKPIs.expenses) : subRangeKPIs ? fmtMoney(subRangeKPIs.expenses) : zoomedKPIs ? fmtMoney(zoomedKPIs.expenses) : fmtMoney(totalExpenses)} color="text-danger" numericValue={selectedKPIs?.expenses ?? subRangeKPIs?.expenses ?? zoomedKPIs?.expenses ?? totalExpenses} />
         </motion.div>
       )}
 
@@ -1966,6 +2004,70 @@ export default function Analytics() {
               </div>
             </>
           )}
+        </div>
+      )}
+
+      {zoomedChartData.length > 2 && (
+        <div className="mobile-card mb-5">
+          <div className="flex items-center justify-between mb-2">
+            <span className="text-[11px] font-medium text-content-secondary">Діапазон для KPI</span>
+            {subRange !== null && (
+              <button
+                onClick={() => setSubRange(null)}
+                className="text-[10px] text-content-muted hover:text-content-secondary transition px-1"
+              >
+                ← Повний діапазон
+              </button>
+            )}
+          </div>
+          <div className="relative h-8 select-none">
+            <div className="absolute inset-0 flex items-center">
+              <div className="w-full h-[3px] rounded-full bg-border-strong" />
+              <div
+                className="absolute h-[3px] rounded-full bg-brand"
+                style={{
+                  left: `${((subRange ? subRange[0] : 0) / (zoomedChartData.length - 1)) * 100}%`,
+                  width: `${(((subRange ? subRange[1] : zoomedChartData.length - 1) - (subRange ? subRange[0] : 0)) / (zoomedChartData.length - 1)) * 100}%`,
+                }}
+              />
+            </div>
+            <input
+              type="range"
+              min={0}
+              max={zoomedChartData.length - 1}
+              step={1}
+              value={subRange ? subRange[0] : 0}
+              onChange={(e) => {
+                const v = Number(e.target.value);
+                const end = subRange ? subRange[1] : zoomedChartData.length - 1;
+                setSubRange(v <= end ? [v, end] : [v, v]);
+              }}
+              aria-label="Початок діапазону"
+              className="subrange-input"
+            />
+            <input
+              type="range"
+              min={0}
+              max={zoomedChartData.length - 1}
+              step={1}
+              value={subRange ? subRange[1] : zoomedChartData.length - 1}
+              onChange={(e) => {
+                const v = Number(e.target.value);
+                const start = subRange ? subRange[0] : 0;
+                setSubRange(v >= start ? [start, v] : [v, v]);
+              }}
+              aria-label="Кінець діапазону"
+              className="subrange-input"
+            />
+          </div>
+          <div className="flex justify-between mt-1">
+            <span className="text-[9px] text-content-muted truncate max-w-[45%]">
+              {zoomedChartData[subRange ? subRange[0] : 0]?.label}
+            </span>
+            <span className="text-[9px] text-content-muted truncate max-w-[45%] text-right">
+              {zoomedChartData[subRange ? subRange[1] : zoomedChartData.length - 1]?.label}
+            </span>
+          </div>
         </div>
       )}
 

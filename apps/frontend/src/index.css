@@ -506,6 +506,62 @@
   transform: scale(0.97);
 }
 
+/* ─── Dual-range slider (KPI sub-range) ─── */
+
+.subrange-input {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  margin: 0;
+  padding: 0;
+  background: transparent;
+  -webkit-appearance: none;
+  appearance: none;
+  pointer-events: none;
+  outline: none;
+}
+.subrange-input::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 20px;
+  height: 24px;
+  border-radius: 9999px;
+  background: var(--color-brand);
+  border: 2px solid var(--color-surface);
+  box-shadow: 0 1px 3px rgb(0 0 0 / 0.18);
+  cursor: grab;
+  pointer-events: auto;
+  position: relative;
+  z-index: 2;
+}
+.subrange-input::-moz-range-thumb {
+  width: 20px;
+  height: 24px;
+  border-radius: 9999px;
+  background: var(--color-brand);
+  border: 2px solid var(--color-surface);
+  box-shadow: 0 1px 3px rgb(0 0 0 / 0.18);
+  cursor: grab;
+  pointer-events: auto;
+}
+.subrange-input::-webkit-slider-runnable-track {
+  background: transparent;
+  height: 100%;
+}
+.subrange-input::-moz-range-track {
+  background: transparent;
+  height: 100%;
+}
+.subrange-input:active::-webkit-slider-thumb {
+  cursor: grabbing;
+  transform: scale(1.15);
+}
+.subrange-input:active::-moz-range-thumb {
+  cursor: grabbing;
+  transform: scale(1.15);
+}
+
 /* Reduced motion overrides */
 @media (prefers-reduced-motion: reduce) {
   .stagger-container > * {
