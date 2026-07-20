@@ -336,6 +336,7 @@ export default function Analytics() {
   const [chartMode, setChartMode] = useState<'profit' | 'composite'>('profit');
   const [granularity, setGranularity] = useState<'month' | 'day'>('month');
   const [showMobileFilters, setShowMobileFilters] = useState(false);
+  const [selectedEntryKey, setSelectedEntryKey] = useState<string | null>(null);
 
   const { data: cities } = useCities();
   const { data: rawCityMonthData, isLoading: revenueLoading } = useRevenueByCityMonth({
@@ -347,6 +348,7 @@ export default function Analytics() {
   });
   const { data: eventsByCity, isLoading: eventsLoading } = useEventsByCity({ year: yearParam });
   const { data: salaryFund } = useSalaryFund({ year: yearParam });
+  void salaryFund;
   const { data: targets } = useAnalyticsTargets({ year: yearParam });
   const { data: annotations } = useAnalyticsAnnotations({ year: yearParam });
   const { data: rawDayData } = useRevenueByDay({
@@ -789,11 +791,18 @@ export default function Analytics() {
         setZoomKeysSafe([source[ns].key, source[ne].key]);
       }
 
+      const newSpan = ne - ns;
+      if (granularity === 'month' && period !== 'all' && newSpan <= 6 && newSpan >= 0) {
+        setGranularity('day');
+      } else if (granularity === 'day' && newSpan > 8) {
+        setGranularity('month');
+      }
+
       zoomTimerRef.current = setTimeout(() => {
         setZoomAnimating(false);
       }, 200);
     },
-    [clampRange, granularity, dayChartData, forecastData.entries, setZoomKeysSafe],
+    [clampRange, granularity, period, dayChartData, forecastData.entries, setZoomKeysSafe],
   );
 
   useEffect(() => {
@@ -854,6 +863,12 @@ export default function Analytics() {
     zoomTimerRef.current = setTimeout(() => {
       setZoomAnimating(false);
     }, 50);
+  }, []);
+
+  const handleChartClick = useCallback((data: { activePayload?: Array<{ payload: ChartEntry }> } | null) => {
+    if (!data?.activePayload?.length) return;
+    const entry = data.activePayload[0].payload;
+    setSelectedEntryKey((prev) => prev === entry.key ? null : entry.key);
   }, []);
 
   const zoomedChartData = useMemo(() => {
@@ -1004,6 +1019,46 @@ export default function Analytics() {
     }
     return sum;
   }, [filteredData, activeCities]);
+
+  const totalExpenses = useMemo(() => {
+    let sum = 0;
+    for (const row of filteredData) {
+      if (activeCities.has(row.cityName)) sum += Math.max(0, row.revenue - row.profit);
+    }
+    return sum;
+  }, [filteredData, activeCities]);
+
+  const selectedKPIs = useMemo(() => {
+    if (!selectedEntryKey) return null;
+    const source = granularity === 'day' ? rawDayData : filteredData;
+    if (!source) return null;
+
+    let profit = 0;
+    let revenue = 0;
+
+    if (granularity === 'day') {
+      for (const row of source) {
+        if (row.date === selectedEntryKey && activeCities.has(row.cityName)) {
+          profit += row.profit;
+          revenue += row.revenue;
+        }
+      }
+    } else {
+      for (const row of source) {
+        const rowKey = `${row.year}-${String(row.month).padStart(2, "0")}`;
+        if (rowKey === selectedEntryKey && activeCities.has(row.cityName)) {
+          profit += row.profit;
+          revenue += row.revenue;
+        }
+      }
+    }
+
+    return {
+      profit,
+      revenue,
+      expenses: Math.max(0, revenue - profit),
+    };
+  }, [selectedEntryKey, granularity, rawDayData, filteredData, activeCities]);
 
   const tooltipDataRef = useRef<TooltipDataRef>({
     rawData: undefined,
@@ -1194,9 +1249,9 @@ export default function Analytics() {
           initial="hidden"
           animate="visible"
         >
-          <KPICard label="Загальний дохід" value={fmtMoney(totalRevenue)} color="text-brand" numericValue={totalRevenue} />
-          <KPICard label="Прибуток" value={fmtMoney(totalProfit)} color="text-success" numericValue={totalProfit} />
-          <KPICard label="Витрати на ЗП" value={fmtMoney(salaryFund?.total ?? 0)} color="text-danger" numericValue={salaryFund?.total ?? 0} />
+          <KPICard label={selectedKPIs ? "Дохід за період" : "Загальний дохід"} value={fmtMoney(selectedKPIs?.revenue ?? totalRevenue)} color="text-brand" numericValue={selectedKPIs?.revenue ?? totalRevenue} />
+          <KPICard label={selectedKPIs ? "Прибуток за період" : "Прибуток"} value={fmtMoney(selectedKPIs?.profit ?? totalProfit)} color="text-success" numericValue={selectedKPIs?.profit ?? totalProfit} />
+          <KPICard label={selectedKPIs ? "Витрати за період" : "Витрати"} value={selectedKPIs ? fmtMoney(selectedKPIs.expenses) : fmtMoney(totalExpenses)} color="text-danger" numericValue={selectedKPIs?.expenses ?? totalExpenses} />
         </motion.div>
       )}
 
@@ -1575,7 +1630,7 @@ export default function Analytics() {
                     className="touch-none overflow-visible"
                   >
                     <ResponsiveContainer width="100%" height={280}>
-                      <AreaChart data={chartDataForRender} margin={{ top: 8, right: 28, left: 0, bottom: 0 }}>
+                      <AreaChart data={chartDataForRender} margin={{ top: 8, right: 28, left: 0, bottom: 0 }} onClick={handleChartClick}>
                         <defs>
                           {activeLines.map((line) => (
                             <linearGradient key={line.key} id={`grad-${line.key}`} x1="0" y1="0" x2="0" y2="1">
@@ -1847,13 +1902,14 @@ export default function Analytics() {
                       </AreaChart>
                     </ResponsiveContainer>
                   </div>
-                  {isZoomed && (
+                  {(isZoomed || selectedEntryKey) && (
                     <button
                       onClick={() => {
                         const entries = granularity === 'day' ? dayChartData : forecastData.entries;
                         if (entries.length > 0) {
                           setZoomKeysSafe([entries[0].key, entries[entries.length - 1].key]);
                         }
+                        setSelectedEntryKey(null);
                       }}
                       className="mt-1.5 text-[10px] text-content-muted hover:text-content-secondary transition px-1"
                     >
