@@ -1062,6 +1062,30 @@ export default function Analytics() {
     return sum;
   }, [filteredData, activeCities]);
 
+  const zoomedKPIs = useMemo(() => {
+    if (!isZoomed) return null;
+    const zoomedKeys = new Set(zoomedChartData.map((e) => e.key));
+    let profit = 0;
+    let revenue = 0;
+    if (granularity === 'day' && rawDayData) {
+      for (const row of rawDayData) {
+        if (zoomedKeys.has(row.date) && activeCities.has(row.cityName)) {
+          profit += row.profit;
+          revenue += row.revenue;
+        }
+      }
+    } else {
+      for (const row of filteredData) {
+        const key = `${row.year}-${String(row.month).padStart(2, "0")}`;
+        if (zoomedKeys.has(key) && activeCities.has(row.cityName)) {
+          profit += row.profit;
+          revenue += row.revenue;
+        }
+      }
+    }
+    return { profit, revenue, expenses: Math.max(0, revenue - profit) };
+  }, [isZoomed, zoomedChartData, granularity, rawDayData, filteredData, activeCities]);
+
   const selectedKPIs = useMemo(() => {
     if (!selectedEntryKey) return null;
     const source = granularity === 'day' ? rawDayData : filteredData;
@@ -1271,9 +1295,9 @@ export default function Analytics() {
           initial="hidden"
           animate="visible"
         >
-          <KPICard label={selectedKPIs ? "Дохід за період" : "Загальний дохід"} value={fmtMoney(selectedKPIs?.revenue ?? totalRevenue)} color="text-brand" numericValue={selectedKPIs?.revenue ?? totalRevenue} />
-          <KPICard label={selectedKPIs ? "Прибуток за період" : "Прибуток"} value={fmtMoney(selectedKPIs?.profit ?? totalProfit)} color="text-success" numericValue={selectedKPIs?.profit ?? totalProfit} />
-          <KPICard label={selectedKPIs ? "Витрати за період" : "Витрати"} value={selectedKPIs ? fmtMoney(selectedKPIs.expenses) : fmtMoney(totalExpenses)} color="text-danger" numericValue={selectedKPIs?.expenses ?? totalExpenses} />
+          <KPICard label={selectedKPIs ? "Дохід за період" : zoomedKPIs ? "Дохід за період" : "Загальний дохід"} value={fmtMoney(selectedKPIs?.revenue ?? zoomedKPIs?.revenue ?? totalRevenue)} color="text-brand" numericValue={selectedKPIs?.revenue ?? zoomedKPIs?.revenue ?? totalRevenue} />
+          <KPICard label={selectedKPIs ? "Прибуток за період" : zoomedKPIs ? "Прибуток за період" : "Прибуток"} value={fmtMoney(selectedKPIs?.profit ?? zoomedKPIs?.profit ?? totalProfit)} color="text-success" numericValue={selectedKPIs?.profit ?? zoomedKPIs?.profit ?? totalProfit} />
+          <KPICard label={selectedKPIs ? "Витрати за період" : zoomedKPIs ? "Витрати за період" : "Витрати"} value={selectedKPIs ? fmtMoney(selectedKPIs.expenses) : zoomedKPIs ? fmtMoney(zoomedKPIs.expenses) : fmtMoney(totalExpenses)} color="text-danger" numericValue={selectedKPIs?.expenses ?? zoomedKPIs?.expenses ?? totalExpenses} />
         </motion.div>
       )}
 
