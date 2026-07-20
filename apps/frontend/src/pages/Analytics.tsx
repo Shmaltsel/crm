@@ -460,43 +460,36 @@ export default function Analytics() {
   const dayChartData = useMemo(() => {
     if (granularity !== 'day') return chartData;
     if (!rawDayData) return [];
-    const byKey = new Map<string, ChartEntry>();
+    const entries: ChartEntry[] = [];
     for (const row of rawDayData) {
       const d = new Date(row.date);
       const y = d.getFullYear();
       const m = d.getMonth() + 1;
       const day = d.getDate();
-      const k = row.date;
-      if (!byKey.has(k)) {
-        const entry: ChartEntry = {
-          key: k,
-          year: y,
-          month: m,
-          day: day,
-          label: '',
-        };
-        byKey.set(k, entry);
-      }
-      const entry = byKey.get(k)!;
+      const entry: ChartEntry = {
+        key: row.eventId,
+        year: y,
+        month: m,
+        day: day,
+        date: row.date,
+        label: '',
+      };
       if (activeCities.has(row.cityName)) {
         if (aggregateByCity) {
-          const lk = `profit_${row.cityName}`;
-          entry[lk] = ((entry[lk] as number) ?? 0) + row.profit;
-          const rv = `revenue_${row.cityName}`;
-          entry[rv] = ((entry[rv] as number) ?? 0) + row.revenue;
+          entry[`profit_${row.cityName}`] = row.profit;
+          entry[`revenue_${row.cityName}`] = row.revenue;
         } else {
-          const lk = `profit_${row.project}_${row.cityName}`;
-          entry[lk] = ((entry[lk] as number) ?? 0) + row.profit;
-          const rv = `revenue_${row.project}_${row.cityName}`;
-          entry[rv] = ((entry[rv] as number) ?? 0) + row.revenue;
+          entry[`profit_${row.project}_${row.cityName}`] = row.profit;
+          entry[`revenue_${row.project}_${row.cityName}`] = row.revenue;
         }
       }
+      entries.push(entry);
     }
-    const entries = Array.from(byKey.values()).sort(
-      (a, b) => a.key.localeCompare(b.key)
-    );
-    // Ініціалізуємо всі active project×city ключі з нулями
-    // щоб Recharts малював лінії навіть якщо rawDayData не містить дані для деяких комбінацій
+    entries.sort((a, b) => {
+      const da = (a as Record<string, unknown>).date as string;
+      const db = (b as Record<string, unknown>).date as string;
+      return da.localeCompare(db) || a.key.localeCompare(b.key);
+    });
     if (!aggregateByCity) {
       for (const entry of entries) {
         for (const project of activeProjects) {
@@ -511,7 +504,7 @@ export default function Analytics() {
     }
     const span = entries.length;
     for (const e of entries) {
-      const d = new Date(e.key);
+      const d = new Date((e as Record<string, unknown>).date as string);
       if (span > 90) e.label = `${d.getDate()}.${d.getMonth()+1}`;
       else e.label = `${d.getDate()} ${UA_MONTHS[d.getMonth()]}`;
     }
@@ -718,17 +711,27 @@ export default function Analytics() {
     if (granularity !== 'day' || !pendingDayRange) return;
     if (dayChartData.length === 0) return;
     const [startISO, endISO] = pendingDayRange;
-    let s = dayChartData.findIndex((d) => d.key >= startISO);
+    const getDate = (entry: ChartEntry) => (entry as Record<string, unknown>).date as string ?? entry.key;
+    let s = dayChartData.findIndex((d) => getDate(d) >= startISO);
     if (s === -1) s = 0;
     let e = -1;
     for (let i = dayChartData.length - 1; i >= 0; i--) {
-      if (dayChartData[i].key <= endISO) { e = i; break; }
+      if (getDate(dayChartData[i]) <= endISO) { e = i; break; }
     }
     if (e === -1) e = dayChartData.length - 1;
     if (e < s) { s = 0; e = dayChartData.length - 1; }
     setZoomKeysSafe([dayChartData[s].key, dayChartData[e].key]);
     setPendingDayRange(null);
   }, [granularity, pendingDayRange, dayChartData, setZoomKeysSafe]);
+
+  const [granularityAnimating, setGranularityAnimating] = useState(false);
+  const granularityAnimTimer = useRef<ReturnType<typeof setTimeout>>();
+  useEffect(() => {
+    setGranularityAnimating(true);
+    if (granularityAnimTimer.current) clearTimeout(granularityAnimTimer.current);
+    granularityAnimTimer.current = setTimeout(() => setGranularityAnimating(false), 650);
+    return () => { if (granularityAnimTimer.current) clearTimeout(granularityAnimTimer.current); };
+  }, [granularity]);
 
   useEffect(() => {
     if (granularity === 'day') {
@@ -858,7 +861,7 @@ export default function Analytics() {
         const endISO = `${endMonth.year}-${String(endMonth.month).padStart(2, '0')}-${String(lastDay).padStart(2, '0')}`;
         setPendingDayRange([startISO, endISO]);
         setGranularity('day');
-      } else if (granularity === 'day' && actualSpan > 8) {
+      } else if (granularity === 'day' && actualSpan > 62) {
         setGranularity('month');
       }
 
@@ -930,7 +933,7 @@ export default function Analytics() {
           const endISO = `${endMonth.year}-${String(endMonth.month).padStart(2, '0')}-${String(lastDay).padStart(2, '0')}`;
           setPendingDayRange([startISO, endISO]);
           setGranularity('day');
-        } else if (granularity === 'day' && touchSpan > 8) {
+        } else if (granularity === 'day' && touchSpan > 62) {
           setGranularity('month');
         }
 
@@ -1963,7 +1966,7 @@ export default function Analytics() {
                             } : zoomSpan <= 12 ? { r: 2.5, fill: line.color, strokeWidth: 0 } : false}
                             activeDot={<CustomActiveDot color={line.color} />}
                             name={line.label}
-                            isAnimationActive={!zoomAnimating}
+                            isAnimationActive={!zoomAnimating || granularityAnimating}
                             animationDuration={1000}
                             animationEasing="ease-out"
                             style={zoomSpan <= 24 ? { filter: "url(#glow)" } : undefined}
@@ -1984,7 +1987,7 @@ export default function Analytics() {
                                 dot={zoomSpan <= 12 ? { r: 2.5, fill: line.color, strokeWidth: 0 } : false}
                                 activeDot={<CustomActiveDot color={line.color} />}
                                 name={`${line.label} (дохід)`}
-                                isAnimationActive={!zoomAnimating}
+                                isAnimationActive={!zoomAnimating || granularityAnimating}
                                 animationDuration={1000}
                                 animationEasing="ease-out"
                               />
@@ -2003,7 +2006,7 @@ export default function Analytics() {
                                 dot={zoomSpan <= 12 ? { r: 2.5, fill: "#ef4444", strokeWidth: 0 } : false}
                                 activeDot={<CustomActiveDot color="#ef4444" />}
                                 name={`${line.label} (витрати)`}
-                                isAnimationActive={!zoomAnimating}
+                                isAnimationActive={!zoomAnimating || granularityAnimating}
                                 animationDuration={1000}
                                 animationEasing="ease-out"
                               />
@@ -2017,7 +2020,7 @@ export default function Analytics() {
                             fill={line.color}
                             opacity={0.15}
                             radius={[2, 2, 0, 0]}
-                            isAnimationActive={!zoomAnimating}
+                            isAnimationActive={!zoomAnimating || granularityAnimating}
                             name={`${line.label} (дохід)`}
                           />
                         ))}

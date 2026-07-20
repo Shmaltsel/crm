@@ -132,7 +132,7 @@ export class AnalyticsService {
 
   async revenueByDay(params: { year?: number; month?: number; cityId?: string; project?: string }) {
     const prefix = await this.vkey('analytics');
-    const cacheKey = `${prefix}:revenueByDay:${params.year ?? ''}:${params.month ?? ''}:${params.cityId ?? ''}:${params.project ?? ''}`;
+    const cacheKey = `${prefix}:revenueByEvent:${params.year ?? ''}:${params.month ?? ''}:${params.cityId ?? ''}:${params.project ?? ''}`;
     const cached = await this.cacheManager.get(cacheKey);
     if (cached) return cached;
 
@@ -154,26 +154,29 @@ export class AnalyticsService {
       conditions.push(Prisma.sql`AND e.project = ${params.project}`);
     }
 
-    type DayRow = {
+    type EventRow = {
+      eventId: string;
       date: string;
+      time: string | null;
       cityName: string;
       project: string;
       revenue: number;
       profit: number;
     };
-    const rows = await this.prisma.$queryRaw<DayRow[]>`
+    const rows = await this.prisma.$queryRaw<EventRow[]>`
       SELECT
+        e.id                                     AS "eventId",
         TO_CHAR(e.date, 'YYYY-MM-DD')            AS date,
+        e.time                                   AS time,
         COALESCE(c.name, '—')                    AS "cityName",
         COALESCE(e.project, 'Інше')              AS project,
-        COALESCE(SUM(r."totalSum"), 0)::float     AS revenue,
-        COALESCE(SUM(r."remainderSum"), 0)::float AS profit
+        COALESCE(r."totalSum", 0)::float         AS revenue,
+        COALESCE(r."remainderSum", 0)::float     AS profit
       FROM "Event" e
       LEFT JOIN "EventReport" r ON r."eventId" = e.id
       LEFT JOIN "City" c ON c.id = e."cityId"
       WHERE 1=1 ${Prisma.join(conditions, ' ')}
-      GROUP BY e.date, e."cityId", c.name, e.project
-      ORDER BY e.date
+      ORDER BY e.date ASC, e.time ASC NULLS LAST, e.id ASC
     `;
 
     await this.cacheManager.set(cacheKey, rows, CACHE_TTL);

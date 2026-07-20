@@ -135,7 +135,9 @@ export function useSetAnalyticsAnnotation() {
 
 }
 export interface RevenueByDayRow {
+  eventId: string;
   date: string;
+  time: string | null;
   cityName: string;
   project: string;
   revenue: number;
