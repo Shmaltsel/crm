@@ -223,10 +223,13 @@ async function main() {
     }
     for (const name of senderNames) {
       const slug = name.toLowerCase().replace(/[^a-zа-яіїєґ0-9]+/gi, '.').replace(/\.+$/, '');
-      const created = await prisma.user.create({
-        data: {
+      const email = `${slug}@import.local`;
+      const created = await prisma.user.upsert({
+        where: { email },
+        update: { name },
+        create: {
           name,
-          email: `${slug}@import.local`,
+          email,
           password: 'imported-not-login',
           role: 'MANAGER',
           cityId: city.id,
