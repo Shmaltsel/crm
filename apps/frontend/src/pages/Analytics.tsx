@@ -669,6 +669,7 @@ export default function Analytics() {
   }
 
   // ── Хелпери: конвертація key ↔ index для активного масиву ──
+  const [pendingDayRange, setPendingDayRange] = useState<[string, string] | null>(null);
   const keyToIndex = useCallback((key: string, source: ChartEntry[]): number => {
     return source.findIndex((e) => e.key === key);
   }, []);
@@ -704,7 +705,6 @@ export default function Analytics() {
   const pinchRef = useRef<{ dist: number; keys: [string, string] } | null>(null);
   const zoomTimerRef = useRef<ReturnType<typeof setTimeout>>();
   const isMobile = typeof window !== 'undefined' && window.innerWidth < 768;
-  const [pendingDayRange, setPendingDayRange] = useState<[string, string] | null>(null);
 
   useEffect(() => {
     if (granularity !== 'day' || !pendingDayRange) return;
