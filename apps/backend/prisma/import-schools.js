@@ -244,7 +244,7 @@ async function main() {
     for (const entry of raw) {
       for (const msg of entry['повідомлення'] || []) {
         const from = (msg.from || '').trim();
-        if (from && !nameToUser.has(from.toLowerCase())) senderNames.add(from);
+        if (from && !nameToUser.has(from.toLowerCase().trim())) senderNames.add(from);
       }
     }
     for (const name of senderNames) {
@@ -258,7 +258,7 @@ async function main() {
           cityId: city.id,
         },
       });
-      nameToUser.set(name.toLowerCase(), created);
+      nameToUser.set(name.toLowerCase().trim(), created);
     }
     if (senderNames.size > 0) {
       allUsers = await prisma.user.findMany({ select: { id: true, name: true } });
