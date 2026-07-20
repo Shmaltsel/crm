@@ -151,7 +151,6 @@ function linearRegressionForecast(
 }
 
 const currentYear = new Date().getFullYear();
-const YEAR_OPTIONS = Array.from({ length: 5 }, (_, i) => currentYear - i);
 
 interface ChartEntry {
   key: string;
@@ -316,7 +315,8 @@ export default function Analytics() {
   const { user } = useAuth();
   const isSuper = user?.role === "SUPERADMIN" || user?.role === "OWNER";
 
-  const [period, setPeriod] = useState<string>("year");
+  // Часовий проміжок за замовчуванням — весь час. Селектор прибрано, буде реалізовано інакше.
+  const period: string = "all";
 
   const yearParam = useMemo(() => {
     if (period === "all") return undefined;
@@ -1226,18 +1226,6 @@ export default function Analytics() {
         </p>
       </div>
 
-      <div className="flex flex-wrap items-center gap-2 mb-5">
-        <select
-          value={period}
-          onChange={(e) => setPeriod(e.target.value)}
-          className="px-3 py-2.5 bg-surface border border-border-strong rounded-control text-base focus:outline-none focus:ring-2 focus:ring-brand/30 focus:border-brand min-h-[44px]"
-        >
-          {YEAR_OPTIONS.map((y) => (
-            <option key={y} value={y}>{y}</option>
-          ))}
-          <option value="all">Весь час</option>
-        </select>
-      </div>
 
       {revenueLoading && !rawCityMonthData ? (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3 mb-5">
