@@ -923,7 +923,39 @@ export default function Analytics() {
 
     if (visibleSource.length <= 1) return visibleSource;
 
-    return visibleSource;
+    const MIN_INTERPOLATED = 8;
+    if (visibleSource.length >= MIN_INTERPOLATED) return visibleSource;
+
+    const POINTS_BETWEEN = Math.max(1, Math.ceil((MIN_INTERPOLATED - visibleSource.length) / Math.max(1, visibleSource.length - 1)));
+    const result: ChartEntry[] = [];
+
+    for (let i = 0; i < visibleSource.length; i++) {
+      const src = visibleSource[i];
+      result.push({ ...src });
+
+      if (i < visibleSource.length - 1) {
+        const next = visibleSource[i + 1];
+        for (let j = 1; j <= POINTS_BETWEEN; j++) {
+          const t = j / (POINTS_BETWEEN + 1);
+          const interp: ChartEntry = {
+            key: `${src.key}__${next.key}__${j}`,
+            year: src.year,
+            month: src.month,
+            day: src.day,
+            label: `${src.label}~${next.label}`,
+          };
+          for (const k of Object.keys(src)) {
+            if (['key', 'label', 'year', 'month', 'day'].includes(k)) continue;
+            const a = Number(src[k]) || 0;
+            const b = Number(next[k]) || 0;
+            interp[k] = a + (b - a) * t;
+          }
+          result.push(interp);
+        }
+      }
+    }
+
+    return result;
   }, [dayChartData, forecastData.entries, visibleRange, granularity, activeLines, chartData.length]);
 
   const [subRange, setSubRange] = useState<[number, number] | null>(null);
