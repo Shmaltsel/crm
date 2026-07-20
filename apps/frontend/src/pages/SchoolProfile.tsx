@@ -3,6 +3,7 @@ import { useParams, useNavigate } from "react-router-dom";
 import { useQueryClient } from "@tanstack/react-query";
 
 import { tick } from "../lib/haptics";
+import { useAuth } from "../context/AuthContext";
 
 import {
   useSchool,
@@ -53,6 +54,9 @@ const EventPreparation = lazy(
 const AssignedCrew = lazy(
   () => import("../components/school-profile/AssignedCrew"),
 );
+const NotesCard = lazy(
+  () => import("../components/school-profile/NotesCard"),
+);
 
 import EditSchoolModal from "../components/school-profile/modals/EditSchoolModal";
 import EventModal from "../components/school-profile/modals/EventModal";
@@ -77,6 +81,8 @@ export default function SchoolProfile() {
   const { id } = useParams();
   const navigate = useNavigate();
   const qc = useQueryClient();
+  const { user } = useAuth();
+  const isFieldStaff = user?.role === "HOST" || user?.role === "DRIVER";
   const [isLeavingPage, setIsLeavingPage] = useState(false);
   const [actionSheetOpen, setActionSheetOpen] = useState(false);
 
@@ -119,6 +125,7 @@ export default function SchoolProfile() {
         phone: "",
         email: "",
         childrenCount: 0,
+        notes: "",
       };
     }
 
@@ -133,6 +140,7 @@ export default function SchoolProfile() {
       phone: schoolRaw.phone || "",
       email: schoolRaw.email || "",
       childrenCount: schoolRaw.childrenCount || 0,
+      notes: schoolRaw.notes || "",
     };
   }, [schoolRaw]);
 
@@ -634,6 +642,15 @@ export default function SchoolProfile() {
           >
             <SchoolInfoCard schoolData={schoolData} />
           </Suspense>
+          {!isFieldStaff && (
+            <Suspense
+              fallback={
+                <div className="bg-surface rounded-card shadow-card h-32 animate-pulse border border-border" />
+              }
+            >
+              <NotesCard schoolData={schoolData} />
+            </Suspense>
+          )}
         </section>
 
         <section id="section-history" className="scroll-mt-20 space-y-4">
@@ -681,6 +698,16 @@ export default function SchoolProfile() {
           >
             <SchoolInfoCard schoolData={schoolData} />
           </Suspense>
+
+          {!isFieldStaff && (
+            <Suspense
+              fallback={
+                <div className="bg-surface rounded-card shadow-card h-32 animate-pulse border border-border" />
+              }
+            >
+              <NotesCard schoolData={schoolData} />
+            </Suspense>
+          )}
 
           <Suspense
             fallback={
