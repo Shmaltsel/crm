@@ -34,6 +34,7 @@ import SchoolProfileSkeleton from "../components/school-profile/SchoolProfileSke
 import QuickActionsBar from "../components/school-profile/QuickActionsBar";
 import SchoolActionSheet from "../components/school-profile/modals/SchoolActionSheet";
 import FloatingMobileNav from "../components/school-profile/FloatingMobileNav";
+import MobileCollapsible from "../components/school-profile/MobileCollapsible";
 
 const Pipeline = lazy(() => import("../components/school-profile/Pipeline"));
 const HistoryTimeline = lazy(
@@ -552,18 +553,20 @@ export default function SchoolProfile() {
 
         <section id="section-execution" className="scroll-mt-20 space-y-6">
           {currentEvent && (
-            <Suspense
-              fallback={
-                <div className="bg-surface rounded-card shadow-card h-24 animate-pulse border border-border" />
-              }
-            >
-              <Pipeline
-                currentStageIndex={currentStageIndex}
-                currentEvent={currentEvent}
-                onPipelineClick={handlePipelineClick}
-                stages={PIPELINE_STAGES}
-              />
-            </Suspense>
+            <MobileCollapsible title="Пайплайн" icon="🔄" defaultExpanded={true}>
+              <Suspense
+                fallback={
+                  <div className="bg-surface rounded-card shadow-card h-24 animate-pulse border border-border" />
+                }
+              >
+                <Pipeline
+                  currentStageIndex={currentStageIndex}
+                  currentEvent={currentEvent}
+                  onPipelineClick={handlePipelineClick}
+                  stages={PIPELINE_STAGES}
+                />
+              </Suspense>
+            </MobileCollapsible>
           )}
 
           {currentEvent &&
@@ -643,31 +646,35 @@ export default function SchoolProfile() {
             <SchoolInfoCard schoolData={schoolData} />
           </Suspense>
           {!isFieldStaff && (
-            <Suspense
-              fallback={
-                <div className="bg-surface rounded-card shadow-card h-32 animate-pulse border border-border" />
-              }
-            >
-              <CommentsTimeline schoolId={id} defaultType="NOTE" />
-            </Suspense>
+            <MobileCollapsible title="Нотатки" icon="📝" defaultExpanded={false}>
+              <Suspense
+                fallback={
+                  <div className="bg-surface rounded-card shadow-card h-32 animate-pulse border border-border" />
+                }
+              >
+                <CommentsTimeline schoolId={id} defaultType="NOTE" />
+              </Suspense>
+            </MobileCollapsible>
           )}
         </section>
 
         <section id="section-history" className="scroll-mt-20 space-y-4">
-          <Suspense
-            fallback={
-              <div className="bg-surface rounded-card shadow-card h-48 animate-pulse border border-border" />
-            }
-          >
-            <HistoryTimeline
-              currentEvent={
-                eventFullLoading ? currentEventBase : currentEvent
+          <MobileCollapsible title="Історія взаємодії" icon="🕐" defaultExpanded={false}>
+            <Suspense
+              fallback={
+                <div className="bg-surface rounded-card shadow-card h-48 animate-pulse border border-border" />
               }
-              schoolComments={schoolComments}
-              onHistoryClick={handleHistoryClick}
-              onAddCommentClick={handleAddCommentClick}
-            />
-          </Suspense>
+            >
+              <HistoryTimeline
+                currentEvent={
+                  eventFullLoading ? currentEventBase : currentEvent
+                }
+                schoolComments={schoolComments}
+                onHistoryClick={handleHistoryClick}
+                onAddCommentClick={handleAddCommentClick}
+              />
+            </Suspense>
+          </MobileCollapsible>
         </section>
 
       </div>
