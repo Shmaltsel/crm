@@ -1360,10 +1360,10 @@ export default function Analytics() {
         </div>
       ) : (
         <motion.div
-          className={`grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3 mb-5 transition-opacity ${revenueLoading ? 'opacity-60' : ''}`}
-          variants={staggerContainer}
-          initial="hidden"
-          animate="visible"
+          className={`grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3 mb-5 transition-opacity ${revenueLoading ? 'opacity-60' : ''} ${isMobile ? 'stagger-container' : ''}`}
+          variants={isMobile ? undefined : staggerContainer}
+          initial={isMobile ? undefined : "hidden"}
+          animate={isMobile ? undefined : "visible"}
         >
           <KPICard label={selectedKPIs ? "Дохід за період" : zoomedKPIs ? "Дохід за період" : "Загальний дохід"} value={fmtMoney(selectedKPIs?.revenue ?? subRangeKPIs?.revenue ?? zoomedKPIs?.revenue ?? totalRevenue)} color="text-brand" numericValue={selectedKPIs?.revenue ?? subRangeKPIs?.revenue ?? zoomedKPIs?.revenue ?? totalRevenue} />
           <KPICard label={selectedKPIs ? "Прибуток за період" : zoomedKPIs ? "Прибуток за період" : "Прибуток"} value={fmtMoney(selectedKPIs?.profit ?? subRangeKPIs?.profit ?? zoomedKPIs?.profit ?? totalProfit)} color="text-success" numericValue={selectedKPIs?.profit ?? subRangeKPIs?.profit ?? zoomedKPIs?.profit ?? totalProfit} />
