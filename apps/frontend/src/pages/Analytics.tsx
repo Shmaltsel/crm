@@ -485,22 +485,6 @@ export default function Analytics() {
     return entries;
   }, [rawDayData, granularity, chartData, activeCities, activeProjects, aggregateByCity]);
 
-  const echartsDailyData = useMemo(() => {
-    if (!rawDayData) return [];
-    const byDate = new Map<string, { revenue: number; profit: number }>();
-    for (const row of rawDayData) {
-      if (!activeCities.has(row.cityName)) continue;
-      if (!aggregateByCity && !activeProjects.has(row.project)) continue;
-      const existing = byDate.get(row.date) ?? { revenue: 0, profit: 0 };
-      existing.revenue += row.revenue;
-      existing.profit += row.profit;
-      byDate.set(row.date, existing);
-    }
-    return Array.from(byDate.entries())
-      .sort((a, b) => a[0].localeCompare(b[0]))
-      .map(([date, v]) => ({ date, revenue: v.revenue, profit: v.profit }));
-  }, [rawDayData, activeCities, activeProjects, aggregateByCity]);
-
   const activeLines = useMemo(() => {
     const lines: { key: string; label: string; color: string }[] = [];
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
@@ -969,6 +953,35 @@ export default function Analytics() {
     if (visibleSource.length <= 1) return visibleSource;
     return visibleSource;
   }, [dayChartData, forecastData.entries, visibleRange, granularity, activeLines, chartData.length]);
+
+  const echartsDailyData = useMemo(() => {
+    if (granularity === 'month') {
+      if (!zoomedChartData.length) return [];
+      return zoomedChartData.map(entry => {
+        const date = `${entry.year}-${String(entry.month).padStart(2, '0')}-15`;
+        let revenue = 0;
+        let profit = 0;
+        for (const [key, val] of Object.entries(entry)) {
+          if (key.startsWith('revenue_')) revenue += (val as number) || 0;
+          if (key.startsWith('profit_')) profit += (val as number) || 0;
+        }
+        return { date, revenue, profit };
+      });
+    }
+    if (!rawDayData) return [];
+    const byDate = new Map<string, { revenue: number; profit: number }>();
+    for (const row of rawDayData) {
+      if (!activeCities.has(row.cityName)) continue;
+      if (!aggregateByCity && !activeProjects.has(row.project)) continue;
+      const existing = byDate.get(row.date) ?? { revenue: 0, profit: 0 };
+      existing.revenue += row.revenue;
+      existing.profit += row.profit;
+      byDate.set(row.date, existing);
+    }
+    return Array.from(byDate.entries())
+      .sort((a, b) => a[0].localeCompare(b[0]))
+      .map(([date, v]) => ({ date, revenue: v.revenue, profit: v.profit }));
+  }, [granularity, zoomedChartData, rawDayData, activeCities, activeProjects, aggregateByCity]);
 
   const [subRange, setSubRange] = useState<[number, number] | null>(null);
   const [prevZoomedLength, setPrevZoomedLength] = useState(zoomedChartData.length);
