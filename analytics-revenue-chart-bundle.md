@@ -1,3 +1,1378 @@
+# Analytics Revenue/Profit Chart - Full Code Bundle
+
+> Created 2026-07-24. All files that directly or indirectly power the revenue/profit chart on the analytics page.
+
+---
+
+## Architecture
+
+```
+Frontend (React + Vite)
+  Analytics.tsx -> useRevenueByCityMonth() -> /analytics/revenue-by-city-month
+              -> useRevenueByDay()        -> /analytics/revenue-by-day
+              -> useEventsByCity()         -> /analytics/events-by-city
+              -> useSalaryFund()           -> /analytics/salary-fund
+              -> useAnalyticsTargets()     -> /analytics/targets
+              -> useAnalyticsAnnotations() -> /analytics/annotations
+                        |
+                        v
+Backend (NestJS)
+  AnalyticsController -> AnalyticsService
+    -> raw SQL (Prisma.$queryRaw) against PostgreSQL
+    -> Redis cache (5 min TTL)
+```
+
+**Data source**: `Event.status = 'RE_SALE'` -> `EventReport.totalSum` (revenue) / `EventReport.remainderSum` (profit)
+
+---
+
+## File List
+
+| # | File | Role |
+|---|------|------|
+| 1 | `apps/backend/prisma/schema.prisma` | DB models (Event, EventReport, AnalyticsTarget, AnalyticsAnnotation) |
+| 2 | `apps/backend/src/analytics/analytics.module.ts` | NestJS module |
+| 3 | `apps/backend/src/analytics/analytics.controller.ts` | REST controller with DTOs |
+| 4 | `apps/backend/src/analytics/analytics.service.ts` | Service with raw SQL + Redis cache |
+| 5 | `apps/frontend/src/hooks/useAnalytics.ts` | React Query hooks for all analytics endpoints |
+| 6 | `apps/frontend/src/hooks/useCities.ts` | Cities hook |
+| 7 | `apps/frontend/src/pages/Analytics.tsx` | Main analytics page (2419 lines) |
+| 8 | `apps/frontend/src/lib/motion.ts` | framer-motion utilities |
+| 9 | `apps/frontend/src/tests/mocks/handlers.ts` | MSW mock handlers |
+
+---
+
+## 1. Database Models (Prisma Schema)
+
+```prisma
+model Event {
+  id              String            @id @default(uuid())
+  cityId          String
+  schoolId        String
+  crewId          String?
+  project         String
+  date            DateTime
+  time            String?
+  status          EventStatus       @default(BASE)
+  childrenPlanned Int?
+  childrenActual  Int?
+  price           Decimal? @db.Decimal(12, 2)
+  received        Decimal? @db.Decimal(12, 2)
+  paymentMethod   String?
+  address         String?
+  contactPerson   String?
+  contactPhone    String?
+  equipment       String?
+  nextContact     DateTime?
+  nextProject     String?
+  responsibleId   String?
+  createdAt       DateTime          @default(now())
+  updatedAt       DateTime          @updatedAt
+  city            City              @relation(fields: [cityId], references: [id])
+  crew            Crew?             @relation(fields: [crewId], references: [id])
+  school          School            @relation(fields: [schoolId], references: [id])
+  history         EventHistory[]
+  preparation     EventPreparation?
+  report          EventReport?
+  files           File[]
+  issues          IssueReport[]
+  salaryRecords   SalaryRecord[]
+
+  @@index([cityId])
+  @@index([cityId, date])
+  @@index([status])
+  @@index([schoolId])
+  @@index([schoolId, date])
+  @@index([date, status, cityId])
+  @@index([project])
+}```
+
+```prisma
+model EventReport {
+  id                String        @id @default(uuid())
+  eventId           String        @unique
+  status            ReportStatus  @default(DRAFT)
+  directorSatisfied Boolean?
+  teachersSatisfied Boolean?
+  hadIssues         Boolean       @default(false)
+  comment           String?
+  revisionComment   String?
+  rating            Float?
+  submittedAt       DateTime?
+  approvedAt        DateTime?
+  approvedBy        String?
+  createdAt         DateTime      @default(now())
+  updatedAt         DateTime      @updatedAt
+  announcementDone  Boolean       @default(false)
+  materialShown     Boolean       @default(false)
+  childrenCount     Int           @default(0)
+  classesCount      Int           @default(0)
+  privilegedCount   Int           @default(0)
+  showingsCount     Int           @default(0)
+  totalSum          Decimal       @default(0) @db.Decimal(12, 2)
+  schoolSum         Decimal       @default(0) @db.Decimal(12, 2)
+  remainderSum      Decimal       @default(0) @db.Decimal(12, 2)
+  event             Event         @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  photos            File[]
+  expenseItems      ExpenseItem[]
+  salaryRecords     SalaryRecord[]
+  inventoryUsages   InventoryUsage[]
+
+  @@index([status])
+  @@index([submittedAt])
+  @@index([approvedBy])
+}```
+
+```prisma
+model EventHistory {
+  id        String   @id @default(uuid())
+  eventId   String
+  action    String
+  comment   String?
+  userId    String
+  userName  String
+  role      String
+  createdAt DateTime @default(now())
+  event     Event    @relation(fields: [eventId], references: [id])
+
+  @@index([eventId, createdAt])
+  @@index([createdAt])
+}```
+
+```prisma
+model EventPreparation {
+  id               String            @id @default(uuid())
+  eventId          String            @unique
+  assignCrew       PreparationStatus @default(PLANNED)
+  bookEquipment    PreparationStatus @default(PLANNED)
+  prepareDocs      PreparationStatus @default(PLANNED)
+  prepareMaterials PreparationStatus @default(PLANNED)
+  remindSchool     PreparationStatus @default(PLANNED)
+  event            Event             @relation(fields: [eventId], references: [id])
+}```
+
+```prisma
+model AnalyticsTarget {
+  id        String   @id @default(uuid())
+  year      Int
+  month     Int
+  target    Decimal  @db.Decimal(12, 2)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([year, month])
+}```
+
+```prisma
+model AnalyticsAnnotation {
+  id        String   @id @default(uuid())
+  year      Int
+  month     Int
+  text      String
+  color     String   @default("#3b82f6")
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([year, month])
+}```
+
+
+---
+
+## 2. Backend: analytics.module.ts
+
+```typescript
+import { Module } from '@nestjs/common';
+import { AnalyticsController } from './analytics.controller';
+import { AnalyticsService } from './analytics.service';
+import { PrismaModule } from '../prisma/prisma.module';
+import { RedisCacheModule } from '../common/cache/redis-cache.module';
+
+@Module({
+  imports: [PrismaModule, RedisCacheModule],
+  controllers: [AnalyticsController],
+  providers: [AnalyticsService],
+})
+export class AnalyticsModule {}
+```
+
+
+---
+
+## 3. Backend: analytics.controller.ts
+
+```typescript
+import { Controller, Get, Put, Query, Body, UseGuards } from '@nestjs/common';
+import {
+  ApiTags,
+  ApiOperation,
+  ApiCookieAuth,
+  ApiPropertyOptional,
+  ApiProperty,
+} from '@nestjs/swagger';
+import { AnalyticsService } from './analytics.service';
+import { AuthGuard } from '../auth/auth.guard';
+import { RolesGuard } from '../auth/guards/roles.guard';
+import { Roles } from '../auth/decorators/roles.decorator';
+import { CurrentUser } from '../auth/decorators/current-user.decorator';
+import type { JwtUser } from '../auth/interfaces/jwt-user.interface';
+import { PrismaService } from '../prisma/prisma.service';
+import { IsOptional, IsString, IsInt, Min, IsNumber } from 'class-validator';
+import { Type } from 'class-transformer';
+
+class RevenueByMonthDto {
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  cityId?: string;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  projectId?: string;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @Type(() => Number)
+  @IsInt()
+  year?: number;
+}
+
+class YearQueryDto {
+  @ApiPropertyOptional()
+  @IsOptional()
+  @Type(() => Number)
+  @IsInt()
+  year?: number;
+}
+
+class ProfitByCityDto {
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  cityId?: string;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @Type(() => Number)
+  @IsInt()
+  year?: number;
+}
+
+class SalaryFundDto {
+  @ApiPropertyOptional()
+  @IsOptional()
+  @Type(() => Number)
+  @IsInt()
+  @Min(1)
+  month?: number;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @Type(() => Number)
+  @IsInt()
+  year?: number;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  cityId?: string;
+
+  @ApiPropertyOptional({ description: 'YYYY-MM-DD — фільтр по конкретній даті' })
+  @IsOptional()
+  @IsString()
+  date?: string;
+}
+
+class RevenueByDayDto {
+  @ApiPropertyOptional()
+  @IsOptional()
+  @Type(() => Number)
+  @IsInt()
+  year?: number;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @Type(() => Number)
+  @IsInt()
+  @Min(1)
+  @IsInt()
+  month?: number;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  cityId?: string;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  project?: string;
+}
+ class CityLeaderboardDto {
+  @ApiPropertyOptional({ default: 'events' })
+  @IsOptional()
+  @IsString()
+  metric?: string = 'events';
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @Type(() => Number)
+  @IsInt()
+  year?: number;
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  schoolType?: string;
+}
+
+class SetTargetDto {
+  @ApiProperty()
+  @Type(() => Number)
+  @IsInt()
+  year!: number;
+
+  @ApiProperty()
+  @Type(() => Number)
+  @IsInt()
+  @Min(1)
+  month!: number;
+
+  @ApiProperty()
+  @Type(() => Number)
+  @IsNumber()
+  target!: number;
+}
+
+class SetAnnotationDto {
+  @ApiProperty()
+  @Type(() => Number)
+  @IsInt()
+  year!: number;
+
+  @ApiProperty()
+  @Type(() => Number)
+  @IsInt()
+  @Min(1)
+  month!: number;
+
+  @ApiProperty()
+  @IsString()
+  text!: string;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  color?: string;
+}
+
+@ApiTags('Analytics')
+@ApiCookieAuth('access_token')
+@Controller('analytics')
+@UseGuards(AuthGuard, RolesGuard)
+export class AnalyticsController {
+  constructor(
+    private readonly analyticsService: AnalyticsService,
+    private readonly prisma: PrismaService,
+  ) {}
+
+  @ApiOperation({ summary: 'Дохід по місяцях' })
+  @Get('revenue-by-month')
+  @Roles('SUPERADMIN', 'OWNER', 'MANAGER')
+  async revenueByMonth(
+    @CurrentUser() user: JwtUser,
+    @Query() query: RevenueByMonthDto,
+  ) {
+    const effectiveCityId = await this.resolveCityId(user, query.cityId);
+    return this.analyticsService.revenueByMonth(
+      effectiveCityId,
+      query.projectId,
+      query.year,
+    );
+  }
+
+  @ApiOperation({ summary: 'Дохід по місяцях з розбивкою по містах' })
+  @Get('revenue-by-city-month')
+  @Roles('SUPERADMIN', 'OWNER', 'MANAGER')
+  async revenueByCityMonth(@Query() query: RevenueByMonthDto) {
+    return this.analyticsService.revenueByCityMonth(
+      query.projectId,
+      query.year,
+    );
+  }
+
+
+  @ApiOperation({ summary: 'Дохід по днях' })
+  @Get('revenue-by-day')
+  @Roles('SUPERADMIN', 'OWNER', 'MANAGER')
+  async revenueByDay(@CurrentUser() user: JwtUser, @Query() query: RevenueByDayDto) {
+    const effectiveCityId = await this.resolveCityId(user, query.cityId);
+    return this.analyticsService.revenueByDay({
+      year: query.year,
+      month: query.month,
+      cityId: effectiveCityId,
+      project: query.project,
+    });
+  }
+  @ApiOperation({ summary: 'Події по містах' })
+  @Get('events-by-city')
+  @Roles('SUPERADMIN', 'OWNER')
+  async eventsByCity(@Query() query: YearQueryDto) {
+    return this.analyticsService.eventsByCity(query.year);
+  }
+
+  @ApiOperation({ summary: 'Прибуток по містах' })
+  @Get('profit-by-city')
+  @Roles('SUPERADMIN', 'OWNER')
+  async profitByCity(@Query() query: ProfitByCityDto) {
+    return this.analyticsService.profitByCity(query.cityId, query.year);
+  }
+
+  @ApiOperation({ summary: 'Фонд зарплати' })
+  @Get('salary-fund')
+  @Roles('SUPERADMIN', 'OWNER', 'MANAGER')
+  async salaryFund(
+    @CurrentUser() user: JwtUser,
+    @Query() query: SalaryFundDto,
+  ) {
+    const effectiveCityId = await this.resolveCityId(user, query.cityId);
+    return this.analyticsService.salaryFund(
+      query.month,
+      query.year,
+      effectiveCityId,
+    );
+  }
+
+  @ApiOperation({ summary: 'Рейтинг міст за метрикою' })
+  @Get('city-leaderboard')
+  @Roles('SUPERADMIN', 'OWNER', 'MANAGER')
+  async cityLeaderboard(@Query() query: CityLeaderboardDto) {
+    return this.analyticsService.cityLeaderboard(query.metric, query.year, query.schoolType);
+  }
+
+
+
+  @ApiOperation({ summary: 'Топ менеджерів за кількістю затверджених звітів' })
+  @Get('kpi/managers')
+  @Roles('SUPERADMIN', 'OWNER', 'MANAGER')
+  async kpiManagers() {
+    return this.analyticsService.kpiManagers();
+  }
+
+  @ApiOperation({ summary: 'Топ ведучих за рейтингом' })
+  @Get('kpi/hosts')
+  @Roles('SUPERADMIN', 'OWNER', 'MANAGER')
+  async kpiHosts() {
+    return this.analyticsService.kpiHosts();
+  }
+
+  @ApiOperation({ summary: 'Топ проєктів за подіями' })
+  @Get('kpi/projects')
+  @Roles('SUPERADMIN', 'OWNER', 'MANAGER')
+  async kpiProjects() {
+    return this.analyticsService.kpiProjects();
+  }
+
+  @ApiOperation({ summary: 'Цілі аналітики' })
+  @Get('targets')
+  @Roles('SUPERADMIN', 'OWNER')
+  async getTargets(@Query() query: YearQueryDto) {
+    return this.analyticsService.getTargets(query.year);
+  }
+
+  @ApiOperation({ summary: 'Встановити ціль аналітики' })
+  @Put('targets')
+  @Roles('SUPERADMIN', 'OWNER')
+  async setTarget(@Body() dto: SetTargetDto) {
+    return this.analyticsService.setTarget(dto.year, dto.month, dto.target);
+  }
+
+  @ApiOperation({ summary: 'Анотації аналітики' })
+  @Get('annotations')
+  @Roles('SUPERADMIN', 'OWNER')
+  async getAnnotations(@Query() query: YearQueryDto) {
+    return this.analyticsService.getAnnotations(query.year);
+  }
+
+  @ApiOperation({ summary: 'Встановити анотацію аналітики' })
+  @Put('annotations')
+  @Roles('SUPERADMIN', 'OWNER')
+  async setAnnotation(@Body() dto: SetAnnotationDto) {
+    return this.analyticsService.setAnnotation(
+      dto.year,
+      dto.month,
+      dto.text,
+      dto.color ?? '#3b82f6',
+    );
+  }
+
+  private async resolveCityId(
+    user: JwtUser,
+    requestedCityId?: string,
+  ): Promise<string | undefined> {
+    if (user.role === 'SUPERADMIN' || user.role === 'OWNER') {
+      return requestedCityId;
+    }
+    const me = await this.prisma.user.findUnique({
+      where: { id: user.sub },
+      select: { cityId: true },
+    });
+    return me?.cityId ?? undefined;
+  }
+}
+```
+
+
+---
+
+## 4. Backend: analytics.service.ts
+
+```typescript
+import { Injectable, Inject } from '@nestjs/common';
+import { CACHE_MANAGER } from '@nestjs/cache-manager';
+import type { Cache } from 'cache-manager';
+import { Prisma } from '@prisma/client';
+import { PrismaService } from '../prisma/prisma.service';
+import { CacheVersionService } from '../common/cache/cache-version.service';
+
+const CACHE_TTL = 300_000;
+
+@Injectable()
+export class AnalyticsService {
+  constructor(
+    private prisma: PrismaService,
+    @Inject(CACHE_MANAGER) private cacheManager: Cache,
+    private readonly cacheVersion: CacheVersionService,
+  ) {}
+
+  private async vkey(ns: string): Promise<string> {
+    const v = await this.cacheVersion.getVersion(ns);
+    return `${ns}:v${v}`;
+  }
+
+  async invalidateAnalyticsCache() {
+    await this.cacheVersion.bumpVersion('analytics');
+  }
+
+  async revenueByMonth(cityId?: string, projectId?: string, year?: number) {
+    const yearFilter = year ?? new Date().getFullYear();
+    const prefix = await this.vkey('analytics');
+    const cacheKey = `${prefix}:revenueByMonth:${cityId ?? ''}:${projectId ?? ''}:${yearFilter}`;
+    const cached =
+      await this.cacheManager.get<ReturnType<typeof this.revenueByMonth>>(
+        cacheKey,
+      );
+    if (cached) return cached;
+
+    const conditions = Prisma.sql`
+      AND e.date >= ${new Date(`${yearFilter}-01-01`)}::date
+      AND e.date < ${new Date(`${yearFilter + 1}-01-01`)}::date
+      AND e.status IN ('RE_SALE')
+    `;
+    const cityCond = cityId
+      ? Prisma.sql`AND e."cityId" = ${cityId}`
+      : Prisma.empty;
+    const projectCond = projectId
+      ? Prisma.sql`AND e.project = ${projectId}`
+      : Prisma.empty;
+
+    type Row = {
+      month: number;
+      revenue: number;
+      profit: number;
+      events: bigint;
+    };
+    const rows = await this.prisma.$queryRaw<Row[]>`
+      SELECT
+        EXTRACT(MONTH FROM e.date)::int AS month,
+        COALESCE(SUM(r."totalSum"), 0)::float AS revenue,
+        COALESCE(SUM(r."remainderSum"), 0)::float AS profit,
+        COUNT(*)::bigint AS events
+      FROM "Event" e
+      LEFT JOIN "EventReport" r ON r."eventId" = e.id
+      WHERE 1=1 ${conditions} ${cityCond} ${projectCond}
+      GROUP BY month
+      ORDER BY month
+    `;
+
+    const monthMap = new Map(rows.map((r) => [r.month, r]));
+    const result = Array.from({ length: 12 }, (_, i) => {
+      const m = monthMap.get(i + 1);
+      return {
+        month: (i + 1).toString().padStart(2, '0'),
+        revenue: m?.revenue ?? 0,
+        profit: m?.profit ?? 0,
+        events: Number(m?.events ?? 0),
+      };
+    });
+
+    await this.cacheManager.set(cacheKey, result, CACHE_TTL);
+    return result;
+  }
+
+  async revenueByCityMonth(projectId?: string, year?: number) {
+    const prefix = await this.vkey('analytics');
+    const cacheKey = `${prefix}:revenueByCityMonth:${projectId ?? ''}:${year ?? 'all'}`;
+    const cached =
+      await this.cacheManager.get<ReturnType<typeof this.revenueByCityMonth>>(
+        cacheKey,
+      );
+    if (cached) return cached;
+
+    const conditions: Prisma.Sql[] = [Prisma.sql`AND e.status IN ('RE_SALE')`];
+    if (year) {
+      conditions.push(
+        Prisma.sql`AND e.date >= ${new Date(`${year}-01-01`)}::date`,
+      );
+      conditions.push(
+        Prisma.sql`AND e.date < ${new Date(`${year + 1}-01-01`)}::date`,
+      );
+    }
+    const projectCond = projectId
+      ? Prisma.sql`AND e.project = ${projectId}`
+      : Prisma.empty;
+
+    type Row = {
+      year: number;
+      month: number;
+      cityName: string;
+      project: string;
+      revenue: number;
+      profit: number;
+    };
+    const rows = await this.prisma.$queryRaw<Row[]>`
+      SELECT
+        EXTRACT(YEAR  FROM e.date)::int          AS year,
+        EXTRACT(MONTH FROM e.date)::int          AS month,
+        COALESCE(c.name, '—')                    AS "cityName",
+        COALESCE(e.project, 'Інше')              AS project,
+        COALESCE(SUM(r."totalSum"), 0)::float     AS revenue,
+        COALESCE(SUM(r."remainderSum"), 0)::float AS profit
+      FROM "Event" e
+      LEFT JOIN "EventReport" r ON r."eventId" = e.id
+      LEFT JOIN "City" c ON c.id = e."cityId"
+      WHERE 1=1 ${Prisma.join(conditions, ' ')} ${projectCond}
+      GROUP BY EXTRACT(YEAR FROM e.date), EXTRACT(MONTH FROM e.date), e."cityId", c.name, e.project
+      ORDER BY year, month
+    `;
+
+    await this.cacheManager.set(cacheKey, rows, CACHE_TTL);
+    return rows;
+  }
+
+  async revenueByDay(params: { year?: number; month?: number; cityId?: string; project?: string }) {
+    const prefix = await this.vkey('analytics');
+    const cacheKey = `${prefix}:revenueByEvent:${params.year ?? ''}:${params.month ?? ''}:${params.cityId ?? ''}:${params.project ?? ''}`;
+    const cached = await this.cacheManager.get(cacheKey);
+    if (cached) return cached;
+
+    const conditions: Prisma.Sql[] = [Prisma.sql`AND e.status IN ('RE_SALE')`];
+    if (params.year) {
+      conditions.push(Prisma.sql`AND e.date >= ${new Date(`${params.year}-01-01`)}::date`);
+      conditions.push(Prisma.sql`AND e.date < ${new Date(`${params.year + 1}-01-01`)}::date`);
+    }
+    if (params.month && params.year) {
+      const start = new Date(params.year, params.month - 1, 1);
+      const end = new Date(params.year, params.month, 1);
+      conditions.push(Prisma.sql`AND e.date >= ${start}::date`);
+      conditions.push(Prisma.sql`AND e.date < ${end}::date`);
+    }
+    if (params.cityId) {
+      conditions.push(Prisma.sql`AND e."cityId" = ${params.cityId}`);
+    }
+    if (params.project) {
+      conditions.push(Prisma.sql`AND e.project = ${params.project}`);
+    }
+
+    type EventRow = {
+      eventId: string;
+      date: string;
+      time: string | null;
+      cityName: string;
+      project: string;
+      revenue: number;
+      profit: number;
+    };
+    const rows = await this.prisma.$queryRaw<EventRow[]>`
+      SELECT
+        e.id                                     AS "eventId",
+        TO_CHAR(e.date, 'YYYY-MM-DD')            AS date,
+        e.time                                   AS time,
+        COALESCE(c.name, '—')                    AS "cityName",
+        COALESCE(e.project, 'Інше')              AS project,
+        COALESCE(r."totalSum", 0)::float         AS revenue,
+        COALESCE(r."remainderSum", 0)::float     AS profit
+      FROM "Event" e
+      LEFT JOIN "EventReport" r ON r."eventId" = e.id
+      LEFT JOIN "City" c ON c.id = e."cityId"
+      WHERE 1=1 ${Prisma.join(conditions, ' ')}
+      ORDER BY e.date ASC, e.time ASC NULLS LAST, e.id ASC
+    `;
+
+    await this.cacheManager.set(cacheKey, rows, CACHE_TTL);
+    return rows;
+  }
+
+
+  async eventsByCity(year?: number) {
+    const yearFilter = year ?? new Date().getFullYear();
+    const prefix = await this.vkey('analytics');
+    const cacheKey = `${prefix}:eventsByCity:${yearFilter}`;
+    const cached =
+      await this.cacheManager.get<ReturnType<typeof this.eventsByCity>>(
+        cacheKey,
+      );
+    if (cached) return cached;
+
+    const events = await this.prisma.event.groupBy({
+      by: ['cityId'],
+      where: {
+        date: {
+          gte: new Date(`${yearFilter}-01-01`),
+          lt: new Date(`${yearFilter + 1}-01-01`),
+        },
+      },
+      _count: { id: true },
+    });
+
+    const cities = await this.prisma.city.findMany({
+      select: { id: true, name: true },
+    });
+    const cityMap = new Map(cities.map((c) => [c.id, c.name]));
+
+    const result = events.map((e) => ({
+      cityId: e.cityId,
+      cityName: cityMap.get(e.cityId) ?? '—',
+      events: e._count.id,
+    }));
+
+    await this.cacheManager.set(cacheKey, result, CACHE_TTL);
+    return result;
+  }
+
+  async profitByCity(cityId?: string, year?: number) {
+    const yearFilter = year ?? new Date().getFullYear();
+    const prefix = await this.vkey('analytics');
+    const cacheKey = `${prefix}:profitByCity:${cityId ?? ''}:${yearFilter}`;
+    const cached =
+      await this.cacheManager.get<ReturnType<typeof this.profitByCity>>(
+        cacheKey,
+      );
+    if (cached) return cached;
+
+    const conditions = Prisma.sql`
+      AND e.date >= ${new Date(`${yearFilter}-01-01`)}::date
+      AND e.date < ${new Date(`${yearFilter + 1}-01-01`)}::date
+      AND e.status IN ('RE_SALE')
+    `;
+    const cityCond = cityId
+      ? Prisma.sql`AND e."cityId" = ${cityId}`
+      : Prisma.empty;
+
+    type Row = {
+      cityId: string;
+      revenue: number;
+      profit: number;
+      expenses: number;
+      count: bigint;
+    };
+    const rows = await this.prisma.$queryRaw<Row[]>`
+      SELECT
+        e."cityId",
+        COALESCE(SUM(r."totalSum"), 0)::float AS revenue,
+        COALESCE(SUM(r."remainderSum"), 0)::float AS profit,
+        COALESCE(SUM(r."schoolSum"), 0)::float AS expenses,
+        COUNT(*)::bigint AS count
+      FROM "Event" e
+      LEFT JOIN "EventReport" r ON r."eventId" = e.id
+      WHERE 1=1 ${conditions} ${cityCond}
+      GROUP BY e."cityId"
+    `;
+
+    const cities = await this.prisma.city.findMany({
+      select: { id: true, name: true },
+    });
+    const cityMap = new Map(cities.map((c) => [c.id, c.name]));
+
+    const result = rows.map((r) => ({
+      cityId: r.cityId,
+      cityName: cityMap.get(r.cityId) ?? '—',
+      revenue: r.revenue,
+      profit: r.profit,
+      expenses: r.expenses,
+      count: Number(r.count),
+    }));
+
+    await this.cacheManager.set(cacheKey, result, CACHE_TTL);
+    return result;
+  }
+
+  async salaryFund(month?: number, year?: number, cityId?: string) {
+    const now = new Date();
+    const m = month ?? now.getMonth() + 1;
+    const y = year ?? now.getFullYear();
+    const start = new Date(y, m - 1, 1);
+    const end = new Date(y, m, 1);
+
+    const cacheKey = `${await this.vkey('analytics')}:salaryFund:${m}:${y}:${cityId ?? ''}`;
+    const cached =
+      await this.cacheManager.get<ReturnType<typeof this.salaryFund>>(cacheKey);
+    if (cached) return cached;
+
+    if (cityId) {
+      const agg = await this.prisma.salaryRecord.aggregate({
+        where: {
+          createdAt: { gte: start, lt: end },
+          status: 'PAID',
+          event: { cityId },
+        },
+        _sum: { amount: true },
+      });
+      const result = {
+        total: Number(agg._sum.amount ?? 0),
+        month: m,
+        year: y,
+        byCity: undefined,
+      };
+      await this.cacheManager.set(cacheKey, result, CACHE_TTL);
+      return result;
+    }
+
+    type Row = { cityId: string; total: number };
+    const rows = await this.prisma.$queryRaw<Row[]>`
+      SELECT
+        COALESCE(e."cityId", 'unknown') AS "cityId",
+        COALESCE(SUM(s."amount"), 0)::float AS total
+      FROM "SalaryRecord" s
+      LEFT JOIN "Event" e ON e.id = s."eventId"
+      WHERE s."createdAt" >= ${start} AND s."createdAt" < ${end} AND s.status = 'PAID'
+      GROUP BY e."cityId"
+    `;
+
+    const totalSum = rows.reduce((s, r) => s + r.total, 0);
+    const byCity: Record<string, number> = {};
+    for (const r of rows) byCity[r.cityId] = r.total;
+
+    const result = { total: totalSum, month: m, year: y, byCity };
+    await this.cacheManager.set(cacheKey, result, CACHE_TTL);
+    return result;
+  }
+
+async cityLeaderboard(metric?: string, year?: number, schoolType?: string) {
+    const yearFilter = year ?? new Date().getFullYear();
+    const prefix = await this.vkey('analytics');
+    const cacheKey = `${prefix}:cityLeaderboard:${metric ?? ''}:${yearFilter}:${schoolType ?? 'all'}`;
+    const cached =
+      await this.cacheManager.get<ReturnType<typeof this.cityLeaderboard>>(
+        cacheKey,
+      );
+    if (cached) return cached;
+
+    const metricKey = metric ?? 'events';
+    const typeCond = schoolType ? Prisma.sql`AND s.type = ${schoolType}` : Prisma.empty;
+
+    type Row = {
+      cityId: string;
+      events: bigint;
+      revenue: number;
+      profit: number;
+      children: bigint;
+      schools: bigint;
+    };
+    const rows = await this.prisma.$queryRaw<Row[]>`
+      SELECT
+        e."cityId",
+        COUNT(*)::bigint AS events,
+        COALESCE(SUM(r."totalSum"), 0)::float AS revenue,
+        COALESCE(SUM(r."remainderSum"), 0)::float AS profit,
+        COALESCE(SUM(COALESCE(r."childrenCount", e."childrenActual", 0)), 0)::bigint AS children,
+        COUNT(DISTINCT e."schoolId")::bigint AS schools
+      FROM "Event" e
+      LEFT JOIN "EventReport" r ON r."eventId" = e.id
+      LEFT JOIN "School" s ON s.id = e."schoolId"
+      WHERE e.date >= ${new Date(`${yearFilter}-01-01`)}::date
+        AND e.date < ${new Date(`${yearFilter + 1}-01-01`)}::date
+        AND e.status IN ('RE_SALE')
+        ${typeCond}
+      GROUP BY e."cityId"
+    `;
+
+    const cities = await this.prisma.city.findMany({
+      select: { id: true, name: true },
+    });
+    const cityMap = new Map(cities.map((c) => [c.id, c.name]));
+
+    const result = rows
+      .map((r) => ({
+        cityId: r.cityId,
+        cityName: cityMap.get(r.cityId) ?? '—',
+        events: Number(r.events),
+        revenue: r.revenue,
+        profit: r.profit,
+        children: Number(r.children),
+        schools: Number(r.schools),
+      }))
+      .sort((a, b) => {
+        const key = metricKey as keyof typeof a;
+        return Number(b[key]) - Number(a[key]);
+      });
+
+    await this.cacheManager.set(cacheKey, result, CACHE_TTL);
+    return result;
+  }
+
+  async kpiManagers() {
+    const prefix = await this.vkey('analytics');
+    const cacheKey = `${prefix}:kpiManagers`;
+    const cached =
+      await this.cacheManager.get<ReturnType<typeof this.kpiManagers>>(
+        cacheKey,
+      );
+    if (cached) return cached;
+
+    const managers = await this.prisma.eventReport.groupBy({
+      by: ['approvedBy'],
+      where: { status: 'APPROVED', approvedBy: { not: null } },
+      _count: { id: true },
+      orderBy: { _count: { id: 'desc' } },
+      take: 10,
+    });
+
+    const userIds = managers
+      .map((m) => m.approvedBy)
+      .filter(Boolean) as string[];
+    const users = userIds.length
+      ? await this.prisma.user.findMany({
+          where: { id: { in: userIds } },
+          select: { id: true, name: true },
+        })
+      : [];
+    const userMap = new Map(users.map((u) => [u.id, u.name]));
+
+    const result = managers.map((m) => ({
+      userId: m.approvedBy,
+      name: userMap.get(m.approvedBy!) ?? '—',
+      approvedReports: m._count.id,
+    }));
+
+    await this.cacheManager.set(cacheKey, result, CACHE_TTL);
+    return result;
+  }
+
+  async kpiHosts() {
+    const prefix = await this.vkey('analytics');
+    const cacheKey = `${prefix}:kpiHosts`;
+    const cached =
+      await this.cacheManager.get<ReturnType<typeof this.kpiHosts>>(cacheKey);
+    if (cached) return cached;
+
+    type Row = { hostId: string; avgRating: number; reportsCount: bigint };
+    const rows = await this.prisma.$queryRaw<Row[]>`
+      SELECT
+        e."crewId" as "hostId",
+        AVG(r.rating)::float AS "avgRating",
+        COUNT(*)::bigint AS "reportsCount"
+      FROM "Event" e
+      JOIN "EventReport" r ON r."eventId" = e.id
+      WHERE e.status IN ('RE_SALE')
+        AND r.rating IS NOT NULL
+      GROUP BY e."crewId"
+      ORDER BY "avgRating" DESC
+      LIMIT 10
+    `;
+
+    const crewIds = rows.map((r) => r.hostId).filter(Boolean);
+    const crews = crewIds.length
+      ? await this.prisma.crew.findMany({
+          where: { id: { in: crewIds } },
+          select: { id: true, hostId: true },
+        })
+      : [];
+    const crewMap = new Map(crews.map((c) => [c.id, c.hostId]));
+
+    const userIds = [
+      ...new Set(crews.map((c) => c.hostId).filter(Boolean) as string[]),
+    ];
+    const users = userIds.length
+      ? await this.prisma.user.findMany({
+          where: { id: { in: userIds } },
+          select: { id: true, name: true },
+        })
+      : [];
+    const userMap = new Map(users.map((u) => [u.id, u.name]));
+
+    const result = rows.map((r) => ({
+      userId: crewMap.get(r.hostId) ?? r.hostId,
+      name: userMap.get(crewMap.get(r.hostId) ?? '') ?? '—',
+      avgRating: Math.round(r.avgRating * 100) / 100,
+      reportsCount: Number(r.reportsCount),
+    }));
+
+    await this.cacheManager.set(cacheKey, result, CACHE_TTL);
+    return result;
+  }
+
+  async kpiProjects() {
+    const prefix = await this.vkey('analytics');
+    const cacheKey = `${prefix}:kpiProjects`;
+    const cached =
+      await this.cacheManager.get<ReturnType<typeof this.kpiProjects>>(
+        cacheKey,
+      );
+    if (cached) return cached;
+
+    const year = new Date().getFullYear();
+
+    type Row = {
+      project: string;
+      eventsCount: bigint;
+      childrenTotal: bigint;
+      profit: number;
+    };
+    const rows = await this.prisma.$queryRaw<Row[]>`
+      SELECT
+        e.project,
+        COUNT(*)::bigint AS "eventsCount",
+        COALESCE(SUM(e."childrenActual"), 0)::bigint AS "childrenTotal",
+        COALESCE(SUM(r."remainderSum"), 0)::float AS profit
+      FROM "Event" e
+      LEFT JOIN "EventReport" r ON r."eventId" = e.id
+      WHERE e.date >= ${new Date(`${year}-01-01`)}::date
+        AND e.date < ${new Date(`${year + 1}-01-01`)}::date
+        AND e.status IN ('RE_SALE')
+      GROUP BY e.project
+      ORDER BY "eventsCount" DESC
+      LIMIT 10
+    `;
+
+    const result = rows.map((r) => ({
+      project: r.project,
+      eventsCount: Number(r.eventsCount),
+      childrenTotal: Number(r.childrenTotal),
+      profit: r.profit,
+    }));
+
+    await this.cacheManager.set(cacheKey, result, CACHE_TTL);
+    return result;
+  }
+
+  async getTargets(year?: number) {
+    const y = year ?? new Date().getFullYear();
+    return this.prisma.analyticsTarget.findMany({
+      where: { year: y },
+      orderBy: { month: 'asc' },
+    });
+  }
+
+  async setTarget(year: number, month: number, target: number) {
+    return this.prisma.analyticsTarget.upsert({
+      where: { year_month: { year, month } },
+      create: { year, month, target },
+      update: { target },
+    });
+  }
+
+  async getAnnotations(year?: number) {
+    const y = year ?? new Date().getFullYear();
+    return this.prisma.analyticsAnnotation.findMany({
+      where: { year: y },
+      orderBy: { month: 'asc' },
+    });
+  }
+
+  async setAnnotation(
+    year: number,
+    month: number,
+    text: string,
+    color: string,
+  ) {
+    if (!text) {
+      return this.prisma.analyticsAnnotation.deleteMany({
+        where: { year, month },
+      });
+    }
+    return this.prisma.analyticsAnnotation.upsert({
+      where: { year_month: { year, month } },
+      create: { year, month, text, color },
+      update: { text, color },
+    });
+  }
+}
+```
+
+
+---
+
+## 5. Frontend: useAnalytics.ts (React Query hooks)
+
+```typescript
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { api } from "../config/api";
+
+export interface MonthlyRevenue {
+  month: string;
+  revenue: number;
+  profit: number;
+  events: number;
+}
+
+export interface CityEvents {
+  cityId: string;
+  cityName: string;
+  events: number;
+}
+
+export interface CityProfit {
+  cityId: string;
+  cityName: string;
+  revenue: number;
+  profit: number;
+  expenses: number;
+  count: number;
+}
+
+export interface SalaryFund {
+  total: number;
+  month: number;
+  year: number;
+  byCity?: Record<string, number>;
+}
+
+export function useRevenueByMonth(params?: { cityId?: string; projectId?: string; year?: number }) {
+  return useQuery({
+    queryKey: ["analytics", "revenue-by-month", params],
+    queryFn: () => api.get<MonthlyRevenue[]>("/analytics/revenue-by-month", { params }).then(r => r.data),
+    staleTime: 5 * 60 * 1000,
+  });
+}
+
+export interface RevenueByCityMonthRow {
+  year: number;
+  month: number;
+  cityName: string;
+  project: string;
+  revenue: number;
+  profit: number;
+}
+
+export function useRevenueByCityMonth(params?: { projectId?: string; year?: number; enabled?: boolean }) {
+  return useQuery({
+    queryKey: ["analytics", "revenue-by-city-month", { projectId: params?.projectId, year: params?.year }],
+    queryFn: () => api.get<RevenueByCityMonthRow[]>("/analytics/revenue-by-city-month", { params: { projectId: params?.projectId, year: params?.year } }).then(r => r.data),
+    staleTime: 5 * 60 * 1000,
+    enabled: params?.enabled !== false,
+  });
+}
+
+export function useEventsByCity(params?: { year?: number }) {
+  return useQuery({
+    queryKey: ["analytics", "events-by-city", params],
+    queryFn: () => api.get<CityEvents[]>("/analytics/events-by-city", { params }).then(r => r.data),
+    staleTime: 5 * 60 * 1000,
+  });
+}
+
+export function useProfitByCity(params?: { cityId?: string; year?: number }) {
+  return useQuery({
+    queryKey: ["analytics", "profit-by-city", params],
+    queryFn: () => api.get<CityProfit[]>("/analytics/profit-by-city", { params }).then(r => r.data),
+    staleTime: 5 * 60 * 1000,
+  });
+}
+
+export function useSalaryFund(params?: { month?: number; year?: number; cityId?: string }) {
+  return useQuery({
+    queryKey: ["analytics", "salary-fund", params],
+    queryFn: () => api.get<SalaryFund>("/analytics/salary-fund", { params }).then(r => r.data),
+    staleTime: 5 * 60 * 1000,
+  });
+}
+
+export interface AnalyticsTarget {
+  id: string;
+  year: number;
+  month: number;
+  target: number;
+}
+
+export function useAnalyticsTargets(params?: { year?: number }) {
+  return useQuery({
+    queryKey: ["analytics", "targets", params],
+    queryFn: () => api.get<AnalyticsTarget[]>("/analytics/targets", { params }).then(r => r.data),
+    staleTime: 5 * 60 * 1000,
+  });
+}
+
+export function useSetAnalyticsTarget() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (data: { year: number; month: number; target: number }) =>
+      api.put("/analytics/targets", data).then((r) => r.data),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["analytics", "targets"] });
+    },
+  });
+}
+
+export interface AnalyticsAnnotation {
+  id: string;
+  year: number;
+  month: number;
+  text: string;
+  color: string;
+}
+
+export function useAnalyticsAnnotations(params?: { year?: number }) {
+  return useQuery({
+    queryKey: ["analytics", "annotations", params],
+    queryFn: () => api.get<AnalyticsAnnotation[]>("/analytics/annotations", { params }).then(r => r.data),
+    staleTime: 5 * 60 * 1000,
+  });
+}
+
+export function useSetAnalyticsAnnotation() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (data: { year: number; month: number; text: string; color?: string }) =>
+      api.put("/analytics/annotations", data).then((r) => r.data),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["analytics", "annotations"] });
+    },
+  });
+
+
+}
+export interface RevenueByDayRow {
+  eventId: string;
+  date: string;
+  time: string | null;
+  cityName: string;
+  project: string;
+  revenue: number;
+  profit: number;
+}
+
+export function useRevenueByDay(params?: { year?: number; month?: number; cityId?: string; project?: string; enabled?: boolean }) {
+  return useQuery({
+    queryKey: ["analytics", "revenue-by-day", params],
+    queryFn: () => api.get<RevenueByDayRow[]>("/analytics/revenue-by-day", { params: { year: params?.year, month: params?.month, cityId: params?.cityId, project: params?.project } }).then(r => r.data),
+    staleTime: 5 * 60 * 1000,
+    enabled: params?.enabled !== false,
+  });
+}
+```
+
+
+---
+
+## 6. Frontend: useCities.ts
+
+```typescript
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { api } from "../config/api";
+import type { City, CityProfile } from "../types";
+
+export function useCities() {
+  return useQuery<City[]>({
+    queryKey: ["cities"],
+    queryFn: () => api.get<City[]>("/cities").then((r) => r.data),
+    staleTime: 5 * 60 * 1000,
+  });
+}
+
+export function useCity(id: string | undefined) {
+  return useQuery<CityProfile>({
+    queryKey: ["city", id],
+    queryFn: () => api.get<CityProfile>(`/cities/${id}`).then((r) => r.data),
+    enabled: !!id,
+    staleTime: 2 * 60 * 1000,
+  });
+}
+
+export function useCreateCity() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (name: string) =>
+      api.post("/cities", { name }).then((r) => r.data),
+    onSuccess: (data) => {
+      qc.setQueryData<City[]>(["cities"], (old) =>
+        Array.isArray(old) ? [data, ...old] : [data],
+      );
+    },
+  });
+}
+
+export function useCreateCrew(cityId: string | undefined) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (form: { name: string; hostId: string; driverId: string }) =>
+      api.post(`/cities/${cityId}/crews`, form).then((r) => r.data),
+    onMutate: async (form) => {
+      await qc.cancelQueries({ queryKey: ["city", cityId] });
+      const prev = qc.getQueryData<CityProfile>(["city", cityId]);
+      const optimistic: Crew = { id: `temp-${Date.now()}`, ...form, name: form.name, cityId: cityId! };
+      qc.setQueryData<CityProfile>(["city", cityId], (old) =>
+        old ? { ...old, crews: [...(old.crews || []), optimistic] } : old,
+      );
+      return { prev };
+    },
+    onSuccess: (data) => {
+      qc.setQueryData<CityProfile>(["city", cityId], (old) =>
+        old
+          ? {
+              ...old,
+              crews: old.crews?.map((c: Crew) =>
+                c.id?.startsWith("temp-") ? data : c,
+              ),
+            }
+          : old,
+      );
+    },
+    onError: (_err, _vars, ctx) => {
+      if (ctx?.prev) qc.setQueryData<CityProfile>(["city", cityId], ctx.prev);
+    },
+  });
+}
+
+export function useDeleteCity() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (cityId: string) =>
+      api.delete(`/cities/${cityId}`).then((r) => r.data),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["cities"] });
+    },
+  });
+}
+
+export function useDeleteCrew(cityId: string | undefined) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (crewId: string) =>
+      api.delete(`/cities/crews/${crewId}`).then((r) => r.data),
+    onMutate: async (crewId) => {
+      await qc.cancelQueries({ queryKey: ["city", cityId] });
+      const prev = qc.getQueryData<CityProfile>(["city", cityId]);
+      qc.setQueryData<CityProfile>(["city", cityId], (old) =>
+        old
+          ? { ...old, crews: old.crews?.filter((c: Crew) => c.id !== crewId) }
+          : old,
+      );
+      return { prev };
+    },
+    onError: (_err, _vars, ctx) => {
+      if (ctx?.prev) qc.setQueryData<CityProfile>(["city", cityId], ctx.prev);
+    },
+  });
+}
+```
+
+
+---
+
+## 7. Frontend: Analytics.tsx (main page - 2419 lines)
+
+```tsx
 import { useState, useMemo, useCallback, useRef, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useAuth } from "../context/AuthContext";
@@ -15,6 +1390,12 @@ import { useQuery } from "@tanstack/react-query";
 import { api } from "../config/api";
 import {
   ResponsiveContainer,
+  AreaChart,
+  Area,
+  Line,
+  ReferenceLine,
+  ReferenceDot,
+  Label,
   BarChart,
   Bar,
   XAxis,
@@ -29,7 +1410,6 @@ import {
   TRANSITION,
 } from "../lib/motion";
 import { BarChart3 } from "lucide-react";
-import { EChartsRevenueChart } from "../components/chart";
 
 const UA_MONTHS = [
   "Січ", "Лют", "Бер", "Кві", "Трав", "Чер",
@@ -172,6 +1552,26 @@ function formatAxisLabel(entry: ChartEntry, span: number): string {
   return UA_MONTHS_FULL[entry.month - 1];
 }
 
+interface ActiveDotProps {
+  cx?: number;
+  cy?: number;
+  color?: string;
+  [k: string]: unknown;
+}
+
+function CustomActiveDot({ cx, cy, color }: ActiveDotProps) {
+  if (cx == null || cy == null || !color) return null;
+  return (
+    <g>
+      <circle cx={cx} cy={cy} r={4} fill={color} />
+      <circle cx={cx} cy={cy} r={4} fill={color} opacity={0.4}>
+        <animate attributeName="r" from="4" to="12" dur="1.2s" repeatCount="indefinite" />
+        <animate attributeName="opacity" from="0.4" to="0" dur="1.2s" repeatCount="indefinite" />
+      </circle>
+    </g>
+  );
+}
+
 interface CursorProps {
   x?: number;
   y?: number;
@@ -179,8 +1579,7 @@ interface CursorProps {
   [k: string]: unknown;
 }
 
-// eslint-disable-next-line @typescript-eslint/no-unused-vars -- legacy recharts helper
-function _CustomCursor({ x, y, height }: CursorProps) {
+function CustomCursor({ x, y, height }: CursorProps) {
   if (x == null || y == null || height == null) return null;
   return (
     <line x1={x} y1={y} x2={x} y2={y + height} stroke="url(#cursorGradient)" strokeWidth={1} />
@@ -201,8 +1600,7 @@ interface StatDotProps {
   isMobile?: boolean;
 }
 
-// eslint-disable-next-line @typescript-eslint/no-unused-vars -- legacy recharts helper
-function _StatDot({ cx, cy, color, payload, lineKey, isMax, isMin, isAnomaly, lineIndex = 0, collisionGroup = 1, isMobile = false }: StatDotProps) {
+function StatDot({ cx, cy, color, payload, lineKey, isMax, isMin, isAnomaly, lineIndex = 0, collisionGroup = 1, isMobile = false }: StatDotProps) {
   if (cx == null || cy == null || !color || !payload || !lineKey) return null;
   const v = (payload[`profit_${lineKey}`] as number) ?? 0;
   if (v === 0) return null;
@@ -324,7 +1722,6 @@ export default function Analytics() {
   const { data: salaryFund } = useSalaryFund({ year: yearParam });
   void salaryFund;
   const { data: targets } = useAnalyticsTargets({ year: yearParam });
-// eslint-disable-next-line @typescript-eslint/no-unused-vars -- used in removed recharts chart
   const { data: annotations } = useAnalyticsAnnotations({ year: yearParam });
   const { data: rawDayData } = useRevenueByDay({
     year: yearParam,
@@ -484,26 +1881,8 @@ export default function Analytics() {
     }
     return entries;
   }, [rawDayData, granularity, chartData, activeCities, activeProjects, aggregateByCity]);
-
-  const echartsDailyData = useMemo(() => {
-    if (!rawDayData) return [];
-    const byDate = new Map<string, { revenue: number; profit: number }>();
-    for (const row of rawDayData) {
-      if (!activeCities.has(row.cityName)) continue;
-      if (!aggregateByCity && !activeProjects.has(row.project)) continue;
-      const existing = byDate.get(row.date) ?? { revenue: 0, profit: 0 };
-      existing.revenue += row.revenue;
-      existing.profit += row.profit;
-      byDate.set(row.date, existing);
-    }
-    return Array.from(byDate.entries())
-      .sort((a, b) => a[0].localeCompare(b[0]))
-      .map(([date, v]) => ({ date, revenue: v.revenue, profit: v.profit }));
-  }, [rawDayData, activeCities, activeProjects, aggregateByCity]);
-
   const activeLines = useMemo(() => {
     const lines: { key: string; label: string; color: string }[] = [];
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
     let idx = 0;
     if (aggregateByCity) {
       for (const city of activeCities) {
@@ -549,8 +1928,7 @@ export default function Analytics() {
     });
   }, [chartData, prevYearData, showYoY, activeLines, activeCities, aggregateByCity]);
 
-// eslint-disable-next-line @typescript-eslint/no-unused-vars -- legacy recharts overlay
-  const _prevYearLines = useMemo(() => {
+  const prevYearLines = useMemo(() => {
     if (!showYoY || selectedYear === null) return [];
     return activeLines.map((l) => ({
       ...l,
@@ -872,8 +2250,7 @@ export default function Analytics() {
     return () => el.removeEventListener("wheel", handleWheel);
   }, [handleWheel]);
 
-// eslint-disable-next-line @typescript-eslint/no-unused-vars -- legacy recharts gesture handler
-  const _handleTouchStart = useCallback(
+  const handleTouchStart = useCallback(
     (e: React.TouchEvent) => {
       if (e.touches.length === 2) {
         const dx = e.touches[0].clientX - e.touches[1].clientX;
@@ -884,8 +2261,7 @@ export default function Analytics() {
     [zoomKeys],
   );
 
-// eslint-disable-next-line @typescript-eslint/no-unused-vars -- legacy recharts gesture handler
-  const _handleTouchMove = useCallback(
+  const handleTouchMove = useCallback(
     (e: React.TouchEvent) => {
       if (e.touches.length === 2 && pinchRef.current) {
         e.preventDefault();
@@ -940,8 +2316,7 @@ export default function Analytics() {
     [clampRange, granularity, period, dayChartData, forecastData.entries, keyToIndex, setZoomKeysSafe, clientXToAnchor],
   );
 
-// eslint-disable-next-line @typescript-eslint/no-unused-vars -- legacy recharts gesture handler
-  const _handleTouchEnd = useCallback(() => {
+  const handleTouchEnd = useCallback(() => {
     pinchRef.current = null;
     if (zoomTimerRef.current != null) clearTimeout(zoomTimerRef.current);
     zoomTimerRef.current = setTimeout(() => {
@@ -949,8 +2324,7 @@ export default function Analytics() {
     }, 50);
   }, []);
 
-// eslint-disable-next-line @typescript-eslint/no-unused-vars -- legacy recharts handler
-  const _handleChartClick = useCallback((data: { activePayload?: Array<{ payload: ChartEntry }> } | null) => {
+  const handleChartClick = useCallback((data: { activePayload?: Array<{ payload: ChartEntry }> } | null) => {
     if (!data?.activePayload?.length) return;
     const entry = data.activePayload[0].payload;
     setSelectedEntryKey((prev) => prev === entry.key ? null : entry.key);
@@ -1062,8 +2436,7 @@ export default function Analytics() {
     return set;
   }, [axisConfig, chartDataForRender.length]);
 
-// eslint-disable-next-line @typescript-eslint/no-unused-vars -- legacy recharts component
-  const _AnchorTick = (props: { x?: number; y?: number; payload?: { index: number; value: string } }) => {
+  const AnchorTick = (props: { x?: number; y?: number; payload?: { index: number; value: string } }) => {
     const { x, y, payload } = props;
     if (!payload) return null;
     if (anchorIdxSet && !anchorIdxSet.has(payload.index)) return null;
@@ -1074,8 +2447,7 @@ export default function Analytics() {
     );
   };
 
-// eslint-disable-next-line @typescript-eslint/no-unused-vars -- legacy recharts stats
-  const _lineStats = useMemo(() => {
+  const lineStats = useMemo(() => {
     if (!showStats || activeLines.length === 0) return { stats: new Map<string, { avg: number; max: number; min: number; maxIdx: number; minIdx: number; maxLineIndex: number; maxCollisionGroup: number; minLineIndex: number; minCollisionGroup: number }>(), maxCollisions: new Map<number, number[]>(), minCollisions: new Map<number, number[]>() };
     const statsMap = new Map<string, { avg: number; max: number; min: number; maxIdx: number; minIdx: number; maxLineIndex: number; maxCollisionGroup: number; minLineIndex: number; minCollisionGroup: number }>();
     const maxGroups = new Map<number, number[]>();
@@ -1168,8 +2540,7 @@ export default function Analytics() {
     return { years: sortedYears, cells, maxAbs };
   }, [rawCityMonthData, activeCities]);
 
-// eslint-disable-next-line @typescript-eslint/no-unused-vars -- legacy recharts data
-  const _targetChartData = useMemo(() => {
+  const targetChartData = useMemo(() => {
     if (!showTarget || !targets || targets.length === 0) return null;
     return zoomedChartData.map((e) => {
       const t = targets.find((tt) => tt.month === e.month);
@@ -1275,8 +2646,7 @@ export default function Analytics() {
   const TOOLTIP_WIDTH_ESTIMATE = 260;
   const TOOLTIP_MARGIN = 20;
 
-// eslint-disable-next-line @typescript-eslint/no-unused-vars -- legacy recharts tooltip
-  const _renderTooltip = useCallback((props: RechartsTooltipProps) => {
+  const renderTooltip = useCallback((props: RechartsTooltipProps) => {
     const { active, payload, label, coordinate } = props;
     const data = tooltipDataRef.current;
     if (!active || !payload?.length) return null;
@@ -1854,7 +3224,376 @@ export default function Analytics() {
                   })}
                 </div>
                 <div className="flex-1 min-w-0 swiper-no-swiping" style={{ touchAction: "pan-y" }}>
-                  <EChartsRevenueChart data={echartsDailyData} chartId="main-revenue" />
+                  <div
+                    ref={chartRef}
+                    onTouchStart={handleTouchStart}
+                    onTouchMove={handleTouchMove}
+                    onTouchEnd={handleTouchEnd}
+                    className="touch-none overflow-visible"
+                  >
+                    <ResponsiveContainer width="100%" height={280}>
+                      <AreaChart data={chartDataForRender} margin={{ top: 8, right: 28, left: 0, bottom: 0 }} onClick={handleChartClick}>
+                        <defs>
+                          {activeLines.map((line) => (
+                            <linearGradient key={line.key} id={`grad-${line.key}`} x1="0" y1="0" x2="0" y2="1">
+                              <stop offset="0%" stopColor={line.color} stopOpacity={0.25} />
+                              <stop offset="100%" stopColor={line.color} stopOpacity={0} />
+                            </linearGradient>
+                          ))}
+                          <linearGradient id="cursorGradient" x1="0" y1="0" x2="0" y2="1">
+                            <stop offset="0%" stopColor="#64748b" stopOpacity={0.6} />
+                            <stop offset="100%" stopColor="#64748b" stopOpacity={0.05} />
+                          </linearGradient>
+                          <filter id="glow" x="-20%" y="-20%" width="140%" height="140%">
+                            <feGaussianBlur stdDeviation="2.5" result="blur" />
+                            <feMerge>
+                              <feMergeNode in="blur" />
+                              <feMergeNode in="SourceGraphic" />
+                            </feMerge>
+                          </filter>
+                          {chartMode === 'composite' && activeLines.map((line) => (
+                            <linearGradient key={`grad-rev-${line.key}`} id={`grad-rev-${line.key}`} x1="0" y1="0" x2="0" y2="1">
+                              <stop offset="0%" stopColor={line.color} stopOpacity={0.3} />
+                              <stop offset="100%" stopColor={line.color} stopOpacity={0.05} />
+                            </linearGradient>
+                          ))}
+                          {chartMode === 'composite' && activeLines.map((line) => (
+                            <linearGradient key={`grad-exp-${line.key}`} id={`grad-exp-${line.key}`} x1="0" y1="0" x2="0" y2="1">
+                              <stop offset="0%" stopColor="#ef4444" stopOpacity={0.25} />
+                              <stop offset="100%" stopColor="#ef4444" stopOpacity={0.05} />
+                            </linearGradient>
+                          ))}
+                        </defs>
+                        <CartesianGrid vertical={false} stroke="#f1f5f9" />
+                        <XAxis
+                          type="category"
+                          dataKey="label"
+                          tick={axisConfig.mode === 'anchors'
+                            ? <AnchorTick />
+                            : { fontSize: 11, fill: "#64748b" }}
+                          axisLine={{ stroke: "#e2e8f0" }}
+                          tickLine={false}
+                          interval={
+                            axisConfig.mode === 'default'
+                              ? (granularity === 'day'
+                                  ? (zoomSpan > 90 ? 28 : zoomSpan > 60 ? 14 : zoomSpan > 30 ? 7 : zoomSpan > 14 ? 3 : 0)
+                                  : (zoomSpan > 36 ? 5 : zoomSpan > 24 ? 3 : zoomSpan > 12 ? 1 : 0))
+                              : axisConfig.mode === 'angled'
+                                ? axisConfig.interval
+                                : 0
+                          }
+                          angle={axisConfig.mode === 'angled' ? axisConfig.angle : 0}
+                          textAnchor={axisConfig.mode === 'angled' ? 'end' : 'middle'}
+                          height={isMobile && axisConfig.mode === 'angled' ? 48 : 30}
+                          minTickGap={isMobile ? 4 : 5}
+                        />
+                        <YAxis
+                          tick={{ fontSize: 11, fill: "#64748b" }}
+                          axisLine={false}
+                          tickLine={false}
+                          width={50}
+                          tickFormatter={(v: number) => v >= 1000 ? `${Math.round(v / 1000)}k` : `${v}`}
+                        />
+                        <Tooltip
+                          content={renderTooltip}
+                          cursor={<CustomCursor />}
+                          allowEscapeViewBox={{ x: true, y: true }}
+                          wrapperStyle={{ zIndex: 50 }}
+                        />
+                        {chartMode === 'profit' ? activeLines.map((line) => {
+                          const stats = lineStats.stats.get(line.key);
+                          return (
+                          <Area
+                            key={`p_${line.key}`}
+                            type="monotone"
+                            dataKey={`profit_${line.key}`}
+                            stroke={line.color}
+                            fill={`url(#grad-${line.key})`}
+                            strokeWidth={2.5}
+                            strokeLinecap="round"
+                            connectNulls={true}
+                            dot={showStats && stats ? (props: Record<string, unknown>) => {
+                              const anomalies = anomalyMap.get(line.key);
+                              return (
+                              <StatDot
+                                key={`dot_${props.index}`}
+                                cx={props.cx as number}
+                                cy={props.cy as number}
+                                color={line.color}
+                                payload={props.payload as ChartEntry}
+                                lineKey={line.key}
+                                isMax={props.index === stats.maxIdx}
+                                isMin={props.index === stats.minIdx}
+                                isAnomaly={showAnomalies && anomalies?.has(props.index as number) === true}
+                                lineIndex={props.index === stats.maxIdx ? stats.maxLineIndex : stats.minLineIndex}
+                                collisionGroup={props.index === stats.maxIdx ? stats.maxCollisionGroup : stats.minCollisionGroup}
+                                isMobile={isMobile}
+                              />
+                              );
+                            } : showAnomalies ? (props: Record<string, unknown>) => {
+                              const anomalies = anomalyMap.get(line.key);
+                              return anomalies?.has(props.index as number) ? (
+                                <StatDot
+                                  key={`dot_${props.index}`}
+                                  cx={props.cx as number}
+                                  cy={props.cy as number}
+                                  color={line.color}
+                                  payload={props.payload as ChartEntry}
+                                  lineKey={line.key}
+                                  isAnomaly
+                                  isMobile={isMobile}
+                                />
+                              ) : (zoomSpan <= 12 ? <circle cx={props.cx as number} cy={props.cy as number} r={2.5} fill={line.color} strokeWidth={0} /> : null);
+                            } : zoomSpan <= 12 ? { r: 2.5, fill: line.color, strokeWidth: 0 } : false}
+                            activeDot={<CustomActiveDot color={line.color} />}
+                            name={line.label}
+                            isAnimationActive={!zoomAnimating || granularityAnimating}
+                            animationDuration={1000}
+                            animationEasing="ease-out"
+                            style={zoomSpan <= 24 ? { filter: "url(#glow)" } : undefined}
+                          />
+                          );
+                        }) : (
+                          <>
+                            {activeLines.map((line) => (
+                              <Area
+                                key={`rv_${line.key}`}
+                                type="monotone"
+                                dataKey={`revenue_${line.key}`}
+                                stroke={line.color}
+                                fill={`url(#grad-rev-${line.key})`}
+                                strokeWidth={1.5}
+                                strokeLinecap="round"
+                                connectNulls={true}
+                                dot={zoomSpan <= 12 ? { r: 2.5, fill: line.color, strokeWidth: 0 } : false}
+                                activeDot={<CustomActiveDot color={line.color} />}
+                                name={`${line.label} (дохід)`}
+                                isAnimationActive={!zoomAnimating || granularityAnimating}
+                                animationDuration={1000}
+                                animationEasing="ease-out"
+                              />
+                            ))}
+                            {activeLines.map((line) => (
+                              <Area
+                                key={`exp_${line.key}`}
+                                type="monotone"
+                                dataKey={`expenses_${line.key}`}
+                                stroke="#ef4444"
+                                fill={`url(#grad-exp-${line.key})`}
+                                strokeWidth={1.5}
+                                strokeDasharray="4 2"
+                                strokeLinecap="round"
+                                connectNulls={true}
+                                dot={zoomSpan <= 12 ? { r: 2.5, fill: "#ef4444", strokeWidth: 0 } : false}
+                                activeDot={<CustomActiveDot color="#ef4444" />}
+                                name={`${line.label} (витрати)`}
+                                isAnimationActive={!zoomAnimating || granularityAnimating}
+                                animationDuration={1000}
+                                animationEasing="ease-out"
+                              />
+                            ))}
+                          </>
+                        )}
+                        {showRevenue && activeLines.map((line) => (
+                          <Bar
+                            key={`rv_${line.key}`}
+                            dataKey={`revenue_${line.key}`}
+                            fill={line.color}
+                            opacity={0.15}
+                            radius={[2, 2, 0, 0]}
+                            isAnimationActive={!zoomAnimating || granularityAnimating}
+                            name={`${line.label} (дохід)`}
+                          />
+                        ))}
+                        {showStats && activeLines.map((line) => {
+                          const stats = lineStats.stats.get(line.key);
+                          if (!stats) return null;
+                          return (
+                            <ReferenceLine
+                              key={`avg_${line.key}`}
+                              y={stats.avg}
+                              stroke={line.color}
+                              strokeDasharray="3 3"
+                              opacity={0.5}
+                              label={{ value: "avg", position: "right", fontSize: 9, fill: line.color }}
+                            />
+                          );
+                        })}
+                        {showTrend && activeLines.map((line) => (
+                          <Line
+                            key={`sma_${line.key}`}
+                            type="monotone"
+                            dataKey={`sma_${line.key}`}
+                            stroke={line.color}
+                            strokeWidth={1.5}
+                            strokeDasharray="4 4"
+                            dot={false}
+                            connectNulls
+                            opacity={0.6}
+                            isAnimationActive={false}
+                            name={`${line.label} (SMA)`}
+                          />
+                        ))}
+                        {showForecast && canForecast && forecastData.forecastStartIndex >= 0 && (
+                          <ReferenceLine
+                            x={chartDataForRender[Math.min(forecastData.forecastStartIndex, chartDataForRender.length - 1)]?.label}
+                            stroke="#94a3b8"
+                            strokeDasharray="3 3"
+                            label={{ value: "Прогноз →", position: "insideTopRight", fontSize: 10, fill: "#94a3b8" }}
+                          />
+                        )}
+                        {showForecast && activeLines.map((line) => {
+                          const insufficient = forecastData.insufficientLines.has(line.key);
+                          return (
+                          <Line
+                            key={`forecast_${line.key}`}
+                            type="monotone"
+                            dataKey={`forecast_${line.key}`}
+                            stroke={line.color}
+                            strokeWidth={2}
+                            strokeDasharray="2 6"
+                            dot={false}
+                            connectNulls
+                            opacity={insufficient ? 0.2 : 0.65}
+                            isAnimationActive={false}
+                            name={insufficient ? `${line.label} (недостатньо даних)` : `${line.label} (прогноз)`}
+                          />
+                          );
+                        })}
+                        {showTarget && targetChartData && (
+                          <Line
+                            key="target_line"
+                            type="monotone"
+                            dataKey="target"
+                            data={targetChartData}
+                            stroke="#f59e0b"
+                            strokeWidth={2}
+                            strokeDasharray="6 3"
+                            dot={false}
+                            connectNulls
+                            opacity={0.7}
+                            isAnimationActive={false}
+                            name="Ціль"
+                          />
+                        )}
+                        {annotations?.map((a) => {
+                          const entry = chartDataForRender.find((e) => e.month === a.month);
+                          if (!entry) return null;
+                          return (
+                            <ReferenceDot
+                              key={`ann_${a.month}`}
+                              x={entry.label}
+                              y={0}
+                              r={5}
+                              fill={a.color}
+                              stroke="white"
+                              strokeWidth={2}
+                            >
+                              <Label
+                                value={a.text}
+                                position="bottom"
+                                offset={10}
+                                fontSize={9}
+                                fill={a.color}
+                                fontWeight={600}
+                              />
+                            </ReferenceDot>
+                          );
+                        })}
+                        {showYoY && prevYearLines.map((line) => (
+                          <Line
+                            key={`py_${line.key}`}
+                            type="monotone"
+                            dataKey={line.key}
+                            stroke={line.color}
+                            strokeWidth={1.5}
+                            strokeDasharray="6 3"
+                            dot={false}
+                            connectNulls
+                            opacity={0.35}
+                            isAnimationActive={false}
+                            name={line.label}
+                          />
+                        ))}
+                      </AreaChart>
+                    </ResponsiveContainer>
+                  </div>
+                  {zoomedChartData.length > 2 && (
+                    <div className="pt-2">
+                      <div className="relative h-8 select-none" style={{ marginLeft: 50, marginRight: 28 }}>
+                        <div className="absolute inset-0 flex items-center">
+                          <div className="w-full h-[3px] rounded-full bg-border-strong" />
+                          <div
+                            className="absolute h-[3px] rounded-full bg-brand"
+                            style={{
+                              left: `${((subRange ? subRange[0] : 0) / (zoomedChartData.length - 1)) * 100}%`,
+                              width: `${(((subRange ? subRange[1] : zoomedChartData.length - 1) - (subRange ? subRange[0] : 0)) / (zoomedChartData.length - 1)) * 100}%`,
+                            }}
+                          />
+                        </div>
+                        <input
+                          type="range"
+                          min={0}
+                          max={zoomedChartData.length - 1}
+                          step={1}
+                          value={subRange ? subRange[0] : 0}
+                          onChange={(e) => {
+                            const v = Number(e.target.value);
+                            const end = subRange ? subRange[1] : zoomedChartData.length - 1;
+                            setSubRange(v <= end ? [v, end] : [v, v]);
+                          }}
+                          aria-label="Початок діапазону"
+                          className="subrange-input"
+                        />
+                        <input
+                          type="range"
+                          min={0}
+                          max={zoomedChartData.length - 1}
+                          step={1}
+                          value={subRange ? subRange[1] : zoomedChartData.length - 1}
+                          onChange={(e) => {
+                            const v = Number(e.target.value);
+                            const start = subRange ? subRange[0] : 0;
+                            setSubRange(v >= start ? [start, v] : [v, v]);
+                          }}
+                          aria-label="Кінець діапазону"
+                          className="subrange-input"
+                        />
+                      </div>
+                      <div className="flex justify-between" style={{ marginLeft: 50, marginRight: 28 }}>
+                        <span className="text-[9px] text-content-muted truncate max-w-[45%]">
+                          {zoomedChartData[subRange ? subRange[0] : 0]?.label}
+                        </span>
+                        <span className="text-[9px] text-content-muted truncate max-w-[45%] text-right">
+                          {zoomedChartData[subRange ? subRange[1] : zoomedChartData.length - 1]?.label}
+                        </span>
+                      </div>
+                      {subRange !== null && (
+                        <div className="flex justify-end mt-1">
+                          <button
+                            onClick={() => setSubRange(null)}
+                            className="text-[10px] text-content-muted hover:text-content-secondary transition px-1"
+                          >
+                            Скинути
+                          </button>
+                        </div>
+                      )}
+                    </div>
+                  )}
+                  {(isZoomed || selectedEntryKey) && (
+                    <button
+                      onClick={() => {
+                        const entries = granularity === 'day' ? dayChartData : forecastData.entries;
+                        if (entries.length > 0) {
+                          setZoomKeysSafe([entries[0].key, entries[entries.length - 1].key]);
+                        }
+                        setSelectedEntryKey(null);
+                      }}
+                      className="mt-1.5 text-[10px] text-content-muted hover:text-content-secondary transition px-1"
+                    >
+                      ← Повний діапазон
+                    </button>
+                  )}
                 </div>
               </div>
             </>
@@ -2053,3 +3792,502 @@ function KPICard({ label, value, color, numericValue, format = 'money' }: { labe
     </motion.div>
   );
 }
+```
+
+
+---
+
+## 8. Frontend: motion.ts (animation utilities)
+
+```typescript
+import { useEffect, useMemo, useRef, useState } from "react";
+import type { Variants } from "framer-motion";
+
+/* ─── Reduced Motion ─── */
+
+const prefersReducedMotion = () =>
+  typeof window !== "undefined" &&
+  window.matchMedia?.("(prefers-reduced-motion: reduce)").matches;
+
+const localStorageKey = "opencode:reduced-motion";
+
+function getStoredReducedMotion(): boolean | null {
+  try {
+    const v = localStorage.getItem(localStorageKey);
+    if (v === "true") return true;
+    if (v === "false") return false;
+  } catch {
+    /* SSR / private mode */
+  }
+  return null;
+}
+
+/** React hook: returns true when the device is hover-capable (fine pointer). */
+export function useHoverCapable(): boolean {
+  const [capable, setCapable] = useState<boolean>(() =>
+    typeof window !== "undefined" &&
+    (window.matchMedia?.("(hover: hover) and (pointer: fine)").matches ?? false),
+  );
+
+  useEffect(() => {
+    const mq = window.matchMedia?.("(hover: hover) and (pointer: fine)");
+    if (!mq) return;
+    const handler = () => setCapable(mq.matches);
+    mq.addEventListener?.("change", handler);
+    return () => mq.removeEventListener?.("change", handler);
+  }, []);
+
+  return capable;
+}
+
+/** React hook: returns true if user prefers reduced motion (OS setting + localStorage). */
+export function usePrefersReducedMotion(): boolean {
+  const [reduced, setReduced] = useState<boolean>(() => {
+    const stored = getStoredReducedMotion();
+    return stored !== null ? stored : prefersReducedMotion();
+  });
+
+  useEffect(() => {
+    const mq = window.matchMedia?.("(prefers-reduced-motion: reduce)");
+    if (!mq) return;
+    const handler = (e: MediaQueryListEvent) => {
+      if (getStoredReducedMotion() === null) setReduced(e.matches);
+    };
+    mq.addEventListener?.("change", handler);
+    return () => mq.removeEventListener?.("change", handler);
+  }, []);
+
+  return reduced;
+}
+
+export const useReducedMotion = usePrefersReducedMotion;
+
+/** React hook: true when viewport is mobile (<768px). Layout-only, NOT for animation suppression. */
+export function useCompactViewport(): boolean {
+  const [compact, setCompact] = useState<boolean>(() =>
+    typeof window !== "undefined" && window.matchMedia?.("(max-width: 767px)").matches,
+  );
+
+  useEffect(() => {
+    const mq = window.matchMedia?.("(max-width: 767px)");
+    if (!mq) return;
+    const handler = () => setCompact(mq.matches);
+    mq.addEventListener?.("change", handler);
+    return () => mq.removeEventListener?.("change", handler);
+  }, []);
+
+  return compact;
+}
+
+/** @deprecated Use usePrefersReducedMotion() for animation suppression. */
+export const useLightMotion = usePrefersReducedMotion;
+
+/** React hook: staggered entrance for list items. */
+export function useStaggeredEntrance(
+  opts?: { delayChildren?: number; stagger?: number },
+) {
+  const reduced = useLightMotion();
+  const { delayChildren = 0.04, stagger = 0.045 } = opts ?? {};
+
+  return useMemo(
+    () => ({
+      hidden: { opacity: 0 },
+      visible: {
+        opacity: 1,
+        transition: {
+          delayChildren: reduced ? 0 : delayChildren,
+          staggerChildren: reduced ? 0 : stagger,
+          when: "beforeChildren" as const,
+        },
+      },
+    }),
+    [delayChildren, stagger, reduced],
+  );
+}
+
+/** React hook: animates a number from 0 → target. Returns current display value. */
+export function useCountUp(
+  target: number,
+  opts?: { duration?: number; decimals?: number; enabled?: boolean },
+): number {
+  const { duration = 0.8, decimals = 0, enabled = true } = opts ?? {};
+  const reduced = useReducedMotion();
+  const skip = reduced || !enabled;
+  const [display, setDisplay] = useState(0);
+  const rafRef = useRef<number>(0);
+  const startRef = useRef<number>(0);
+  const fromRef = useRef(0);
+  const prevTargetRef = useRef(target);
+
+  useEffect(() => {
+    if (skip) return;
+    fromRef.current = prevTargetRef.current;
+    prevTargetRef.current = target;
+    startRef.current = 0;
+    const step = (ts: number) => {
+      if (!startRef.current) startRef.current = ts;
+      const progress = Math.min((ts - startRef.current) / (duration * 1000), 1);
+      const eased = 1 - Math.pow(1 - progress, 3);
+      const current = fromRef.current + (target - fromRef.current) * eased;
+      setDisplay(Number(current.toFixed(decimals)));
+      if (progress < 1) rafRef.current = requestAnimationFrame(step);
+    };
+    rafRef.current = requestAnimationFrame(step);
+    return () => cancelAnimationFrame(rafRef.current);
+  }, [target, duration, decimals, skip]);
+
+  return skip ? target : display;
+}
+
+/* ─── Durations ─── */
+
+export const DUR = {
+  instant: 0,
+  micro: 0.075,
+  fast: 0.2,
+  normal: 0.25,
+  moderate: 0.3,
+  slow: 0.4,
+  verySlow: 0.5,
+  page: 0.4,
+} as const;
+
+/* ─── Easings ─── */
+
+export const EASE = {
+  standard: [0.4, 0, 0.2, 1] as const,
+  decelerate: [0, 0, 0.2, 1] as const,
+  accelerate: [0.4, 0, 1, 1] as const,
+  spring: [0.22, 1, 0.36, 1] as const,
+  outExpo: [0.19, 1, 0.22, 1] as const,
+  inOutExpo: [0.87, 0, 0.13, 1] as const,
+  snappy: [0.16, 1, 0.3, 1] as const,
+} as const;
+
+/* ─── Springs ─── */
+
+export const SPRING = {
+  snappy: { type: "spring" as const, stiffness: 320, damping: 28 },
+  gentle: { type: "spring" as const, stiffness: 260, damping: 24 },
+  bouncy: { type: "spring" as const, stiffness: 300, damping: 20 },
+  stiff: { type: "spring" as const, stiffness: 400, damping: 32 },
+} as const;
+
+/* ─── Transition Presets ─── */
+
+export const TRANSITION = {
+  hover: { type: "spring" as const, stiffness: 350, damping: 25 },
+  tap: { duration: DUR.fast, ease: EASE.standard },
+  focus: { duration: DUR.fast, ease: EASE.decelerate },
+  color: { duration: DUR.normal, ease: EASE.standard },
+  shadow: { duration: DUR.normal, ease: EASE.standard },
+  position: { type: "spring" as const, stiffness: 350, damping: 30 },
+  fade: { duration: DUR.normal, ease: EASE.decelerate },
+  slideUp: { duration: DUR.moderate, ease: EASE.outExpo },
+  slideDown: { duration: DUR.moderate, ease: EASE.outExpo },
+  scale: { duration: DUR.normal, ease: EASE.outExpo },
+  layout: { duration: DUR.fast, ease: EASE.standard },
+} as const;
+
+/* ─── Variant Presets ─── */
+
+/** Backdrop fade in/out (modal overlay). */
+export const backdropVariants: Variants = {
+  hidden: { opacity: 0 },
+  visible: { opacity: 1, transition: { duration: DUR.fast, ease: EASE.decelerate } },
+  exit: { opacity: 0, transition: { duration: DUR.normal, ease: EASE.standard } },
+};
+
+/** Modal / sheet / bottom-sheet content. Tween on enter for consistent perf on low-end mobile; fast spring on exit. */
+export const modalContentVariants: Variants = {
+  hidden: { opacity: 0, y: 32, scale: 0.96 },
+  visible: { opacity: 1, y: 0, scale: 1, transition: { duration: DUR.moderate, ease: EASE.outExpo } },
+  exit: { opacity: 0, y: 12, scale: 0.97, transition: { duration: DUR.fast, ease: EASE.accelerate } },
+};
+
+/** Pop-in (badges, status pills, FAB). */
+export const popInVariants: Variants = {
+  hidden: { opacity: 0, scale: 0.6 },
+  visible: { opacity: 1, scale: 1, transition: { ...SPRING.bouncy } },
+  exit: { opacity: 0, scale: 0.6, transition: { duration: DUR.normal, ease: EASE.standard } },
+};
+
+/** Card elevation hover (translate-y only — shadow handled via CSS class). */
+export const cardHoverVariants: Variants = {
+  rest: { y: 0, opacity: 1 },
+  hover: {
+    y: -4,
+    opacity: 1,
+    transition: { duration: DUR.normal, ease: EASE.standard },
+  },
+};
+
+/** Page / route transitions (opacity only — used with AnimatePresence mode="wait"). */
+export const pageVariants: Variants = {
+  hidden: { opacity: 0 },
+  visible: { opacity: 1, transition: { duration: DUR.page, ease: EASE.outExpo, delay: 0.03 } },
+  exit: { opacity: 0, transition: { duration: DUR.normal, ease: EASE.standard } },
+};
+
+/** Simple fade transition. */
+export const fadeVariants: Variants = {
+  hidden: { opacity: 0 },
+  visible: { opacity: 1, transition: { duration: DUR.normal, ease: EASE.decelerate } },
+  exit: { opacity: 0, transition: { duration: DUR.normal, ease: EASE.standard } },
+};
+
+/** Slide up entrance (content blocks, cards). */
+export const slideUpVariants: Variants = {
+  hidden: { opacity: 0, y: 20 },
+  visible: { opacity: 1, y: 0, transition: { duration: DUR.moderate, ease: EASE.outExpo } },
+  exit: { opacity: 0, y: -6, transition: { duration: DUR.normal, ease: EASE.standard } },
+};
+
+/** Scale entrance (modals, popovers). */
+export const scaleVariants: Variants = {
+  hidden: { opacity: 0, scale: 0.9 },
+  visible: { opacity: 1, scale: 1, transition: { ...SPRING.gentle } },
+  exit: { opacity: 0, scale: 0.95, transition: { duration: DUR.normal, ease: EASE.standard } },
+};
+
+/** Stagger container — use with staggerItem children. */
+export const staggerContainer: Variants = {
+  hidden: { opacity: 0 },
+  visible: {
+    opacity: 1,
+    transition: { staggerChildren: 0.05, delayChildren: 0.04, when: "beforeChildren" },
+  },
+};
+
+/** Stagger item — each child inside staggerContainer. */
+export const staggerItem: Variants = {
+  hidden: { opacity: 0, y: 12 },
+  visible: { opacity: 1, y: 0, transition: { duration: DUR.normal, ease: EASE.outExpo } },
+};
+
+/** Horizontal slide for carousel / tabs. */
+export const slideXVariants: Variants = {
+  enter: (dir: number) => ({ x: dir > 0 ? 80 : -80, opacity: 0 }),
+  center: { x: 0, opacity: 1, transition: { ...SPRING.snappy } },
+  exit: (dir: number) => ({ x: dir > 0 ? -80 : 80, opacity: 0, transition: { duration: DUR.normal, ease: EASE.standard } }),
+};
+
+/** Skeleton shimmer placeholder. */
+export const skeletonPulse = {
+  animate: { opacity: [0.4, 0.7, 0.4], transition: { duration: 1.4, repeat: Infinity, ease: "linear" as const } },
+};
+
+/** Checkmark success pop. */
+export const checkmarkVariants: Variants = {
+  hidden: { scale: 0, opacity: 0 },
+  visible: { scale: 1, opacity: 1, transition: { type: "spring", stiffness: 400, damping: 15 } },
+};
+
+/** Error shake. */
+export const shakeVariants: Variants = {
+  shake: { x: [0, -8, 8, -6, 6, -3, 3, 0], transition: { duration: 0.4 } },
+};
+
+/** Tooltip / popover. */
+export const tooltipVariants: Variants = {
+  hidden: { opacity: 0, y: 4, scale: 0.95 },
+  visible: { opacity: 1, y: 0, scale: 1, transition: { duration: DUR.fast, ease: EASE.outExpo } },
+  exit: { opacity: 0, y: 2, scale: 0.98, transition: { duration: DUR.micro, ease: EASE.accelerate } },
+};
+
+/** Empty state illustration entrance. */
+export const emptyStateVariants: Variants = {
+  hidden: { opacity: 0, scale: 0.85, y: 16 },
+  visible: { opacity: 1, scale: 1, y: 0, transition: { duration: DUR.slow, ease: EASE.outExpo } },
+};
+
+/** Notification bell ring. */
+export const bellRingVariants: Variants = {
+  ring: {
+    rotate: [0, 14, -12, 8, -6, 3, 0],
+    transition: { duration: 0.5, ease: "easeInOut" },
+  },
+};
+
+/** FAB entrance. */
+export const fabVariants: Variants = {
+  hidden: { opacity: 0, scale: 0.5, y: 20 },
+  visible: { opacity: 1, scale: 1, y: 0, transition: { ...SPRING.bouncy } },
+  exit: { opacity: 0, scale: 0.5, y: 10, transition: { duration: DUR.normal, ease: EASE.standard } },
+};
+
+/* ─── CSS-compatible class helpers ─── */
+
+export const noTransition = "transition-none";
+export const motionSafe = (cls: string) => `motion-safe:${cls}`;
+export const motionReduce = (cls: string) => `motion-reduce:${cls}`;
+
+/* ─── GPU acceleration ─── */
+
+/** Apply to animated elements to promote to composite layer and avoid layout thrash. */
+export const GPU_STYLE = { willChange: "transform" } as const;
+```
+
+
+---
+
+## 9. Tests: handlers.ts (MSW mocks)
+
+```typescript
+import { http, HttpResponse } from "msw";
+
+const BASE = "/api";
+
+export const handlers = [
+  http.get(`${BASE}/cities`, () =>
+    HttpResponse.json([
+      { id: "city-1", name: "Львів", plannedEvents: 3, completedEvents: 10, schoolsCount: 50 },
+      { id: "city-2", name: "Київ", plannedEvents: 1, completedEvents: 5, schoolsCount: 30 },
+    ])
+  ),
+
+  http.get(`${BASE}/schools`, () =>
+    HttpResponse.json([
+      { id: "school-1", name: "Школа №1", type: "Школа", cityId: "city-1", childrenCount: 300, events: [] },
+      { id: "school-2", name: "Школа №5", type: "Школа", cityId: "city-1", childrenCount: 100, events: [] },
+    ])
+  ),
+
+  http.get(`${BASE}/schools/:id`, ({ params }) =>
+    HttpResponse.json({
+      id: params.id,
+      name: "Школа №1",
+      type: "Школа",
+      cityId: "city-1",
+      city: { id: "city-1", name: "Львів" },
+      director: "Іван Петренко",
+      phone: "0671234567",
+      address: "вул. Тестова 1",
+      childrenCount: 300,
+    })
+  ),
+
+  http.get(`${BASE}/events/school/:schoolId`, () =>
+    HttpResponse.json([
+      {
+        id: "event-1",
+        project: "Голограма для школи",
+        date: "2026-07-01T10:00:00Z",
+        time: "10:00",
+        status: "BASE",
+        price: 5000,
+        childrenPlanned: 100,
+        address: "вул. Тестова 1",
+        contactPerson: "Іван",
+        contactPhone: "0671234567",
+      },
+    ])
+  ),
+
+  http.get(`${BASE}/users`, () =>
+    HttpResponse.json([
+      { id: "user-1", name: "Адміністратор", email: "admin@crm.com", role: "SUPERADMIN" },
+    ])
+  ),
+
+  http.get(`${BASE}/dashboard/summary`, () =>
+    HttpResponse.json({
+      todayEvents: [],
+      upcomingEvents: [],
+      funnel: { BASE: 10, FIRST_CONTACT: 5 },
+      totalSchools: 50,
+      monthlyKpi: { revenue: 50000, profit: 20000, children: 500, count: 10 },
+      staleSchools: [],
+      activityFeed: [],
+      citiesStats: [],
+    })
+  ),
+
+  // Finance endpoints
+  http.get(`${BASE}/finance/staff-revenue`, () =>
+    HttpResponse.json([
+      { staffId: "user-1", name: "Адміністратор", revenue: 50000, eventsCount: 10 },
+    ])
+  ),
+
+  // Analytics endpoints
+  http.get(`${BASE}/analytics/city-leaderboard`, () =>
+    HttpResponse.json([
+      { cityId: "city-1", cityName: "Львів", value: 100 },
+      { cityId: "city-2", cityName: "Київ", value: 80 },
+    ])
+  ),
+
+  http.get(`${BASE}/issues`, () =>
+    HttpResponse.json([
+      { id: "issue-1", title: "Test issue", cityId: "city-1", status: "OPEN" },
+    ])
+  ),
+
+  http.get(`${BASE}/analytics/kpi/managers`, () =>
+    HttpResponse.json([
+      { userId: "user-1", name: "Manager 1", events: 10, revenue: 50000 },
+    ])
+  ),
+
+  http.get(`${BASE}/analytics/kpi/hosts`, () =>
+    HttpResponse.json([
+      { userId: "user-1", name: "Host 1", events: 5, children: 200 },
+    ])
+  ),
+
+  http.get(`${BASE}/analytics/kpi/projects`, () =>
+    HttpResponse.json([
+      { projectId: "proj-1", name: "Project 1", revenue: 50000, events: 3 },
+    ])
+  ),
+
+  http.get(`${BASE}/analytics/revenue-by-month`, () =>
+    HttpResponse.json([
+      { month: "2026-01", revenue: 10000 },
+      { month: "2026-02", revenue: 15000 },
+    ])
+  ),
+
+  http.get(`${BASE}/analytics/events-by-city`, () =>
+    HttpResponse.json([
+      { cityId: "city-1", cityName: "Львів", events: 10 },
+      { cityId: "city-2", cityName: "Київ", events: 5 },
+    ])
+  ),
+
+  http.get(`${BASE}/analytics/salary-fund`, () =>
+    HttpResponse.json([
+      { month: "2026-01", fund: 50000 },
+      { month: "2026-02", fund: 60000 },
+    ])
+  ),
+
+
+  // Reports
+  http.get(`${BASE}/reports/submitted`, () =>
+    HttpResponse.json([
+      { id: "report-1", eventId: "event-1", schoolName: "School 1", status: "APPROVED" },
+    ])
+  ),
+
+  http.post(`${BASE}/auth/login`, () =>
+    HttpResponse.json({ access_token: "test-token" })
+  ),
+
+  http.get(`${BASE}/auth/me`, () =>
+    HttpResponse.json({
+      user: { id: "user-1", name: "Тестовий", email: "test@crm.com", role: "SUPERADMIN", cityId: "city-1", cityName: "Львів" },
+    })
+  ),
+
+  http.post(`${BASE}/auth/logout`, () =>
+    HttpResponse.json({ ok: true })
+  ),
+];
+```
+
+
+---
+
+*Bundle complete. 10 files included.*
