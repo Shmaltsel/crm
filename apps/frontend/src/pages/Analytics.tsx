@@ -316,13 +316,9 @@ export default function Analytics() {
   const { user } = useAuth();
   const isSuper = user?.role === "SUPERADMIN" || user?.role === "OWNER";
 
-  // Часовий проміжок за замовчуванням — весь час. Селектор прибрано, буде реалізовано інакше.
-  const period: string = "all";
-
-  const yearParam = useMemo(() => {
-    if (period === "all") return undefined;
-    return Number(period) || currentYear;
-  }, [period]);
+  const [selectedYear, setSelectedYear] = useState<number | null>(currentYear);
+  const period: string = selectedYear !== null ? String(selectedYear) : "all";
+  const yearParam = selectedYear ?? undefined;
 
   const [activeProjects, setActiveProjects] = useState<Set<string>>(new Set());
   const [activeCities, setActiveCities] = useState<Set<string>>(new Set());
@@ -344,8 +340,8 @@ export default function Analytics() {
     year: yearParam,
   });
   const { data: prevYearData } = useRevenueByCityMonth({
-    year: yearParam - 1,
-    enabled: period !== "all" && showYoY,
+    year: selectedYear !== null ? selectedYear - 1 : undefined,
+    enabled: selectedYear !== null && showYoY,
   });
   const { data: eventsByCity, isLoading: eventsLoading } = useEventsByCity({ year: yearParam });
   const { data: salaryFund } = useSalaryFund({ year: yearParam });
@@ -558,14 +554,14 @@ export default function Analytics() {
   }, [chartData, prevYearData, showYoY, activeLines, activeCities, aggregateByCity]);
 
   const prevYearLines = useMemo(() => {
-    if (!showYoY || period === "all") return [];
+    if (!showYoY || selectedYear === null) return [];
     return activeLines.map((l) => ({
       ...l,
       key: `prevYear_${l.key}`,
-      label: `${l.label} (${yearParam - 1})`,
+      label: `${l.label} (${selectedYear - 1})`,
       color: l.color,
     }));
-  }, [activeLines, showYoY, period, yearParam]);
+  }, [activeLines, showYoY, selectedYear]);
 
   const smaData = useMemo(() => {
     if (!showTrend || activeLines.length === 0) return yoyChartData;
@@ -583,7 +579,7 @@ export default function Analytics() {
     });
   }, [yoyChartData, activeLines, showTrend]);
 
-  const canForecast = period !== 'all' && chartData.length >= 4 && granularity !== 'day';
+  const canForecast = selectedYear !== null && chartData.length >= 4 && granularity !== 'day';
 
   const forecastData = useMemo(() => {
     if (!showForecast || !canForecast || activeLines.length === 0) return { entries: smaData, forecastStartIndex: -1, insufficientLines: new Set<string>() };
@@ -970,41 +966,7 @@ export default function Analytics() {
     const visibleSource = source.slice(startIdx, endIdx + 1);
 
     if (visibleSource.length <= 1) return visibleSource;
-    if (granularity === 'day') return visibleSource;
-
-    const MIN_INTERPOLATED = 8;
-    if (visibleSource.length >= MIN_INTERPOLATED) return visibleSource;
-
-    const POINTS_BETWEEN = Math.max(1, Math.ceil((MIN_INTERPOLATED - visibleSource.length) / Math.max(1, visibleSource.length - 1)));
-    const result: ChartEntry[] = [];
-
-    for (let i = 0; i < visibleSource.length; i++) {
-      const src = visibleSource[i];
-      result.push({ ...src });
-
-      if (i < visibleSource.length - 1) {
-        const next = visibleSource[i + 1];
-        for (let j = 1; j <= POINTS_BETWEEN; j++) {
-          const t = j / (POINTS_BETWEEN + 1);
-          const interp: ChartEntry = {
-            key: `${src.key}__${next.key}__${j}`,
-            year: src.year,
-            month: src.month,
-            day: src.day,
-            label: `${src.label}~${next.label}`,
-          };
-          for (const k of Object.keys(src)) {
-            if (['key', 'label', 'year', 'month', 'day'].includes(k)) continue;
-            const a = Number(src[k]) || 0;
-            const b = Number(next[k]) || 0;
-            interp[k] = a + (b - a) * t;
-          }
-          result.push(interp);
-        }
-      }
-    }
-
-    return result;
+    return visibleSource;
   }, [dayChartData, forecastData.entries, visibleRange, granularity, activeLines, chartData.length]);
 
   const [subRange, setSubRange] = useState<[number, number] | null>(null);
@@ -1520,7 +1482,7 @@ export default function Analytics() {
                   Статистика
                 </button>
               )}
-              {chartMode === 'profit' && activeLines.length > 0 && period !== "all" && granularity !== 'day' && (
+              {chartMode === 'profit' && activeLines.length > 0 && selectedYear !== null && granularity !== 'day' && (
                 <button
                   onClick={() => setShowYoY((v) => !v)}
                   className={`flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] border transition-[background-color,box-shadow,border-color] duration-200 ease-out hover:shadow-sm ${
@@ -1602,7 +1564,29 @@ export default function Analytics() {
                   </button>
                 </div>
               </div>
-              {period !== 'all' && (
+              {/* Селектор року */}
+              <div className="flex items-center gap-1.5">
+                <div className="flex rounded-full border border-border-strong overflow-hidden text-[10px]">
+                  {rawCityMonthData && (() => {
+                    const years = [...new Set(rawCityMonthData.map(r => Number(r.year)))].sort((a, b) => b - a);
+                    if (!years.includes(currentYear)) years.unshift(currentYear);
+                    return [null, ...years].map((y) => (
+                      <button
+                        key={y ?? 'all'}
+                        onClick={() => setSelectedYear(y)}
+                        className={`px-2.5 py-1 transition-[background-color,color] duration-200 ${
+                          selectedYear === y
+                            ? 'bg-brand text-white font-medium'
+                            : 'bg-surface text-content-secondary hover:bg-surface-hover'
+                        }`}
+                      >
+                        {y ?? 'Весь час'}
+                      </button>
+                    ));
+                  })()}
+                </div>
+              </div>
+              {selectedYear !== null && (
                 <div className="border-l border-border-strong/20 pl-1.5 ml-0.5">
                   <div className="flex rounded-full border border-border-strong overflow-hidden text-[10px]">
                     <button
@@ -1673,8 +1657,30 @@ export default function Analytics() {
                       </button>
                     </div>
                   </div>
-                  {period !== 'all' && (
+                  {selectedYear !== null && (
                     <div>
+                      <p className="text-[10px] uppercase tracking-wide text-content-muted font-medium mb-2">Рік</p>
+                      {rawCityMonthData && (
+                        <div className="flex flex-wrap gap-1.5 mb-3">
+                          {(() => {
+                            const years = [...new Set(rawCityMonthData.map(r => Number(r.year)))].sort((a, b) => b - a);
+                            if (!years.includes(currentYear)) years.unshift(currentYear);
+                            return [{ value: null, label: 'Весь час' }, ...years.map(y => ({ value: y, label: String(y) }))].map((opt) => (
+                              <button
+                                key={opt.value ?? 'all'}
+                                onClick={() => setSelectedYear(opt.value)}
+                                className={`px-2.5 py-1 rounded-full text-xs border transition-all duration-200 ${
+                                  selectedYear === opt.value
+                                    ? 'bg-brand text-white border-brand'
+                                    : 'border-border-strong bg-surface text-content-secondary hover:bg-surface-hover'
+                                }`}
+                              >
+                                {opt.label}
+                              </button>
+                            ));
+                          })()}
+                        </div>
+                      )}
                       <p className="text-[10px] uppercase tracking-wide text-content-muted font-medium mb-2">Гранулярність</p>
                       <div className="flex rounded-xl border border-border-strong overflow-hidden text-xs">
                         <button
@@ -1727,7 +1733,7 @@ export default function Analytics() {
                           </button>
                         </>
                       )}
-                      {chartMode === 'profit' && activeLines.length > 0 && period !== "all" && granularity !== 'day' && (
+                      {chartMode === 'profit' && activeLines.length > 0 && selectedYear !== null && granularity !== 'day' && (
                         <button onClick={() => setShowYoY((v) => !v)} className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs border transition-all duration-200 ${showYoY ? CHIP_COLORS.yoy.active : 'border-border-strong bg-surface text-content-secondary'}`}>
                           <span className={`w-2 h-2 rounded-full ${showYoY ? CHIP_COLORS.yoy.dot : 'bg-content-muted'}`} />
                           Рік/рік
