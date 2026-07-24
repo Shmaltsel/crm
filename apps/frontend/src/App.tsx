@@ -69,12 +69,9 @@ function AppRoutes() {
   };
 
   if (loading) {
-    if (!user && location.pathname !== "/login") {
-      return null;
-    }
-    if (location.pathname !== "/login") {
-      return <PageLoader />;
-    }
+    if (!user && location.pathname !== "/login") return null;
+    if (user) return <PageLoader />;
+    return null;
   }
 
   return (

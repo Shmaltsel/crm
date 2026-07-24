@@ -42,7 +42,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const handleExpired = () => {
       setUser(null);
       queryClient.clear();
-      window.location.href = "/login";
+      if (window.location.pathname !== "/login") {
+        window.location.href = "/login";
+      }
     };
     window.addEventListener("auth:expired", handleExpired);
     return () => window.removeEventListener("auth:expired", handleExpired);
