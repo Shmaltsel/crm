@@ -307,7 +307,7 @@ function EChartsRevenueChartInner({
         { lineStyle: { width: lw } },
         { lineStyle: { width: lw * 0.8 } },
       ],
-    }, { notMerge: false, lazyUpdate: true });
+    }, { notMerge: false });
   }, [getAxisLabelFormatter]);
 
   const handleDataZoom = useCallback(() => {
@@ -427,7 +427,7 @@ function EChartsRevenueChartInner({
   useEffect(() => {
     const chart = chartRef.current;
     if (!chart || dataHolder.current.length === 0) return;
-    chart.setOption(buildOption(dataHolder.current, null), { notMerge: false, lazyUpdate: true });
+    chart.setOption(buildOption(dataHolder.current, null), { notMerge: false });
   }, [yAxisMode, buildOption]);
 
   useEffect(() => {
@@ -452,7 +452,7 @@ function EChartsRevenueChartInner({
       /* noop */
     }
 
-    chart.setOption(buildOption(chartData, preserved), { notMerge: true, lazyUpdate: true });
+    chart.setOption(buildOption(chartData, preserved), { notMerge: true });
   }, [chartData, buildOption]);
 
   const handleRangeClick = useCallback((label: string, days: number) => {

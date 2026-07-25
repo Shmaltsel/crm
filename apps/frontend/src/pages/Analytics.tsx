@@ -1866,7 +1866,7 @@ export default function Analytics() {
                     );
                   })}
                 </div>
-                <div className="flex-1 min-w-0 swiper-no-swiping" style={{ touchAction: "pan-y" }}>
+                <div className="flex-1 min-w-0 swiper-no-swiping" style={{ touchAction: "auto" }}>
                   
                   <EChartsRevenueChart data={echartsDailyData} chartId="main-revenue" />
                 </div>
