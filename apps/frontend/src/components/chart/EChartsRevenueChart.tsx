@@ -32,6 +32,19 @@ echarts.use([
 
 const STORAGE_PREFIX = 'chart:viewport:';
 
+function colorWithAlpha(color: string, alpha: number): string {
+  const m = color.match(/hsl\((\d+),\s*(\d+)%,\s*(\d+)%\)/);
+  if (m) return `hsla(${m[1]}, ${m[2]}%, ${m[3]}%, ${alpha})`;
+  if (color.startsWith('#')) {
+    const hex = color.slice(1);
+    const r = parseInt(hex.slice(0, 2), 16);
+    const g = parseInt(hex.slice(2, 4), 16);
+    const b = parseInt(hex.slice(4, 6), 16);
+    return `rgba(${r}, ${g}, ${b}, ${alpha})`;
+  }
+  return color;
+}
+
 function EChartsRevenueChartInner({
   data,
   lines,
@@ -120,12 +133,12 @@ function EChartsRevenueChartInner({
             itemStyle: { color: line.color, borderWidth: 2, borderColor: '#fff' },
             areaStyle: {
               color: new echarts.graphic.LinearGradient(0, 0, 0, 1, [
-                { offset: 0, color: line.color + '40' },
-                { offset: 1, color: line.color + '00' },
+                { offset: 0, color: colorWithAlpha(line.color, 0.25) },
+                { offset: 1, color: colorWithAlpha(line.color, 0) },
               ]),
             },
             emphasis: {
-              itemStyle: { shadowBlur: 6, shadowColor: line.color + '66' },
+              itemStyle: { shadowBlur: 6, shadowColor: colorWithAlpha(line.color, 0.4) },
             },
             animationDuration: 1000,
             animationEasing: 'cubicOut' as const,
