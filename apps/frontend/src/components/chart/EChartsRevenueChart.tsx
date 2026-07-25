@@ -45,6 +45,7 @@ function EChartsRevenueChartInner({
   const dataHolder = useRef<ChartDataPoint[]>([]);
   const lastDragRef = useRef<{ t: number; x: number } | null>(null);
   const inertiaRafRef = useRef<number>(0);
+  const didMountRef = useRef(false);
   const [activeRange, setActiveRange] = useState<string | null>(null);
 
   const chartData = useMemo(() => toChartData(data), [data]);
@@ -428,6 +429,31 @@ function EChartsRevenueChartInner({
     if (!chart || dataHolder.current.length === 0) return;
     chart.setOption(buildOption(dataHolder.current, null), { notMerge: false, lazyUpdate: true });
   }, [yAxisMode, buildOption]);
+
+  useEffect(() => {
+    const chart = chartRef.current;
+    if (!chart) return;
+
+    if (!didMountRef.current) {
+      // Перший рендер уже намальований у init-ефекті (echarts.init + перший setOption).
+      didMountRef.current = true;
+      return;
+    }
+
+    // Зберігаємо поточний viewport, щоб оновлення даних не скидало zoom користувача.
+    let preserved: { startValue: string; endValue: string } | null = null;
+    try {
+      const opt = chart.getOption();
+      const dz = (opt.dataZoom as Array<{ startValue?: unknown; endValue?: unknown }>)?.[1];
+      if (dz?.startValue != null && dz?.endValue != null) {
+        preserved = { startValue: String(dz.startValue), endValue: String(dz.endValue) };
+      }
+    } catch {
+      /* noop */
+    }
+
+    chart.setOption(buildOption(chartData, preserved), { notMerge: true, lazyUpdate: true });
+  }, [chartData, buildOption]);
 
   const handleRangeClick = useCallback((label: string, days: number) => {
     const chart = chartRef.current;
