@@ -9,7 +9,7 @@ import {
 } from 'echarts/components';
 import { CanvasRenderer } from 'echarts/renderers';
 import type { EChartsType } from 'echarts/core';
-import type { EChartsRevenueChartProps, ChartDataPoint } from './types';
+import type { EChartsRevenueChartProps, ChartDataPoint, ChartLine } from './types';
 import {
   toChartData,
   formatDateAxis,
@@ -34,21 +34,24 @@ const STORAGE_PREFIX = 'chart:viewport:';
 
 function EChartsRevenueChartInner({
   data,
+  lines,
   chartId = 'revenue-chart',
   yAxisMode = 'adaptive',
   className,
 }: EChartsRevenueChartProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const chartRef = useRef<EChartsType | null>(null);
-  // Mutable holder for latest data (not a React ref — plain object)
   // eslint-disable-next-line react-hooks/refs -- intentional: stable mutable holder
-  const dataHolder = useRef<ChartDataPoint[]>([]);
+  const dataHolder = useRef<Array<{ date: string } & Record<string, string | number>>>([]);
   const lastDragRef = useRef<{ t: number; x: number } | null>(null);
   const inertiaRafRef = useRef<number>(0);
   const didMountRef = useRef(false);
   const [activeRange, setActiveRange] = useState<string | null>(null);
 
-  const chartData = useMemo(() => toChartData(data), [data]);
+  const chartData = useMemo(() => {
+    if (lines && lines.length > 0) return data as unknown as Array<{ date: string } & Record<string, string | number>>;
+    return toChartData(data);
+  }, [data, lines]);
   // eslint-disable-next-line react-hooks/refs -- mutable holder for latest data, not render-dependent
   dataHolder.current = chartData;
 
@@ -80,11 +83,8 @@ function EChartsRevenueChartInner({
   );
 
   const buildOption = useCallback(
-    (chartData: ChartDataPoint[], savedState: { startValue: string; endValue: string } | null) => {
+    (chartData: Array<{ date: string } & Record<string, string | number>>, savedState: { startValue: string; endValue: string } | null) => {
       const dates = chartData.map(d => d.date);
-      const profitData = chartData.map(d => d.profit);
-      const revenueData = chartData.map(d => d.revenue);
-      const expensesData = chartData.map(d => d.expenses);
 
       let dataZoomStart = 0;
       let dataZoomEnd = 100;
@@ -100,8 +100,101 @@ function EChartsRevenueChartInner({
         dataZoomStart = Math.max(0, ((chartData.length - 90) / (chartData.length - 1)) * 100);
       }
 
-      const { visibleCount } = getViewportDateRange(chartData, dataZoomStart, dataZoomEnd);
+      const { visibleCount } = getViewportDateRange(chartData as unknown as ChartDataPoint[], dataZoomStart, dataZoomEnd);
       const lineWidth = getLineColor(visibleCount);
+
+      const hasLines = lines && lines.length > 0;
+
+      let series;
+      if (hasLines) {
+        series = lines!.map(line => {
+          const lineData = chartData.map(d => (d[`profit_${line.key}`] as number) ?? 0);
+          return {
+            name: line.label,
+            type: 'line' as const,
+            data: lineData,
+            smooth: 0.3,
+            symbol: 'circle',
+            symbolSize: (val: number) => (val === 0 ? 0 : 5),
+            lineStyle: { width: lineWidth, color: line.color },
+            itemStyle: { color: line.color, borderWidth: 2, borderColor: '#fff' },
+            areaStyle: {
+              color: new echarts.graphic.LinearGradient(0, 0, 0, 1, [
+                { offset: 0, color: line.color + '40' },
+                { offset: 1, color: line.color + '00' },
+              ]),
+            },
+            emphasis: {
+              itemStyle: { shadowBlur: 6, shadowColor: line.color + '66' },
+            },
+            animationDuration: 1000,
+            animationEasing: 'cubicOut' as const,
+          };
+        });
+      } else {
+        const profitData = chartData.map(d => d.profit);
+        const revenueData = chartData.map(d => d.revenue);
+        const expensesData = chartData.map(d => d.expenses);
+        series = [
+          {
+            name: 'Прибуток',
+            type: 'line' as const,
+            data: profitData,
+            smooth: 0.3,
+            symbol: 'circle',
+            symbolSize: (val: number) => (val === 0 ? 0 : 6),
+            lineStyle: { width: lineWidth, color: '#22c55e' },
+            itemStyle: { color: '#22c55e', borderWidth: 2, borderColor: '#fff' },
+            areaStyle: {
+              color: new echarts.graphic.LinearGradient(0, 0, 0, 1, [
+                { offset: 0, color: 'rgba(34,197,94,0.25)' },
+                { offset: 1, color: 'rgba(34,197,94,0)' },
+              ]),
+            },
+            emphasis: {
+              itemStyle: { shadowBlur: 8, shadowColor: 'rgba(34,197,94,0.4)' },
+            },
+            animationDuration: 1000,
+            animationEasing: 'cubicOut' as const,
+          },
+          {
+            name: 'Дохід',
+            type: 'line' as const,
+            data: revenueData,
+            smooth: 0.3,
+            symbol: 'circle',
+            symbolSize: (val: number) => (val === 0 ? 0 : 4),
+            lineStyle: { width: lineWidth, color: '#3b82f6' },
+            itemStyle: { color: '#3b82f6', borderWidth: 2, borderColor: '#fff' },
+            areaStyle: {
+              color: new echarts.graphic.LinearGradient(0, 0, 0, 1, [
+                { offset: 0, color: 'rgba(59,130,246,0.15)' },
+                { offset: 1, color: 'rgba(59,130,246,0)' },
+              ]),
+            },
+            emphasis: {
+              itemStyle: { shadowBlur: 8, shadowColor: 'rgba(59,130,246,0.4)' },
+            },
+            animationDuration: 1000,
+            animationEasing: 'cubicOut' as const,
+          },
+          {
+            name: 'Витрати',
+            type: 'line' as const,
+            data: expensesData,
+            smooth: 0.3,
+            symbol: 'circle',
+            symbolSize: (val: number) => (val === 0 ? 0 : 4),
+            lineStyle: { width: lineWidth * 0.8, color: '#ef4444', type: 'dashed' as const },
+            itemStyle: { color: '#ef4444', borderWidth: 1, borderColor: '#fff' },
+            emphasis: {
+              itemStyle: { shadowBlur: 6, shadowColor: 'rgba(239,68,68,0.4)' },
+            },
+            animationDuration: 1000,
+            animationEasing: 'cubicOut' as const,
+          },
+        ];
+      }
 
       return {
         animation: true,
@@ -132,27 +225,15 @@ function EChartsRevenueChartInner({
             const items = params as Array<{ axisValue: string; seriesName: string; value: number; color: string }>;
             if (!items || items.length === 0) return '';
             const dateStr = formatTooltipDate(items[0].axisValue);
-            const revenue = items.find(i => i.seriesName === 'Дохід')?.value ?? 0;
-            const profit = items.find(i => i.seriesName === 'Прибуток')?.value ?? 0;
-            const expenses = items.find(i => i.seriesName === 'Витрати')?.value ?? 0;
 
-            const prevIdx = dataHolder.current.findIndex(d => d.date === items[0].axisValue) - 1;
-            let deltaHtml = '';
-            if (prevIdx >= 0 && prevIdx < dataHolder.current.length) {
-              const prevProfit = dataHolder.current[prevIdx].profit;
-              if (prevProfit !== 0) {
-                const pct = ((profit - prevProfit) / Math.abs(prevProfit) * 100).toFixed(0);
-                const sign = profit >= prevProfit ? '+' : '';
-                const color = profit >= prevProfit ? '#16a34a' : '#dc2626';
-                deltaHtml = '<div style="margin-top:8px;padding-top:8px;border-top:1px solid #f1f5f9;font-size:11px;color:' + color + '">' + sign + pct + '% до попереднього дня</div>';
-              }
+            let html = '<div style="font-weight:600;margin-bottom:8px;font-size:13px">' + dateStr + '</div>';
+            for (const item of items) {
+              html += '<div style="display:flex;justify-content:space-between;gap:24px;margin:3px 0">'
+                + '<span style="display:flex;align-items:center;gap:6px"><span style="width:8px;height:8px;border-radius:50%;background:' + item.color + ';display:inline-block"></span><span style="color:#64748b">' + item.seriesName + '</span></span>'
+                + '<span style="font-weight:600;font-variant-numeric:tabular-nums">' + fmtMoney(item.value) + '</span>'
+                + '</div>';
             }
-
-            return '<div style="font-weight:600;margin-bottom:8px;font-size:13px">' + dateStr + '</div>'
-              + '<div style="display:flex;justify-content:space-between;gap:24px;margin:3px 0"><span style="color:#64748b">Дохід</span><span style="font-weight:600;font-variant-numeric:tabular-nums">' + fmtMoney(revenue) + '</span></div>'
-              + '<div style="display:flex;justify-content:space-between;gap:24px;margin:3px 0"><span style="color:#64748b">Витрати</span><span style="font-weight:600;font-variant-numeric:tabular-nums;color:#dc2626">' + fmtMoney(expenses) + '</span></div>'
-              + '<div style="display:flex;justify-content:space-between;gap:24px;margin:3px 0"><span style="color:#64748b">Прибуток</span><span style="font-weight:600;font-variant-numeric:tabular-nums;color:#16a34a">' + fmtMoney(profit) + '</span></div>'
-              + deltaHtml;
+            return html;
           },
           position: (point: number[], _params: unknown, _dom: unknown, _rect: unknown, size: { viewSize: [number, number] }) => {
             const tooltipW = size.viewSize[0] > 600 ? 260 : 200;
@@ -189,65 +270,7 @@ function EChartsRevenueChartInner({
             formatter: (v: number) => v >= 1000 ? Math.round(v / 1000) + 'k' : String(v),
           },
         },
-        series: [
-          {
-            name: 'Прибуток',
-            type: 'line',
-            data: profitData,
-            smooth: 0.3,
-            symbol: 'circle',
-            symbolSize: (val: number) => (val === 0 ? 0 : 6),
-            lineStyle: { width: lineWidth, color: '#22c55e' },
-            itemStyle: { color: '#22c55e', borderWidth: 2, borderColor: '#fff' },
-            areaStyle: {
-              color: new echarts.graphic.LinearGradient(0, 0, 0, 1, [
-                { offset: 0, color: 'rgba(34,197,94,0.25)' },
-                { offset: 1, color: 'rgba(34,197,94,0)' },
-              ]),
-            },
-            emphasis: {
-              itemStyle: { shadowBlur: 8, shadowColor: 'rgba(34,197,94,0.4)' },
-            },
-            animationDuration: 1000,
-            animationEasing: 'cubicOut',
-          },
-          {
-            name: 'Дохід',
-            type: 'line',
-            data: revenueData,
-            smooth: 0.3,
-            symbol: 'circle',
-            symbolSize: (val: number) => (val === 0 ? 0 : 4),
-            lineStyle: { width: lineWidth, color: '#3b82f6' },
-            itemStyle: { color: '#3b82f6', borderWidth: 2, borderColor: '#fff' },
-            areaStyle: {
-              color: new echarts.graphic.LinearGradient(0, 0, 0, 1, [
-                { offset: 0, color: 'rgba(59,130,246,0.15)' },
-                { offset: 1, color: 'rgba(59,130,246,0)' },
-              ]),
-            },
-            emphasis: {
-              itemStyle: { shadowBlur: 8, shadowColor: 'rgba(59,130,246,0.4)' },
-            },
-            animationDuration: 1000,
-            animationEasing: 'cubicOut',
-          },
-          {
-            name: 'Витрати',
-            type: 'line',
-            data: expensesData,
-            smooth: 0.3,
-            symbol: 'circle',
-            symbolSize: (val: number) => (val === 0 ? 0 : 4),
-            lineStyle: { width: lineWidth * 0.8, color: '#ef4444', type: 'dashed' as const },
-            itemStyle: { color: '#ef4444', borderWidth: 1, borderColor: '#fff' },
-            emphasis: {
-              itemStyle: { shadowBlur: 6, shadowColor: 'rgba(239,68,68,0.4)' },
-            },
-            animationDuration: 1000,
-            animationEasing: 'cubicOut',
-          },
-        ],
+        series,
         dataZoom: [
           {
             type: 'inside',
@@ -288,7 +311,7 @@ function EChartsRevenueChartInner({
         ],
       };
     },
-    [yAxisMode, getAxisLabelFormatter],
+    [yAxisMode, getAxisLabelFormatter, lines],
   );
 
   const updateAxisFormat = useCallback((chart: EChartsType) => {
@@ -297,16 +320,13 @@ function EChartsRevenueChartInner({
     const start = dz?.start ?? 0;
     const end = dz?.end ?? 100;
     const d = dataHolder.current;
-    const { visibleCount } = getViewportDateRange(d, start, end);
+    const { visibleCount } = getViewportDateRange(d as unknown as ChartDataPoint[], start, end);
     const lw = getLineColor(visibleCount);
 
+    const seriesArr = (opt.series as unknown[]) ?? [];
     chart.setOption({
       xAxis: { axisLabel: { formatter: getAxisLabelFormatter(visibleCount) } },
-      series: [
-        { lineStyle: { width: lw } },
-        { lineStyle: { width: lw } },
-        { lineStyle: { width: lw * 0.8 } },
-      ],
+      series: seriesArr.map(() => ({ lineStyle: { width: lw } })),
     }, { notMerge: false });
   }, [getAxisLabelFormatter]);
 

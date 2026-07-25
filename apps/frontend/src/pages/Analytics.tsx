@@ -959,29 +959,27 @@ export default function Analytics() {
       if (!zoomedChartData.length) return [];
       return zoomedChartData.map(entry => {
         const date = `${entry.year}-${String(entry.month).padStart(2, '0')}-15`;
-        let revenue = 0;
-        let profit = 0;
-        for (const [key, val] of Object.entries(entry)) {
-          if (key.startsWith('revenue_')) revenue += (val as number) || 0;
-          if (key.startsWith('profit_')) profit += (val as number) || 0;
+        const point: Record<string, string | number> = { date };
+        for (const line of activeLines) {
+          point[`profit_${line.key}`] = (entry[`profit_${line.key}`] as number) || 0;
         }
-        return { date, revenue, profit };
+        return point;
       });
     }
     if (!rawDayData) return [];
-    const byDate = new Map<string, { revenue: number; profit: number }>();
+    const byDate = new Map<string, Record<string, number>>();
     for (const row of rawDayData) {
       if (!activeCities.has(row.cityName)) continue;
+      const lineKey = aggregateByCity ? row.cityName : `${row.project}_${row.cityName}`;
       if (!aggregateByCity && !activeProjects.has(row.project)) continue;
-      const existing = byDate.get(row.date) ?? { revenue: 0, profit: 0 };
-      existing.revenue += row.revenue;
-      existing.profit += row.profit;
+      const existing = byDate.get(row.date) ?? {};
+      existing[`profit_${lineKey}`] = ((existing[`profit_${lineKey}`] as number) || 0) + row.profit;
       byDate.set(row.date, existing);
     }
     return Array.from(byDate.entries())
       .sort((a, b) => a[0].localeCompare(b[0]))
-      .map(([date, v]) => ({ date, revenue: v.revenue, profit: v.profit }));
-  }, [granularity, zoomedChartData, rawDayData, activeCities, activeProjects, aggregateByCity]);
+      .map(([date, v]) => ({ date, ...v }));
+  }, [granularity, zoomedChartData, rawDayData, activeCities, activeProjects, aggregateByCity, activeLines]);
 
   const [subRange, setSubRange] = useState<[number, number] | null>(null);
   const [prevZoomedLength, setPrevZoomedLength] = useState(zoomedChartData.length);
@@ -1868,7 +1866,7 @@ export default function Analytics() {
                 </div>
                 <div className="flex-1 min-w-0 swiper-no-swiping" style={{ touchAction: "auto" }}>
                   
-                  <EChartsRevenueChart data={echartsDailyData} chartId="main-revenue" />
+                  <EChartsRevenueChart data={echartsDailyData} lines={activeLines} chartId="main-revenue" />
                 </div>
               </div>
             </>

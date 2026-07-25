@@ -1,2 +1,2 @@
 export { EChartsRevenueChart } from './EChartsRevenueChart';
-export type { DailyRevenuePoint, ChartDataPoint, YAxisMode, EChartsRevenueChartProps } from './types';
+export type { DailyRevenuePoint, ChartDataPoint, ChartLine, YAxisMode, EChartsRevenueChartProps } from './types';
