@@ -154,7 +154,7 @@ function EChartsRevenueChartInner({
               + '<div style="display:flex;justify-content:space-between;gap:24px;margin:3px 0"><span style="color:#64748b">Прибуток</span><span style="font-weight:600;font-variant-numeric:tabular-nums;color:#16a34a">' + fmtMoney(profit) + '</span></div>'
               + deltaHtml;
           },
-          position: (point: number[], _params: unknown, _dim: unknown, size: { viewSize: [number, number] }) => {
+          position: (point: number[], _params: unknown, _dom: unknown, _rect: unknown, size: { viewSize: [number, number] }) => {
             const tooltipW = size.viewSize[0] > 600 ? 260 : 200;
             const margin = 16;
             if (point[0] + tooltipW + margin > size.viewSize[0]) {
