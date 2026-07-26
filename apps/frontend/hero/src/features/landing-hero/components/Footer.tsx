@@ -11,26 +11,22 @@ export function Footer({ onOpenContact }: Props) {
         <span>&copy; 2026 Світло Знань. Уява оживає.</span>
         <ul className="flex list-none gap-[22px]">
           <li>
-            <a href="#" className="text-mist-soft transition-colors hover:text-gold">
+            <a href="#top" className="text-mist-soft transition-colors hover:text-gold">
               Публічна оферта
             </a>
           </li>
           <li>
-            <a href="#" className="text-mist-soft transition-colors hover:text-gold">
+            <a href="#top" className="text-mist-soft transition-colors hover:text-gold">
               Політика конфіденційності
             </a>
           </li>
           <li>
-            <a
-              href="#"
-              onClick={(e) => {
-                e.preventDefault()
-                onOpenContact()
-              }}
+            <button
+              onClick={onOpenContact}
               className="text-mist-soft transition-colors hover:text-gold"
             >
               Контакти
-            </a>
+            </button>
           </li>
         </ul>
       </div>
