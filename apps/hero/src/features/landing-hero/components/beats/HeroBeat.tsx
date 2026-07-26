@@ -1,5 +1,6 @@
 import { MotionValue, motion, useTransform } from 'framer-motion'
 import { useBeatStrength } from '../../hooks/useBeatStrength'
+import { MediaPlaceholder } from '../MediaPlaceholder'
 
 interface Props {
   progress: MotionValue<number>
@@ -28,6 +29,12 @@ export function HeroBeat({ progress, onOpenContact }: Props) {
         <p className="mx-auto mt-[22px] max-w-[460px] text-[17px] leading-[1.55] text-mist">
           Ми створюємо сучасні освітні події, які діти пам'ятають роками.
         </p>
+
+        <MediaPlaceholder
+          label="Відео-превʼю події"
+          className="mx-auto mt-8 h-[min(220px,30vw)] w-[min(420px,80vw)]"
+        />
+
         <div className="mt-9 flex flex-wrap justify-center gap-3.5">
           <button className="rounded-full border border-gold bg-gold px-7 py-3.5 text-[14.5px] font-bold text-night transition-all hover:-translate-y-[3px] hover:shadow-[0_16px_36px_rgba(242,184,75,0.38)]">
             Летимо далі

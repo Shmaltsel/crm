@@ -1,10 +1,19 @@
 import { MotionValue, motion, useTransform } from 'framer-motion'
 import { useBeatStrength } from '../../hooks/useBeatStrength'
 import { BEAT_CONTENT } from '../../data/worlds'
+import { MediaPlaceholder } from '../MediaPlaceholder'
 
 interface Props {
   progress: MotionValue<number>
   beatIndex: number
+}
+
+const WORLD_ICONS: Record<number, string> = {
+  3: 'Голограма',
+  4: 'Атмосфера',
+  5: 'Малюнок',
+  6: 'Олівець',
+  7: 'Свято',
 }
 
 export function WorldBeat({ progress, beatIndex }: Props) {
@@ -20,18 +29,24 @@ export function WorldBeat({ progress, beatIndex }: Props) {
       className="absolute inset-0 flex flex-col items-center justify-center px-6 text-center"
       style={{ opacity: strength, y }}
     >
-      <div className="max-w-[680px]">
-        <p className="mb-3.5 text-xs font-bold uppercase tracking-[0.18em] text-gold opacity-90">
-          {content.eyebrow}
-        </p>
-        <h2 className="text-[clamp(26px,3.9vw,42px)] leading-[1.15] text-paper">
-          {content.heading}
-        </h2>
-        {content.sub && (
-          <p className="mx-auto mt-4 max-w-[480px] text-[15.5px] leading-[1.55] text-mist-soft">
-            {content.sub}
+      <div className="flex max-w-[820px] flex-col items-center gap-8 md:flex-row md:text-left">
+        <MediaPlaceholder
+          label={WORLD_ICONS[beatIndex] ?? 'Ілюстрація'}
+          className="h-[min(200px,28vw)] w-full shrink-0 md:h-[200px] md:w-[280px]"
+        />
+        <div className="max-w-[480px]">
+          <p className="mb-3.5 text-xs font-bold uppercase tracking-[0.18em] text-gold opacity-90">
+            {content.eyebrow}
           </p>
-        )}
+          <h2 className="text-[clamp(26px,3.9vw,42px)] leading-[1.15] text-paper">
+            {content.heading}
+          </h2>
+          {content.sub && (
+            <p className="mx-auto mt-4 max-w-[480px] text-[15.5px] leading-[1.55] text-mist-soft md:mx-0">
+              {content.sub}
+            </p>
+          )}
+        </div>
       </div>
     </motion.div>
   )

@@ -2,6 +2,7 @@ import { MotionValue, motion, useTransform, useMotionValueEvent } from 'framer-m
 import { useState } from 'react'
 import { useBeatStrength } from '../../hooks/useBeatStrength'
 import { GALLERY_NODES } from '../../data/gallery'
+import { MediaPlaceholder } from '../MediaPlaceholder'
 
 interface Props {
   progress: MotionValue<number>
@@ -23,22 +24,16 @@ export function GalleryBeat({ progress }: Props) {
       className="absolute inset-0 flex flex-col items-center justify-center px-6 text-center"
       style={{ opacity: strength, y }}
     >
-      <div className="max-w-[680px]">
+      <div className="max-w-[820px]">
         <p className="mb-3.5 text-xs font-bold uppercase tracking-[0.18em] text-gold opacity-90">
           Галерея емоцій
         </p>
         <h2 className="text-[clamp(26px,3.9vw,42px)] leading-[1.15] text-paper">
-          Моменти, складені в сузір'я
+          Моменти, складені в сузір&apos;я
         </h2>
-        <div className="relative mx-auto mt-6 w-[min(740px,92vw)]" style={{ height: 320 }}>
-          <svg
-            className="absolute inset-0 h-full w-full overflow-visible"
-            viewBox="0 0 700 340"
-          >
-            <GalPath offset={pathOffset} />
-          </svg>
+        <div className="mt-8 grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-5">
           {GALLERY_NODES.map((node, idx) => (
-            <GalNode key={idx} node={node} index={idx} strength={strength} />
+            <GalCard key={idx} node={node} index={idx} strength={strength} />
           ))}
         </div>
       </div>
@@ -46,21 +41,7 @@ export function GalleryBeat({ progress }: Props) {
   )
 }
 
-function GalPath({ offset }: { offset: number }) {
-  return (
-    <path
-      d="M60,260 C160,120 260,300 350,150 C440,20 560,220 640,90"
-      fill="none"
-      stroke="#F2B84B"
-      strokeWidth="1.5"
-      opacity="0.45"
-      strokeDasharray="1200"
-      strokeDashoffset={1200 * offset}
-    />
-  )
-}
-
-function GalNode({
+function GalCard({
   node,
   index,
   strength,
@@ -71,24 +52,17 @@ function GalNode({
 }) {
   const litThreshold = 0.02 + index * 0.14
   const opacity = useTransform(strength, [0, litThreshold, litThreshold + 0.01], [0.3, 0.3, 1])
-  const scaleVal = useTransform(strength, [0, litThreshold, litThreshold + 0.01], [0.55, 0.55, 1])
-  const shadow = useTransform(strength, [0, litThreshold, litThreshold + 0.01], ['none', 'none', '0 0 14px rgba(242,184,75,0.38)'])
+  const scaleVal = useTransform(strength, [0, litThreshold, litThreshold + 0.01], [0.9, 0.9, 1])
 
   return (
-    <motion.button
-      className="absolute z-10 h-3.5 w-3.5 -translate-x-1/2 -translate-y-1/2 rounded-full border-none bg-gold p-0"
-      style={{
-        left: node.left,
-        top: node.top,
-        opacity,
-        scale: scaleVal,
-        boxShadow: shadow,
-      }}
-      aria-label={node.label}
+    <motion.div
+      className="flex flex-col items-center gap-2"
+      style={{ opacity, scale: scaleVal }}
     >
-      <span className="pointer-events-none absolute left-1/2 top-[-34px] -translate-x-1/2 whitespace-nowrap text-xs text-mist opacity-0 transition-opacity hover:opacity-100 focus-visible:opacity-100">
-        {node.label}
-      </span>
-    </motion.button>
+      <MediaPlaceholder
+        label={node.label}
+        className="h-[100px] w-full"
+      />
+    </motion.div>
   )
 }

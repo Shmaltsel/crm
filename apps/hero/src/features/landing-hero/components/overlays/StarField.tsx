@@ -6,24 +6,33 @@ interface Star {
   cy: number
   r: number
   opacity: number
+  color: string
   duration: string
   delay: string
 }
 
+const STAR_COLORS = ['#F2B84B', '#F2B84B', '#F2B84B', '#8FE3E0', '#FF7A59', '#FBF5EA']
+
 function generateStars(count: number): Star[] {
-  return Array.from({ length: count }, () => ({
-    cx: Math.random() * 1600,
-    cy: Math.random() * 620,
-    r: Math.random() * 1.35 + 0.4,
-    opacity: 0.25 + Math.random() * 0.55,
-    duration: (2.4 + Math.random() * 3.2).toFixed(2),
-    delay: (Math.random() * 4).toFixed(2),
-  }))
+  const stars: Star[] = []
+  for (let i = 0; i < count; i++) {
+    const tier = Math.random()
+    stars.push({
+      cx: Math.random() * 1600,
+      cy: Math.random() * 900,
+      r: tier < 0.15 ? 0.3 + Math.random() * 0.4 : tier < 0.7 ? 0.6 + Math.random() * 0.8 : 1.0 + Math.random() * 1.2,
+      opacity: 0.15 + Math.random() * 0.65,
+      color: STAR_COLORS[Math.floor(Math.random() * STAR_COLORS.length)],
+      duration: (2.8 + Math.random() * 5).toFixed(2),
+      delay: (Math.random() * 6).toFixed(2),
+    })
+  }
+  return stars
 }
 
 export function StarField() {
   const reduced = useReducedMotion()
-  const stars = useMemo(() => generateStars(95), [])
+  const stars = useMemo(() => generateStars(70), [])
 
   return (
     <svg
@@ -39,7 +48,7 @@ export function StarField() {
             cx={star.cx}
             cy={star.cy}
             r={star.r}
-            fill="#F2B84B"
+            fill={star.color}
             opacity={star.opacity}
             style={
               reduced

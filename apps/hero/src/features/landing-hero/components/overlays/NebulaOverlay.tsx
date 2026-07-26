@@ -22,19 +22,39 @@ interface Props {
 export function NebulaOverlay({ progress }: Props) {
   const [bg, setBg] = useState(() => {
     const { c1, c2 } = nebulaColorsAt(0)
-    return `radial-gradient(circle at 30% 30%, ${c2}33, transparent 62%), radial-gradient(circle at 70% 72%, ${c1}, #0B0E1F 72%)`
+    return buildGradient(c1, c2)
   })
 
   useMotionValueEvent(progress, 'change', (p) => {
     const { c1, c2 } = nebulaColorsAt(p)
-    setBg(`radial-gradient(circle at 30% 30%, ${c2}33, transparent 62%), radial-gradient(circle at 70% 72%, ${c1}, #0B0E1F 72%)`)
+    setBg(buildGradient(c1, c2))
   })
 
   return (
-    <div
-      className="pointer-events-none absolute -inset-[12%] z-[1]"
-      aria-hidden="true"
-      style={{ background: bg, filter: 'blur(36px)' }}
-    />
+    <div className="pointer-events-none absolute -inset-[8%] z-[1]" aria-hidden="true">
+      <div
+        className="absolute inset-0 transition-[background] duration-700"
+        style={{ background: bg }}
+      />
+      <div
+        className="absolute inset-0"
+        style={{
+          background: 'radial-gradient(ellipse 80% 60% at 20% 30%, rgba(139,92,246,0.06) 0%, transparent 70%)',
+        }}
+      />
+      <div
+        className="absolute inset-0"
+        style={{
+          background: 'radial-gradient(ellipse 60% 50% at 80% 70%, rgba(255,122,89,0.05) 0%, transparent 60%)',
+        }}
+      />
+    </div>
   )
+}
+
+function buildGradient(c1: string, c2: string): string {
+  return [
+    `radial-gradient(ellipse 90% 70% at 25% 25%, ${c2}22, transparent 55%)`,
+    `radial-gradient(ellipse 80% 60% at 75% 75%, ${c1}cc, #0B0E1F 65%)`,
+  ].join(', ')
 }

@@ -8,69 +8,66 @@ interface Props {
 }
 
 export function PortalOverlay({ progress, beatStrengths }: Props) {
-  const [holoS, setHoloS] = useState(0)
-  const [drawS, setDrawS] = useState(0)
-  const [celeS, setCeleS] = useState(0)
-  const [finS, setFinS] = useState(0)
   const [portalS, setPortalS] = useState(0)
+  const [hue, setHue] = useState(45)
 
   useMotionValueEvent(progress, 'change', () => {
     const h = Math.max(beatStrengths[3]?.get() ?? 0, beatStrengths[4]?.get() ?? 0)
     const d = Math.max(beatStrengths[5]?.get() ?? 0, beatStrengths[6]?.get() ?? 0)
     const c = beatStrengths[7]?.get() ?? 0
     const f = beatStrengths[12]?.get() ?? 0
-    const gal = beatStrengths[9]?.get() ?? 0
-    const man = beatStrengths[1]?.get() ?? 0
+    const s = clamp(Math.max(h, d, c, f), 0, 1)
+    setPortalS(s)
 
-    setHoloS(h)
-    setDrawS(d)
-    setCeleS(c)
-    setFinS(f)
-    setPortalS(clamp(Math.max(h, d, c, f, gal * 0.35, man * 0.2), 0, 1))
+    const colors = [
+      { h: 45, stop: 0 },
+      { h: 175, stop: 0.25 },
+      { h: 14, stop: 0.5 },
+      { h: 340, stop: 0.7 },
+      { h: 45, stop: 1.0 },
+    ]
+    const p = beatStrengths[12]?.get() ?? 0
+    for (let i = 0; i < colors.length - 1; i++) {
+      if (p >= colors[i].stop && p <= colors[i + 1].stop) {
+        const t = (p - colors[i].stop) / (colors[i + 1].stop - colors[i].stop)
+        setHue(colors[i].h + (colors[i + 1].h - colors[i].h) * t)
+        break
+      }
+    }
   })
 
-  const portalScale = 0.92 + portalS * 0.1
+  const glowScale = 0.85 + portalS * 0.3
+  const glowOpacity = portalS * 0.6
 
   return (
-    <svg
-      className="pointer-events-none absolute inset-0 h-full w-full"
-      viewBox="0 0 1600 900"
-      preserveAspectRatio="xMidYMid slice"
+    <div
+      className="pointer-events-none fixed inset-0 z-[1]"
       aria-hidden="true"
+      style={{
+        opacity: glowOpacity,
+        transition: 'opacity 0.3s ease',
+      }}
     >
-      <g
-        transform={`translate(960,420) scale(${portalScale.toFixed(3)})`}
-        style={{ opacity: portalS }}
-      >
-        <circle r="148" fill="none" stroke="#F2B84B" strokeWidth="1.5" opacity="0.5" />
-        <circle r="166" fill="none" stroke="#F2B84B" strokeWidth="1" opacity="0.22" />
-
-        <g opacity={holoS}>
-          <path d="M-46,70 L-16,-40 L14,70 Z" stroke="#8FE3E0" strokeWidth="2" fill="none" />
-          <path d="M4,70 L34,-10 L64,70 Z" stroke="#8FE3E0" strokeWidth="2" fill="none" />
-          <circle cx="10" cy="-90" r="26" fill="none" stroke="#8FE3E0" strokeWidth="1.5" />
-        </g>
-
-        <g opacity={drawS}>
-          <path d="M-60,60 C-60,0 60,0 60,60" stroke="#FF7A59" strokeWidth="2.1" fill="none" />
-          <path d="M-40,60 L-40,0 M40,60 L40,0" stroke="#FF7A59" strokeWidth="2" />
-          <path d="M-70,-40 Q0,-90 70,-40" stroke="#F2B84B" strokeWidth="2" fill="none" />
-        </g>
-
-        <g opacity={celeS}>
-          <path d="M0,-90 L0,60" stroke="#F2B84B" strokeWidth="2" />
-          <circle cx="0" cy="-90" r="10" fill="#F2B84B" opacity="0.85" />
-          <circle cx="-40" cy="20" r="5" fill="#FF7A59" />
-          <circle cx="42" cy="-10" r="5" fill="#8FE3E0" />
-          <circle cx="-18" cy="60" r="5" fill="#F2B84B" />
-          <circle cx="30" cy="40" r="5" fill="#FF7A59" />
-        </g>
-
-        <g opacity={finS}>
-          <circle r="68" fill="none" stroke="#F2B84B" strokeWidth="1.7" />
-          <ellipse rx="116" ry="28" fill="none" stroke="#F2B84B" strokeWidth="1" opacity="0.45" />
-        </g>
-      </g>
-    </svg>
+      <div
+        className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 rounded-full"
+        style={{
+          width: 500 * glowScale,
+          height: 500 * glowScale,
+          background: `radial-gradient(circle, hsla(${hue}, 60%, 55%, 0.12) 0%, transparent 70%)`,
+          filter: 'blur(40px)',
+          transform: `translate(-50%, -50%) scale(${glowScale})`,
+        }}
+      />
+      <div
+        className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 rounded-full"
+        style={{
+          width: 300 * glowScale,
+          height: 300 * glowScale,
+          background: `radial-gradient(circle, hsla(${(hue + 30) % 360}, 70%, 60%, 0.08) 0%, transparent 60%)`,
+          filter: 'blur(24px)',
+          transform: `translate(-50%, -50%) scale(${glowScale})`,
+        }}
+      />
+    </div>
   )
 }

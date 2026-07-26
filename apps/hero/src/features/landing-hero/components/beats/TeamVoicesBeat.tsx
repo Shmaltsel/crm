@@ -14,7 +14,6 @@ export function TeamVoicesBeat({ progress }: Props) {
   const [activeIdx, setActiveIdx] = useState(0)
   const [selectedMember, setSelectedMember] = useState<number | null>(null)
 
-  // Crossfade quotes
   useEffect(() => {
     const interval = setInterval(() => {
       setActiveIdx((prev) => (prev + 1) % CAMPFIRE_QUOTES.length)
@@ -38,14 +37,12 @@ export function TeamVoicesBeat({ progress }: Props) {
         </h2>
 
         <div className="mt-7 flex flex-wrap items-center justify-center gap-12">
-          {/* Campfire flame */}
           <div className="h-[42px] w-7">
             <svg viewBox="0 0 30 44">
               <path d="M15,4 C24,18 24,28 15,40 C6,28 6,18 15,4 Z" fill="#F2B84B" />
             </svg>
           </div>
 
-          {/* Quote crossfade */}
           <div className="relative w-[min(500px,90vw)]" style={{ minHeight: 110 }}>
             {CAMPFIRE_QUOTES.map((quote, idx) => (
               <div
@@ -60,24 +57,25 @@ export function TeamVoicesBeat({ progress }: Props) {
           </div>
         </div>
 
-        {/* Team ring */}
-        <div className="mt-6 flex flex-wrap justify-center gap-3">
+        <div className="mt-6 flex flex-wrap justify-center gap-4">
           {TEAM_MEMBERS.map((member, idx) => (
             <button
               key={idx}
               onClick={() => setSelectedMember(idx)}
-              className={`h-[62px] w-[62px] rounded-full border-2 bg-white/4 p-0 transition-all hover:-translate-y-[3px] ${
+              className={`flex flex-col items-center gap-1.5 rounded-xl border-2 bg-white/[0.03] px-3 py-3 transition-all hover:-translate-y-[3px] ${
                 selectedMember === idx
-                  ? 'border-gold'
-                  : 'border-gold/38'
+                  ? 'border-gold shadow-[0_0_18px_rgba(242,184,75,0.22)]'
+                  : 'border-gold/20'
               }`}
               aria-label={`${member.name}, ${member.role}`}
             >
-              <svg viewBox="0 0 200 200" className="h-full w-full">
-                <rect width="200" height="200" fill={member.bg} />
-                <circle cx="100" cy="80" r="34" stroke={member.accent} strokeWidth="3" fill="none" />
-                <path d="M50,170 C50,130 150,130 150,170" stroke={member.accent} strokeWidth="3" fill="none" />
-              </svg>
+              <div className="flex h-[72px] w-[72px] items-center justify-center overflow-hidden rounded-full border border-gold/20 bg-white/[0.04]">
+                <svg viewBox="0 0 48 48" className="h-7 w-7 opacity-35">
+                  <circle cx="24" cy="18" r="8" stroke="#F2B84B" strokeWidth="1.5" fill="none" />
+                  <path d="M10,44 C10,32 38,32 38,44" stroke="#F2B84B" strokeWidth="1.5" fill="none" />
+                </svg>
+              </div>
+              <span className="text-[11px] font-medium text-mist-soft">{member.name}</span>
             </button>
           ))}
         </div>

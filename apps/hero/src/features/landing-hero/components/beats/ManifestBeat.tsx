@@ -1,5 +1,6 @@
 import { MotionValue, motion, useTransform } from 'framer-motion'
 import { useBeatStrength } from '../../hooks/useBeatStrength'
+import { MediaPlaceholder } from '../MediaPlaceholder'
 
 interface Props {
   progress: MotionValue<number>
@@ -24,6 +25,10 @@ export function ManifestBeat({ progress }: Props) {
           Ми не проводимо заходи.<br />
           Ми запалюємо <span className="text-coral">світло</span> в очах дітей.
         </p>
+        <MediaPlaceholder
+          label="Фото або відео з події"
+          className="mx-auto mt-8 h-[min(180px,24vw)] w-[min(380px,75vw)]"
+        />
       </div>
     </motion.div>
   )
