@@ -125,6 +125,7 @@ export function RocketOverlay({ tl }: Props) {
           </defs>
 
           <g>
+            <ellipse cx="0" cy="68" rx={14 + speedFactor * 4} ry={3 + speedFactor * 1.5} fill="rgba(11,14,31,0.25)" opacity={clamp(t.camera.depth * 2, 0, 0.35)} />
             <circle cx="0" cy="60" r={20 + speedFactor * 15} fill="url(#engineGlow)" />
 
             <path

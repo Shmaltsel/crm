@@ -14,6 +14,7 @@ import { CursorGlow } from './components/CursorGlow'
 import { ScrollHint } from './components/ScrollHint'
 import { ContactPanel } from './components/ContactPanel'
 import { Footer } from './components/Footer'
+import { FilmGrain } from './components/FilmGrain'
 
 import { NebulaOverlay } from './components/overlays/NebulaOverlay'
 import { StarField } from './components/overlays/StarField'
@@ -59,23 +60,59 @@ export function LandingHero() {
     if (confettiLockRef.current) return
     confettiLockRef.current = true
     setTimeout(() => { confettiLockRef.current = false }, 600)
-    const colors = ['#F2B84B', '#FF7A59', '#8FE3E0', '#FBF5EA']
-    for (let i = 0; i < 30; i++) {
+    const colors = ['#F2B84B', '#FF7A59', '#8FE3E0', '#FBF5EA', '#FF6EC7']
+    const GRAVITY = 0.35
+    const BOUNCE = 0.45
+    const FRICTION = 0.98
+    const FLOOR_Y = window.innerHeight - 20
+
+    for (let i = 0; i < 35; i++) {
       const bit = document.createElement('div')
-      bit.style.cssText = `position:fixed;width:7px;height:10px;z-index:${Z.confetti};pointer-events:none;border-radius:1px;left:${x}px;top:${y}px;background:${colors[Math.floor(Math.random() * colors.length)]}`
-      const ang = Math.random() * Math.PI * 2
-      const dist = 90 + Math.random() * 170
-      const dx = Math.cos(ang) * dist
-      const dy = Math.sin(ang) * dist * 0.65 - 50
-      bit.animate(
-        [
-          { transform: 'translate(0,0) rotate(0deg)', opacity: 1 },
-          { transform: `translate(${dx}px,${dy + 230}px) rotate(${Math.random() * 420}deg)`, opacity: 0 },
-        ],
-        { duration: 1150 + Math.random() * 500, easing: 'cubic-bezier(.2,.7,.3,1)' },
-      )
+      const isCircle = Math.random() > 0.6
+      const w = isCircle ? 6 : 5 + Math.random() * 5
+      const h = isCircle ? 6 : 8 + Math.random() * 6
+      bit.style.cssText = `position:fixed;width:${w}px;height:${h}px;z-index:${Z.confetti};pointer-events:none;border-radius:${isCircle ? '50%' : '1px'};left:0;top:0;background:${colors[Math.floor(Math.random() * colors.length)]}`
       document.body.appendChild(bit)
-      setTimeout(() => bit.remove(), 1800)
+
+      const ang = Math.random() * Math.PI * 2
+      const speed = 6 + Math.random() * 10
+      let vx = Math.cos(ang) * speed
+      let vy = Math.sin(ang) * speed * 0.7 - 8
+      let px = x
+      let py = y
+      let rx = 0
+      let ry = 0
+      const vrx = (Math.random() - 0.5) * 18
+      const vry = (Math.random() - 0.5) * 14
+      let life = 0
+      const maxLife = 90 + Math.floor(Math.random() * 40)
+
+      const tick = () => {
+        life++
+        vy += GRAVITY
+        vx *= FRICTION
+        px += vx
+        py += vy
+        rx += vrx
+        ry += vry
+
+        if (py > FLOOR_Y) {
+          py = FLOOR_Y
+          vy = -vy * BOUNCE
+          vx *= 0.85
+        }
+
+        const fade = life > maxLife - 15 ? (maxLife - life) / 15 : 1
+        bit.style.transform = `translate(${px}px,${py}px) rotateX(${rx}deg) rotateY(${ry}deg)`
+        bit.style.opacity = String(Math.max(0, fade))
+
+        if (life < maxLife) {
+          requestAnimationFrame(tick)
+        } else {
+          bit.remove()
+        }
+      }
+      requestAnimationFrame(tick)
     }
   }, [])
 
@@ -141,6 +178,7 @@ export function LandingHero() {
       <SoundToggle />
       <ContactPanel isOpen={contactOpen} onClose={() => setContactOpen(false)} />
       <Footer onOpenContact={() => setContactOpen(true)} />
+      <FilmGrain />
     </>
   )
 }
