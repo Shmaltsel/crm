@@ -1,6 +1,7 @@
 import { MotionValue, motion, useTransform } from 'framer-motion'
 import { useBeatStrength } from '../../hooks/useBeatStrength'
 import { MediaPlaceholder } from '../MediaPlaceholder'
+import { MEDIA_URLS } from '../../data/media'
 
 interface Props {
   progress: MotionValue<number>
@@ -32,6 +33,7 @@ export function HeroBeat({ progress, onOpenContact }: Props) {
 
         <MediaPlaceholder
           label="Відео-превʼю події"
+          src={MEDIA_URLS.heroPreview}
           className="mx-auto mt-8 h-[min(220px,30vw)] w-[min(420px,80vw)]"
         />
 

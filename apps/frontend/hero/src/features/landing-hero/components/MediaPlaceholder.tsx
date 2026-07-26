@@ -4,9 +4,31 @@ interface Props {
   label: string
   icon?: ReactNode
   className?: string
+  src?: string
 }
 
-export function MediaPlaceholder({ label, icon, className = '' }: Props) {
+export function MediaPlaceholder({ label, icon, className = '', src }: Props) {
+  if (src) {
+    return (
+      <div className={`relative overflow-hidden rounded-2xl ${className}`}>
+        <video
+          src={src}
+          muted
+          loop
+          playsInline
+          preload="metadata"
+          className="h-full w-full object-cover"
+          onMouseEnter={(e) => (e.currentTarget as HTMLVideoElement).play()}
+          onMouseLeave={(e) => {
+            const v = e.currentTarget as HTMLVideoElement
+            v.pause()
+            v.currentTime = 0
+          }}
+        />
+      </div>
+    )
+  }
+
   return (
     <div
       className={`relative flex flex-col items-center justify-center overflow-hidden rounded-2xl border border-dashed border-gold/25 bg-white/[0.03] ${className}`}

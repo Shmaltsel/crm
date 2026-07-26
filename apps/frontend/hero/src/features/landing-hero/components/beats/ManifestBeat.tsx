@@ -1,5 +1,6 @@
 import { MotionValue, motion, useTransform } from 'framer-motion'
 import { useBeatStrength } from '../../hooks/useBeatStrength'
+import { MEDIA_URLS } from '../../data/media'
 import { MediaPlaceholder } from '../MediaPlaceholder'
 
 interface Props {
@@ -27,6 +28,7 @@ export function ManifestBeat({ progress }: Props) {
         </p>
         <MediaPlaceholder
           label="Фото або відео з події"
+          src={MEDIA_URLS.malyuvaika}
           className="mx-auto mt-8 h-[min(180px,24vw)] w-[min(380px,75vw)]"
         />
       </div>

@@ -23,3 +23,6 @@ public/info
 *.njsproj
 *.sln
 *.sw?
+
+.vercel
+.env*

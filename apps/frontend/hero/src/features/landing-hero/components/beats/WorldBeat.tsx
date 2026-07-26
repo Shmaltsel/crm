@@ -1,6 +1,7 @@
 import { MotionValue, motion, useTransform } from 'framer-motion'
 import { useBeatStrength } from '../../hooks/useBeatStrength'
 import { BEAT_CONTENT } from '../../data/worlds'
+import { MEDIA_URLS } from '../../data/media'
 import { MediaPlaceholder } from '../MediaPlaceholder'
 
 interface Props {
@@ -14,6 +15,12 @@ const WORLD_ICONS: Record<number, string> = {
   5: 'Голограма — проекція',
   6: 'Popify — зйомка',
   7: 'Popify — прайс',
+}
+
+const WORLD_MEDIA: Record<number, string | undefined> = {
+  4: MEDIA_URLS.malyuvaika,
+  5: MEDIA_URLS.hologramEvent,
+  6: MEDIA_URLS.popify,
 }
 
 export function WorldBeat({ progress, beatIndex }: Props) {
@@ -32,6 +39,7 @@ export function WorldBeat({ progress, beatIndex }: Props) {
       <div className="flex max-w-[820px] flex-col items-center gap-8 md:flex-row md:text-left">
         <MediaPlaceholder
           label={WORLD_ICONS[beatIndex] ?? 'Ілюстрація'}
+          src={WORLD_MEDIA[beatIndex]}
           className="h-[min(200px,28vw)] w-full shrink-0 md:h-[200px] md:w-[280px]"
         />
         <div className="max-w-[480px]">
