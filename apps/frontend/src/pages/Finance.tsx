@@ -5,8 +5,9 @@ import TeamSalaries from "../features/salary/pages/TeamSalaries";
 
 const Expenses = lazy(() => import("../features/salary/pages/Expenses"));
 const Company = lazy(() => import("../features/salary/pages/Company"));
+const Mileage = lazy(() => import("../features/salary/pages/Mileage"));
 
-type Tab = "my-salary" | "team" | "expenses" | "company";
+type Tab = "my-salary" | "team" | "expenses" | "company" | "mileage";
 
 function PeekSkeleton() {
   return (
@@ -26,17 +27,20 @@ export default function Finance({ isPeek }: { isPeek?: boolean }) {
   const { user } = useAuth();
   const isManagerOrAdmin = user?.role === "MANAGER" || user?.role === "SUPERADMIN" || user?.role === "OWNER";
   const isSuperadmin = user?.role === "SUPERADMIN";
+  const isDriver = user?.role === "DRIVER";
 
-  const tabs: { key: Tab; label: string; managerOnly?: boolean; superOnly?: boolean }[] = [
+  const tabs: { key: Tab; label: string; managerOnly?: boolean; superOnly?: boolean; driverOnly?: boolean }[] = [
     { key: "my-salary", label: "Мої нарахування" },
     { key: "team", label: "Нарахування команди", managerOnly: true },
     { key: "expenses", label: "Витрати", managerOnly: true },
     { key: "company", label: "Баланс компанії", superOnly: true },
+    { key: "mileage", label: "Кілометраж", driverOnly: true },
   ];
 
   const availableTabs = tabs.filter((t) => {
     if (t.superOnly) return isSuperadmin;
     if (t.managerOnly) return isManagerOrAdmin;
+    if (t.driverOnly) return isDriver || isSuperadmin;
     return true;
   });
   const [activeTab, setActiveTab] = useState<Tab>(availableTabs[0]?.key ?? "my-salary");
@@ -83,6 +87,11 @@ export default function Finance({ isPeek }: { isPeek?: boolean }) {
       {activeTab === "company" && isSuperadmin && (
         <Suspense fallback={<div className="p-8 text-center text-sm text-content-muted">Завантаження...</div>}>
           <Company />
+        </Suspense>
+      )}
+      {activeTab === "mileage" && (isDriver || isSuperadmin) && (
+        <Suspense fallback={<div className="p-8 text-center text-sm text-content-muted">Завантаження...</div>}>
+          <Mileage />
         </Suspense>
       )}
     </div>
