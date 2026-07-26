@@ -1,6 +1,7 @@
-
-
 {
+  "installCommand": "pnpm install",
+  "buildCommand": "pnpm --filter frontend build",
+  "outputDirectory": "apps/frontend/dist",
   "rewrites": [
     {
       "source": "/api/:path*",
@@ -20,4 +21,3 @@
     }
   ]
 }
-
