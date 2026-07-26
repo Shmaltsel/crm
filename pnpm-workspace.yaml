@@ -1,5 +1,6 @@
 packages:
   - "apps/*"
+  - "apps/frontend/hero"
   - "packages/*"
   - "tools/*"
 allowBuilds:
