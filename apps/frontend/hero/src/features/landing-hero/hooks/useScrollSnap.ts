@@ -1,6 +1,6 @@
 import { useEffect, useRef } from 'react'
 import { MotionValue } from 'framer-motion'
-import { clamp } from '../lib/animation'
+import { tweenScrollTo } from '../lib/animation'
 
 const TOTAL_BEATS = 13
 const STOP_DELAY = 180
@@ -29,9 +29,14 @@ export function useScrollSnap(
 ) {
   const timerRef = useRef(0)
   const snappingRef = useRef(false)
+  const userInputRef = useRef(false)
 
   useEffect(() => {
     if (!containerRef.current) return
+
+    const markUserInput = () => { userInputRef.current = true }
+    window.addEventListener('wheel', markUserInput, { passive: true })
+    window.addEventListener('touchmove', markUserInput, { passive: true })
 
     const onScroll = () => {
       if (snappingRef.current) return
@@ -51,14 +56,18 @@ export function useScrollSnap(
         if (Math.abs(window.scrollY - targetPx) < 2) return
 
         snappingRef.current = true
-        window.scrollTo({ top: targetPx, behavior: 'smooth' })
-        setTimeout(() => { snappingRef.current = false }, 800)
+        userInputRef.current = false
+        tweenScrollTo(targetPx, { onCancelCheck: () => userInputRef.current }).then(() => {
+          snappingRef.current = false
+        })
       }, STOP_DELAY)
     }
 
     window.addEventListener('scroll', onScroll, { passive: true })
     return () => {
       window.removeEventListener('scroll', onScroll)
+      window.removeEventListener('wheel', markUserInput)
+      window.removeEventListener('touchmove', markUserInput)
       clearTimeout(timerRef.current)
     }
   }, [containerRef])

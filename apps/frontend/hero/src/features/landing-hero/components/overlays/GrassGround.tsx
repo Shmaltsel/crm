@@ -17,6 +17,7 @@ interface Blade {
 
 export function GrassGround({ drawingStrength }: Props) {
   const [opacity, setOpacity] = useState(0)
+  const strengthRef = useRef(0)
   const bladesRef = useRef<Blade[]>([])
   const mouseRef = useRef({ x: window.innerWidth / 2 })
   const reduced = useReducedMotion()
@@ -24,10 +25,10 @@ export function GrassGround({ drawingStrength }: Props) {
   const lastFrameRef = useRef(0)
   const svgRef = useRef<SVGGElement>(null)
 
-  useMotionValueEvent(drawingStrength, 'change', setOpacity)
+  useMotionValueEvent(drawingStrength, 'change', (v) => { strengthRef.current = v; setOpacity(v) })
 
   useEffect(() => {
-    if (reduced || opacity < 0.12) return
+    if (reduced) return
 
     const onMove = (e: MouseEvent) => {
       mouseRef.current.x = e.clientX
@@ -35,35 +36,33 @@ export function GrassGround({ drawingStrength }: Props) {
     window.addEventListener('mousemove', onMove, { passive: true })
 
     const scaleX = 1600 / window.innerWidth
-    let running = true
 
     const tick = (now: number) => {
-      if (!running) return
-      // Throttle to ~30fps
       if (now - lastFrameRef.current < 33) {
         rafRef.current = requestAnimationFrame(tick)
         return
       }
       lastFrameRef.current = now
 
-      bladesRef.current.forEach((blade) => {
-        if (!blade.el) return
-        const bladeScreenX = blade.x / scaleX
-        const dist = Math.abs(mouseRef.current.x - bladeScreenX)
-        const influence = clamp(1 - dist / 140, 0, 1)
-        const bend = influence * 16 * (mouseRef.current.x > bladeScreenX ? 1 : -1)
-        blade.el.setAttribute('transform', `translate(${blade.x},0) skewX(${bend.toFixed(2)})`)
-      })
+      if (strengthRef.current > 0.12) {
+        bladesRef.current.forEach((blade) => {
+          if (!blade.el) return
+          const bladeScreenX = blade.x / scaleX
+          const dist = Math.abs(mouseRef.current.x - bladeScreenX)
+          const influence = clamp(1 - dist / 140, 0, 1)
+          const bend = influence * 16 * (mouseRef.current.x > bladeScreenX ? 1 : -1)
+          blade.el.setAttribute('transform', `translate(${blade.x},0) skewX(${bend.toFixed(2)})`)
+        })
+      }
       rafRef.current = requestAnimationFrame(tick)
     }
     rafRef.current = requestAnimationFrame(tick)
 
     return () => {
-      running = false
       cancelAnimationFrame(rafRef.current)
       window.removeEventListener('mousemove', onMove)
     }
-  }, [opacity, reduced])
+  }, [reduced])
 
   return (
     <svg

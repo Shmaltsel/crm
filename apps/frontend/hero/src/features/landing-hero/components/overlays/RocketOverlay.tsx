@@ -1,5 +1,5 @@
-import { MotionValue, useTransform, useMotionValueEvent } from 'framer-motion'
-import { useState, useRef, useCallback } from 'react'
+import { MotionValue, useTransform, useMotionValueEvent, useVelocity } from 'framer-motion'
+import { useState, useRef, useCallback, useEffect } from 'react'
 import { useRocketPath } from '../../hooks/useRocketPath'
 import { clamp } from '../../lib/animation'
 
@@ -21,11 +21,13 @@ const TRAIL_COLORS = ['#F2B84B', '#FF7A59', '#FBF5EA']
 
 export function RocketOverlay({ progress, finaleStrength }: Props) {
   const { rx, ry, rr } = useRocketPath(progress)
+  const scrollVelocity = useVelocity(progress)
   const [pos, setPos] = useState({ x: 0, y: 0, r: -6 })
+  const posRef = useRef(pos)
+  const velocityRef = useRef(0)
   const [opacity, setOpacity] = useState(1)
   const [particles, setParticles] = useState<Particle[]>([])
   const idRef = useRef(0)
-  const lastTrailRef = useRef(0)
 
   const finaleS = useTransform(finaleStrength, (s) => clamp(1 - s * 1.4, 0, 1))
 
@@ -33,38 +35,41 @@ export function RocketOverlay({ progress, finaleStrength }: Props) {
   useMotionValueEvent(ry, 'change', (v) => setPos((p) => ({ ...p, y: v * window.innerHeight })))
   useMotionValueEvent(rr, 'change', (v) => setPos((p) => ({ ...p, r: v })))
   useMotionValueEvent(finaleS, 'change', setOpacity)
+  useMotionValueEvent(scrollVelocity, 'change', (v) => { velocityRef.current = v })
+  useEffect(() => { posRef.current = pos }, [pos])
 
-  const spawnTrail = useCallback((x: number, y: number) => {
+  const spawnTrail = useCallback((x: number, y: number, heading: number, boost: number) => {
     const now = performance.now()
-    if (now - lastTrailRef.current < 40) return
-    lastTrailRef.current = now
-
-    const newParticles: Particle[] = Array.from({ length: 2 }, () => {
-      const angle = ((pos.r + 180) * Math.PI) / 180
-      const spread = (Math.random() - 0.5) * 20
+    const count = 1 + Math.round(boost)
+    const angleRad = ((heading + 180) * Math.PI) / 180
+    const newParticles: Particle[] = Array.from({ length: count }, () => {
+      const spread = (Math.random() - 0.5) * (18 + boost * 10)
       return {
         id: idRef.current++,
-        x: x + Math.cos(angle) * 18 + spread,
-        y: y + Math.sin(angle) * 18 + spread,
-        r: 1.5 + Math.random() * 3,
-        opacity: 0.5 + Math.random() * 0.5,
+        x: x + Math.cos(angleRad) * 18 + spread,
+        y: y + Math.sin(angleRad) * 18 + spread,
+        r: (1.5 + Math.random() * 3) * (1 + boost * 0.3),
+        opacity: (0.5 + Math.random() * 0.5) * (0.6 + boost * 0.4),
         born: now,
       }
     })
+    setParticles((prev) => [...prev.filter((p) => now - p.born < 800), ...newParticles].slice(-60))
+  }, [])
 
-    setParticles((prev) => {
-      const alive = prev.filter((p) => now - p.born < 800)
-      return [...alive, ...newParticles].slice(-40)
-    })
-  }, [pos.r])
-
-  useMotionValueEvent(rx, 'change', () => {
-    spawnTrail(pos.x, pos.y)
-  })
-
-  useMotionValueEvent(progress, 'change', () => {
-    spawnTrail(pos.x, pos.y)
-  })
+  useEffect(() => {
+    let raf = 0
+    let last = 0
+    const loop = (now: number) => {
+      if (now - last > 45) {
+        last = now
+        const boost = clamp(Math.abs(velocityRef.current) / 700, 0, 2.5)
+        spawnTrail(posRef.current.x, posRef.current.y, posRef.current.r, boost)
+      }
+      raf = requestAnimationFrame(loop)
+    }
+    raf = requestAnimationFrame(loop)
+    return () => cancelAnimationFrame(raf)
+  }, [spawnTrail])
 
   const now = performance.now()
 

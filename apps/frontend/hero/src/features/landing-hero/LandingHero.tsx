@@ -2,7 +2,7 @@ import { useCallback, useState } from 'react'
 import { useScrollStory } from './hooks/useScrollStory'
 import { useBeatStrengths } from './hooks/useBeatStrengths'
 import { useScrollSnap } from './hooks/useScrollSnap'
-import { clamp } from './lib/animation'
+import { clamp, tweenScrollTo } from './lib/animation'
 
 import { Nav } from './components/Nav'
 import { ProgressRail } from './components/ProgressRail'
@@ -44,7 +44,7 @@ export function LandingHero() {
     if (!track) return
     const total = Math.max(1, track.scrollHeight - window.innerHeight)
     const target = clamp(frac, 0, 1) * total
-    window.scrollTo({ top: target, behavior: 'smooth' })
+    tweenScrollTo(target)
   }, [containerRef])
 
   const handleConfetti = useCallback((x: number, y: number) => {
