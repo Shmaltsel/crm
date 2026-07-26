@@ -17,6 +17,7 @@ const FUEL_RATE = 6;
 const DEPRECIATION_RATE = 4;
 const STORAGE_KEY = "mileage-records";
 
+
 const fmt = (n: number) => new Intl.NumberFormat("uk-UA").format(n);
 
 function getTodayISO() {
