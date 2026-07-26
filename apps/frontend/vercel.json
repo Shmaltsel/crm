@@ -7,6 +7,14 @@
       "destination": "https://api.svitlo-znan.app/:path*"
     },
     {
+      "source": "/info",
+      "destination": "/info/index.html"
+    },
+    {
+      "source": "/info/:path*",
+      "destination": "/info/:path*"
+    },
+    {
       "source": "/(.*)",
       "destination": "/index.html"
     }

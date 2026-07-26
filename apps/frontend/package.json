@@ -5,6 +5,7 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
+    "prebuild": "pnpm --filter @svitlo/hero build && node -e \"const fs=require('fs');const src=require('path').resolve('../hero/dist');const dst=require('path').resolve('./public/info');fs.rmSync(dst,{recursive:true,force:true});fs.cpSync(src,dst,{recursive:true});console.log('hero → public/info')\"",
     "build": "vite build",
     "lint": "eslint . --max-warnings 0",
     "preview": "vite preview",
