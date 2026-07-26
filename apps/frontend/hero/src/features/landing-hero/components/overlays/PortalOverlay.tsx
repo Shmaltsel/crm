@@ -1,11 +1,11 @@
-import { MotionValue, useMotionValueEvent } from 'framer-motion'
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { clamp } from '../../lib/animation'
 import { Z } from '../../lib/zIndex'
+import type { Timeline } from '../../types/timeline'
 
 interface Props {
-  progress: MotionValue<number>
-  beatStrengths: MotionValue<number>[]
+  tl: Timeline
+  subscribe: (cb: () => void) => () => void
 }
 
 interface PlanetState {
@@ -19,29 +19,33 @@ interface PlanetState {
   drift: number
 }
 
-export function PortalOverlay({ progress, beatStrengths }: Props) {
+export function PortalOverlay({ tl, subscribe }: Props) {
   const [s, setS] = useState<PlanetState>({
     portalS: 0, p0x: 0, p0y: 0, p1x: 0, p1y: 0, p2x: 0, p2y: 0, drift: 0,
   })
 
-  useMotionValueEvent(progress, 'change', (p) => {
-    const malyuvaikaS = Math.max(beatStrengths[3]?.get() ?? 0, beatStrengths[4]?.get() ?? 0)
-    const hologramS = beatStrengths[5]?.get() ?? 0
-    const popifyS = Math.max(beatStrengths[6]?.get() ?? 0, beatStrengths[7]?.get() ?? 0)
-    const f = beatStrengths[12]?.get() ?? 0
-    const portalS = clamp(Math.max(malyuvaikaS, hologramS, popifyS, f), 0, 1)
+  useEffect(() => {
+    return subscribe(() => {
+      const bs = tl.beatStrengths
+      const malyuvaikaS = Math.max(bs[3], bs[4])
+      const hologramS = bs[5]
+      const popifyS = Math.max(bs[6], bs[7])
+      const f = bs[12]
+      const portalS = clamp(Math.max(malyuvaikaS, hologramS, popifyS, f), 0, 1)
+      const p = tl.progress
 
-    setS({
-      portalS,
-      p0x: 82 + Math.sin(p * 2.2) * 4,
-      p0y: 18 + Math.cos(p * 1.7) * 3,
-      p1x: 14 + Math.sin(p * 1.9 + 1) * 5,
-      p1y: 62 + Math.cos(p * 2.3 + 0.5) * 4,
-      p2x: 72 + Math.sin(p * 1.4 + 2) * 3,
-      p2y: 74 + Math.cos(p * 1.8 + 1) * 3,
-      drift: p * 360,
+      setS({
+        portalS,
+        p0x: 82 + Math.sin(p * 2.2) * 4,
+        p0y: 18 + Math.cos(p * 1.7) * 3,
+        p1x: 14 + Math.sin(p * 1.9 + 1) * 5,
+        p1y: 62 + Math.cos(p * 2.3 + 0.5) * 4,
+        p2x: 72 + Math.sin(p * 1.4 + 2) * 3,
+        p2y: 74 + Math.cos(p * 1.8 + 1) * 3,
+        drift: p * 360,
+      })
     })
-  })
+  }, [tl, subscribe])
 
   return (
     <svg

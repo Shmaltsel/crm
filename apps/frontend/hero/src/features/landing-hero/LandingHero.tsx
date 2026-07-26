@@ -1,6 +1,8 @@
 import { useCallback, useRef, useState } from 'react'
 import { useScrollStory } from './hooks/useScrollStory'
+import { useMotionTimeline } from './hooks/useMotionTimeline'
 import { useBeatStrengths } from './hooks/useBeatStrengths'
+import { useProgressMV } from './hooks/useProgressMV'
 import { useScrollSnap } from './hooks/useScrollSnap'
 import { clamp, tweenScrollTo } from './lib/animation'
 import { Z } from './lib/zIndex'
@@ -32,9 +34,11 @@ import { BeatWrapper } from './components/BeatWrapper'
 import type { MotionValue } from 'framer-motion'
 
 export function LandingHero() {
-  const { containerRef, scrollYProgress } = useScrollStory()
+  const { containerRef } = useScrollStory()
+  const { tl, subscribe } = useMotionTimeline(containerRef)
   const [contactOpen, setContactOpen] = useState(false)
 
+  const scrollYProgress = useProgressMV(tl, subscribe)
   const beatStrengths = useBeatStrengths(scrollYProgress)
 
   useScrollSnap(scrollYProgress, containerRef)
@@ -113,11 +117,11 @@ export function LandingHero() {
 
       {/* Universe (fixed background) */}
       <div className="fixed inset-0 overflow-hidden" style={{ zIndex: Z.overlays }} aria-hidden="true">
-        <NebulaOverlay progress={scrollYProgress} />
+        <NebulaOverlay tl={tl} subscribe={subscribe} />
         <StarField />
-        <PortalOverlay progress={scrollYProgress} beatStrengths={beatStrengths} />
-        <GrassGround drawingStrength={drawingStrength} />
-        <RocketOverlay progress={scrollYProgress} finaleStrength={finaleStrength} />
+        <PortalOverlay tl={tl} subscribe={subscribe} />
+        <GrassGround tl={tl} subscribe={subscribe} />
+        <RocketOverlay tl={tl} />
       </div>
 
       {/* Story beats */}

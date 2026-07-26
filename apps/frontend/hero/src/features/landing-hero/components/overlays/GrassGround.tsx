@@ -1,10 +1,11 @@
 import { useEffect, useRef, useState } from 'react'
-import { MotionValue, useMotionValueEvent } from 'framer-motion'
 import { clamp } from '../../lib/animation'
 import { useReducedMotion } from '../../hooks/useReducedMotion'
+import type { Timeline } from '../../types/timeline'
 
 interface Props {
-  drawingStrength: MotionValue<number>
+  tl: Timeline
+  subscribe: (cb: () => void) => () => void
 }
 
 const BLADE_COUNT = 28
@@ -15,8 +16,7 @@ interface Blade {
   el: SVGLineElement | null
 }
 
-export function GrassGround({ drawingStrength }: Props) {
-  const [opacity, setOpacity] = useState(0)
+export function GrassGround({ tl, subscribe }: Props) {
   const strengthRef = useRef(0)
   const bladesRef = useRef<Blade[]>([])
   const mouseRef = useRef({ x: window.innerWidth / 2 })
@@ -24,8 +24,15 @@ export function GrassGround({ drawingStrength }: Props) {
   const rafRef = useRef(0)
   const lastFrameRef = useRef(0)
   const svgRef = useRef<SVGGElement>(null)
+  const [opacity, setOpacity] = useState(0)
 
-  useMotionValueEvent(drawingStrength, 'change', (v) => { strengthRef.current = v; setOpacity(v) })
+  useEffect(() => {
+    return subscribe(() => {
+      const s = tl.beatStrengths[5]
+      strengthRef.current = s
+      setOpacity(s)
+    })
+  }, [tl, subscribe])
 
   useEffect(() => {
     if (reduced) return
