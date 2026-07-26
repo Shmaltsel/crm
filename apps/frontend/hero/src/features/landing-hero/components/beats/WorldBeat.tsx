@@ -1,6 +1,6 @@
 import { MotionValue, motion, useTransform } from 'framer-motion'
 import { useBeatStrength } from '../../hooks/useBeatStrength'
-import { BEAT_CONTENT } from '../../data/worlds'
+import { BEAT_CONTENT, WORLD_BEATS } from '../../data/worlds'
 import { MEDIA_URLS } from '../../data/media'
 import { MediaPlaceholder } from '../MediaPlaceholder'
 
@@ -23,11 +23,30 @@ const WORLD_MEDIA: Record<number, string | undefined> = {
   6: MEDIA_URLS.popify,
 }
 
+function getWorldKey(beatIndex: number): string {
+  for (const wb of WORLD_BEATS) {
+    if (wb.beatIndices.includes(beatIndex)) return wb.portalKey
+  }
+  return 'default'
+}
+
+function getMediaAnimClass(worldKey: string): string {
+  switch (worldKey) {
+    case 'malyuvaika': return 'world-organic-entry'
+    case 'hologram': return 'world-scan-entry'
+    case 'popify': return 'world-bounce-entry'
+    default: return ''
+  }
+}
+
 export function WorldBeat({ progress, beatIndex }: Props) {
   const strength = useBeatStrength(progress, beatIndex)
   const y = useTransform(strength, [0, 1], [22, 0])
   const content = BEAT_CONTENT[beatIndex]
   if (!content) return null
+
+  const worldKey = getWorldKey(beatIndex)
+  const mediaAnimClass = getMediaAnimClass(worldKey)
 
   return (
     <motion.div
@@ -37,20 +56,31 @@ export function WorldBeat({ progress, beatIndex }: Props) {
       style={{ opacity: strength, y }}
     >
       <div className="flex max-w-[820px] flex-col items-center gap-8 md:flex-row md:text-left">
-        <MediaPlaceholder
-          label={WORLD_ICONS[beatIndex] ?? 'Ілюстрація'}
-          src={WORLD_MEDIA[beatIndex]}
-          className="h-[min(200px,28vw)] w-full shrink-0 md:h-[200px] md:w-[280px]"
-        />
+        <div className={`${mediaAnimClass} h-[min(200px,28vw)] w-full shrink-0 md:h-[200px] md:w-[280px]`}>
+          <MediaPlaceholder
+            label={WORLD_ICONS[beatIndex] ?? 'Ілюстрація'}
+            src={WORLD_MEDIA[beatIndex]}
+            className="h-full w-full"
+          />
+        </div>
         <div className="max-w-[480px]">
-          <p className="mb-3.5 text-xs font-bold uppercase tracking-[0.18em] text-gold opacity-90">
+          <p
+            className="mb-3.5 text-xs font-bold uppercase tracking-[0.18em] text-gold opacity-90 stagger-word"
+            style={{ animationDelay: '0.1s' }}
+          >
             {content.eyebrow}
           </p>
-          <h2 className="text-[clamp(26px,3.9vw,42px)] leading-[1.15] text-paper">
+          <h2
+            className="text-[clamp(26px,3.9vw,42px)] leading-[1.15] text-paper stagger-word"
+            style={{ animationDelay: '0.2s' }}
+          >
             {content.heading}
           </h2>
           {content.sub && (
-            <p className="mx-auto mt-4 max-w-[480px] text-[15.5px] leading-[1.55] text-mist-soft md:mx-0">
+            <p
+              className="mx-auto mt-4 max-w-[480px] text-[15.5px] leading-[1.55] text-mist-soft md:mx-0 stagger-word"
+              style={{ animationDelay: '0.35s' }}
+            >
               {content.sub}
             </p>
           )}
