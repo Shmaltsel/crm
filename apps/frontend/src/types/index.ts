@@ -266,6 +266,24 @@ export interface DayOffRequest {
   user: { id: string; name: string; role: string; cityId: string | null };
 }
 
+export type MileageReportStatus = "PENDING" | "APPROVED" | "REJECTED";
+
+export interface MileageReport {
+  id: string;
+  userId: string;
+  date: string;
+  km: number;
+  fuel: number;
+  depreciation: number;
+  totalAmount: number;
+  status: MileageReportStatus;
+  managerNote: string | null;
+  reviewedBy: string | null;
+  reviewedAt: string | null;
+  createdAt: string;
+  user?: { id: string; name: string; role: string; cityId: string | null };
+}
+
 export interface IssueReport {
   id: string;
   eventId: string;

@@ -19,7 +19,10 @@ export type TelegramTemplateType =
   | 'SALARY_LARGE_PAYOUT'
   | 'LOW_STOCK'
   | 'WELCOME_ONBOARDING'
-  | 'ERROR_ALERT_5XX';
+  | 'ERROR_ALERT_5XX'
+  | 'MILEAGE_REPORT_CREATED'
+  | 'MILEAGE_APPROVED'
+  | 'MILEAGE_REJECTED';
 
 type TemplateFn = (p: Record<string, unknown>) => string;
 
@@ -379,6 +382,41 @@ const templates: Record<TelegramTemplateType, TemplateFn> = {
       `• Доступність бази даних\n\n` +
       `━━━━━━━━━━━━━━━━━━━━\n` +
       `<a href="${link}">🔧 Перейти до панелі управління</a>`
+    );
+  },
+
+  MILEAGE_REPORT_CREATED: (p) => {
+    const link = buildLink('/reports/review');
+    return (
+      `🚗 <b>Нова заявка на кілометраж</b>\n` +
+      `━━━━━━━━━━━━━━━━━━━━\n\n` +
+      `👤 <b>Водій:</b> ${p.driverName ?? '—'}\n` +
+      `📅 <b>Дата:</b> ${p.date ?? '—'}\n` +
+      `📏 <b>Кілометри:</b> ${p.km ?? '—'}\n` +
+      `💰 <b>Сума:</b> ${p.amount ?? '—'} грн\n\n` +
+      `━━━━━━━━━━━━━━━━━━━━\n` +
+      `<a href="${link}">📋 Переглянути та затвердити</a>`
+    );
+  },
+
+  MILEAGE_APPROVED: (p) => {
+    return (
+      `✅ <b>Заявку на кілометраж затверджено</b>\n` +
+      `━━━━━━━━━━━━━━━━━━━━\n\n` +
+      `Ваші кошти нараховано на баланс.\n\n` +
+      `📏 <b>Кілометри:</b> ${p.km ?? '—'}\n` +
+      `💰 <b>Сума:</b> ${p.amount ?? '—'} грн\n\n` +
+      `━━━━━━━━━━━━━━━━━━━━`
+    );
+  },
+
+  MILEAGE_REJECTED: (p) => {
+    return (
+      `❌ <b>Заявку на кілометраж відхилено</b>\n` +
+      `━━━━━━━━━━━━━━━━━━━━\n\n` +
+      `📏 <b>Кілометри:</b> ${p.km ?? '—'}\n` +
+      (p.reason ? `💬 <b>Причина:</b> <i>${p.reason}</i>\n\n` : '\n') +
+      `━━━━━━━━━━━━━━━━━━━━`
     );
   },
 };

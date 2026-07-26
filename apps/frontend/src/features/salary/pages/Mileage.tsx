@@ -1,12 +1,15 @@
-import { useState, useEffect, useCallback, useMemo } from "react";
+import { useState, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Car, Plus, Trash2, Fuel, Wrench } from "lucide-react";
+import { Car, Plus, Trash2, Fuel, Wrench, Send, CheckCircle2, XCircle, Clock } from "lucide-react";
 import { Button } from "../../../components/ui/Button";
 import { EmptyState } from "../../../components/ui/EmptyState";
 import { staggerContainer, staggerItem } from "../../../lib/motion";
 import { useAuth } from "../../../context/AuthContext";
+import { useCreateMileageReport, useMileageReportsMine } from "../../../hooks/useMileageReports";
+import { useToast } from "../../../components/ui/Toast";
+import type { MileageReportStatus } from "../../../types";
 
-interface MileageRecord {
+interface LocalRecord {
   id: string;
   date: string;
   km: number;
@@ -16,6 +19,7 @@ interface MileageRecord {
 
 const FUEL_RATE = 6;
 const DEPRECIATION_RATE = 4;
+const STORAGE_KEY_PREFIX = "mileage-draft-";
 
 const fmt = (n: number) => new Intl.NumberFormat("uk-UA").format(n);
 
@@ -24,28 +28,30 @@ function getTodayISO() {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
 }
 
-function loadRecords(storageKey: string): MileageRecord[] {
-  try {
-    return JSON.parse(localStorage.getItem(storageKey) || "[]");
-  } catch {
-    return [];
-  }
+function loadDraft(key: string): LocalRecord[] {
+  try { return JSON.parse(localStorage.getItem(key) || "[]"); } catch { return []; }
 }
 
-function saveRecords(storageKey: string, records: MileageRecord[]) {
-  localStorage.setItem(storageKey, JSON.stringify(records));
+function saveDraft(key: string, records: LocalRecord[]) {
+  localStorage.setItem(key, JSON.stringify(records));
 }
+
+const STATUS_LABELS: Record<MileageReportStatus, { label: string; icon: typeof Clock; color: string }> = {
+  PENDING: { label: "Очікує", icon: Clock, color: "text-amber-600 bg-amber-50 border-amber-100" },
+  APPROVED: { label: "Затверджено", icon: CheckCircle2, color: "text-success bg-green-50 border-green-100" },
+  REJECTED: { label: "Відхилено", icon: XCircle, color: "text-danger-600 bg-red-50 border-red-100" },
+};
 
 export default function Mileage() {
   const { user } = useAuth();
-  const storageKey = useMemo(() => `mileage-records-${user?.id ?? "anon"}`, [user?.id]);
-  const [records, setRecords] = useState<MileageRecord[]>(() => loadRecords(storageKey));
+  const toast = useToast();
+  const storageKey = `${STORAGE_KEY_PREFIX}${user?.id ?? "anon"}`;
+  const [records, setRecords] = useState<LocalRecord[]>(() => loadDraft(storageKey));
   const [date, setDate] = useState(getTodayISO);
   const [km, setKm] = useState("");
 
-  useEffect(() => {
-    saveRecords(storageKey, records);
-  }, [records, storageKey]);
+  const { data: submitted = [], isLoading } = useMileageReportsMine();
+  const createMutation = useCreateMileageReport();
 
   const kmNum = Math.max(0, Math.floor(Number(km) || 0));
   const fuel = kmNum * FUEL_RATE;
@@ -53,20 +59,42 @@ export default function Mileage() {
 
   const handleAdd = useCallback(() => {
     if (kmNum <= 0) return;
-    const rec: MileageRecord = {
+    const rec: LocalRecord = {
       id: `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
       date,
       km: kmNum,
       fuel,
       depreciation,
     };
-    setRecords((prev) => [rec, ...prev]);
+    const next = [rec, ...records];
+    setRecords(next);
+    saveDraft(storageKey, next);
     setKm("");
-  }, [date, kmNum, fuel, depreciation]);
+  }, [date, kmNum, fuel, depreciation, records, storageKey]);
 
   const handleDelete = useCallback((id: string) => {
-    setRecords((prev) => prev.filter((r) => r.id !== id));
-  }, []);
+    const next = records.filter((r) => r.id !== id);
+    setRecords(next);
+    saveDraft(storageKey, next);
+  }, [records, storageKey]);
+
+  const handleSubmit = useCallback(() => {
+    if (records.length === 0) return;
+    const totalKm = records.reduce((s, r) => s + r.km, 0);
+    const totalFuel = records.reduce((s, r) => s + r.fuel, 0);
+    const totalDep = records.reduce((s, r) => s + r.depreciation, 0);
+    createMutation.mutate(
+      { date: records[0].date, km: totalKm, fuel: totalFuel, depreciation: totalDep, totalAmount: totalFuel + totalDep },
+      {
+        onSuccess: () => {
+          setRecords([]);
+          saveDraft(storageKey, []);
+          toast("Заявку на кілометраж надіслано", "success");
+        },
+        onError: () => toast("Помилка надсилання заявки", "error"),
+      },
+    );
+  }, [records, createMutation, storageKey, toast]);
 
   const totalKm = records.reduce((s, r) => s + r.km, 0);
   const totalFuel = records.reduce((s, r) => s + r.fuel, 0);
@@ -84,30 +112,15 @@ export default function Mileage() {
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
           <div>
             <label htmlFor="mileage-date" className="block text-sm mb-1 text-content-secondary">Дата</label>
-            <input
-              id="mileage-date"
-              type="date"
-              value={date}
-              onChange={(e) => setDate(e.target.value)}
-              className="w-full p-2.5 border border-border-strong rounded-control bg-surface text-content-primary focus:ring-2 focus:ring-brand outline-none"
-            />
+            <input id="mileage-date" type="date" value={date} onChange={(e) => setDate(e.target.value)}
+              className="w-full p-2.5 border border-border-strong rounded-control bg-surface text-content-primary focus:ring-2 focus:ring-brand outline-none" />
           </div>
           <div>
             <label htmlFor="mileage-km" className="block text-sm mb-1 text-content-secondary">Кілометри</label>
-            <input
-              id="mileage-km"
-              type="number"
-              inputMode="decimal"
-              min={0}
-              step="0.1"
-              value={km}
-              onChange={(e) => setKm(e.target.value)}
-              onKeyDown={(e) => {
-                if (e.key === "Enter") handleAdd();
-              }}
+            <input id="mileage-km" type="number" inputMode="decimal" min={0} step="0.1" value={km}
+              onChange={(e) => setKm(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter") handleAdd(); }}
               placeholder="0"
-              className="w-full p-2.5 border border-border-strong rounded-control bg-surface text-content-primary focus:ring-2 focus:ring-brand outline-none"
-            />
+              className="w-full p-2.5 border border-border-strong rounded-control bg-surface text-content-primary focus:ring-2 focus:ring-brand outline-none" />
           </div>
           <div className="flex items-end gap-2">
             <div className="flex-1">
@@ -138,7 +151,7 @@ export default function Mileage() {
         <EmptyState
           icon={Car}
           title="Ще немає записів"
-          description="Додайте перший запис кілометражу вище"
+          description="Додайте запис кілометражу вище та натисніть 'Подати'"
         />
       ) : (
         <>
@@ -157,9 +170,7 @@ export default function Mileage() {
               <tbody>
                 {records.map((r) => (
                   <tr key={r.id} className="border-b border-border last:border-0 hover:bg-surface-muted/50 transition-colors">
-                    <td className="px-4 py-3 text-content-primary font-medium">
-                      {new Date(r.date).toLocaleDateString("uk-UA")}
-                    </td>
+                    <td className="px-4 py-3 text-content-primary font-medium">{new Date(r.date).toLocaleDateString("uk-UA")}</td>
                     <td className="px-4 py-3 text-content-secondary text-right">{fmt(r.km)}</td>
                     <td className="px-4 py-3 text-content-secondary text-right">{fmt(r.fuel)} грн</td>
                     <td className="px-4 py-3 text-content-secondary text-right">{fmt(r.depreciation)} грн</td>
@@ -178,18 +189,10 @@ export default function Mileage() {
           <div className="md:hidden space-y-2">
             <AnimatePresence mode="popLayout">
               {records.map((r) => (
-                <motion.div
-                  key={r.id}
-                  layout
-                  initial={{ opacity: 0, y: 10 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  exit={{ opacity: 0, x: -40 }}
-                  className="bg-surface rounded-card shadow-soft border border-border p-4"
-                >
+                <motion.div key={r.id} layout initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, x: -40 }}
+                  className="bg-surface rounded-card shadow-soft border border-border p-4">
                   <div className="flex items-center justify-between mb-2">
-                    <span className="text-sm font-semibold text-content-primary">
-                      {new Date(r.date).toLocaleDateString("uk-UA")}
-                    </span>
+                    <span className="text-sm font-semibold text-content-primary">{new Date(r.date).toLocaleDateString("uk-UA")}</span>
                     <button onClick={() => handleDelete(r.id)} className="p-1 text-content-muted hover:text-red-500 transition-colors" aria-label="Видалити">
                       <Trash2 className="w-4 h-4" />
                     </button>
@@ -217,12 +220,7 @@ export default function Mileage() {
             </AnimatePresence>
           </div>
 
-          <motion.div
-            className="bg-surface rounded-card shadow-soft border border-border p-4 md:p-5"
-            variants={staggerContainer}
-            initial="hidden"
-            animate="visible"
-          >
+          <motion.div className="bg-surface rounded-card shadow-soft border border-border p-4 md:p-5" variants={staggerContainer} initial="hidden" animate="visible">
             <h3 className="text-sm font-semibold text-content-primary mb-3">Підсумок</h3>
             <div className="grid grid-cols-3 gap-3">
               <motion.div variants={staggerItem}>
@@ -238,14 +236,44 @@ export default function Mileage() {
                 <p className="text-lg font-bold text-content-primary">{fmt(totalDepreciation)} грн</p>
               </motion.div>
             </div>
-            <div className="mt-3 pt-3 border-t border-border">
-              <div className="flex justify-between items-center">
-                <span className="text-sm text-content-secondary font-medium">Загальна сума</span>
-                <span className="text-xl font-bold text-brand">{fmt(totalFuel + totalDepreciation)} грн</span>
-              </div>
+            <div className="mt-3 pt-3 border-t border-border flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
+              <span className="text-xl font-bold text-brand">{fmt(totalFuel + totalDepreciation)} грн</span>
+              <Button onClick={handleSubmit} disabled={createMutation.isPending} variant="primary" size="md">
+                <Send className="w-4 h-4 mr-1.5" />
+                Подати заявку
+              </Button>
             </div>
           </motion.div>
         </>
+      )}
+
+      {!isLoading && submitted.length > 0 && (
+        <motion.div className="bg-surface rounded-card shadow-soft border border-border p-4 md:p-5" variants={staggerContainer} initial="hidden" animate="visible">
+          <h3 className="text-sm font-semibold text-content-primary mb-3">Подані заявки</h3>
+          <div className="space-y-2">
+            {submitted.map((r) => {
+              const st = STATUS_LABELS[r.status];
+              const Icon = st.icon;
+              return (
+                <motion.div key={r.id} variants={staggerItem}
+                  className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 p-3 bg-surface-muted rounded-xl">
+                  <div className="flex-1 min-w-0">
+                    <div className="text-sm font-medium text-content-primary">
+                      {new Date(r.date).toLocaleDateString("uk-UA")} — {fmt(r.km)} км
+                    </div>
+                    <div className="text-xs text-content-muted">
+                      Пальне: {fmt(r.fuel)} грн · Аморт.: {fmt(r.depreciation)} грн · Разом: {fmt(r.totalAmount)} грн
+                    </div>
+                  </div>
+                  <span className={`inline-flex items-center gap-1 text-xs font-medium px-2 py-0.5 rounded-pill border shrink-0 ${st.color}`}>
+                    <Icon className="w-3.5 h-3.5" />
+                    {st.label}
+                  </span>
+                </motion.div>
+              );
+            })}
+          </div>
+        </motion.div>
       )}
     </div>
   );

@@ -58,6 +58,12 @@ vi.mock("../../hooks/useDayOffRequests", () => ({
   useRejectDayOffRequest: () => ({ mutate: vi.fn(), isPending: false }),
 }));
 
+vi.mock("../../hooks/useMileageReports", () => ({
+  useMileageReportsAll: () => ({ data: [], isLoading: false }),
+  useApproveMileageReport: () => ({ mutate: vi.fn(), isPending: false }),
+  useRejectMileageReport: () => ({ mutate: vi.fn(), isPending: false }),
+}));
+
 vi.mock("../../context/AuthContext", () => ({
   useAuth: () => ({
     user: { id: "u-1", name: "Manager", role: "MANAGER", cityId: "city-1" },

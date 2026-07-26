@@ -32,6 +32,7 @@ model User {
   dayOffRequests DayOffRequest[]
   schoolComments SchoolComment[]
   manualExpenses ManualExpense[]
+  mileageReports MileageReport[]
 
   @@index([role])
   @@index([cityId])
@@ -281,25 +282,28 @@ model ExpenseItem {
 }
 
 model SalaryRecord {
-  id         String        @id @default(cuid())
-  employeeId String
-  eventId    String?
-  reportId   String?
-  amount     Decimal       @db.Decimal(12, 2)
-  comment    String?
-  status     SalaryStatus  @default(PENDING)
-  paidAt     DateTime?
-  paidBy     String?
-  createdBy  String
-  createdAt  DateTime      @default(now())
+  id              String        @id @default(cuid())
+  employeeId      String
+  eventId         String?
+  reportId        String?
+  mileageReportId String?
+  amount          Decimal       @db.Decimal(12, 2)
+  comment         String?
+  status          SalaryStatus  @default(PENDING)
+  paidAt          DateTime?
+  paidBy          String?
+  createdBy       String
+  createdAt       DateTime      @default(now())
 
-  employee User        @relation(fields: [employeeId], references: [id])
-  event    Event?      @relation(fields: [eventId], references: [id])
-  report   EventReport? @relation(fields: [reportId], references: [id], onDelete: SetNull)
+  employee      User         @relation(fields: [employeeId], references: [id])
+  event         Event?       @relation(fields: [eventId], references: [id])
+  report        EventReport? @relation(fields: [reportId], references: [id], onDelete: SetNull)
+  mileageReport MileageReport? @relation(fields: [mileageReportId], references: [id], onDelete: SetNull)
 
   @@index([employeeId])
   @@index([reportId])
   @@index([status])
+  @@index([mileageReportId])
 }
 
 model RefreshToken {
@@ -388,6 +392,12 @@ enum SalaryStatus {
   PENDING
   PAID
   CANCELLED
+}
+
+enum MileageReportStatus {
+  PENDING
+  APPROVED
+  REJECTED
 }
 
 enum CommentType {
@@ -561,4 +571,25 @@ model AnalyticsAnnotation {
   updatedAt DateTime @updatedAt
 
   @@unique([year, month])
+}
+
+model MileageReport {
+  id           String              @id @default(cuid())
+  userId       String
+  date         DateTime            @db.Date
+  km           Decimal             @db.Decimal(10, 1)
+  fuel         Decimal             @db.Decimal(12, 2)
+  depreciation Decimal             @db.Decimal(12, 2)
+  totalAmount  Decimal             @db.Decimal(12, 2)
+  status       MileageReportStatus @default(PENDING)
+  managerNote  String?
+  reviewedBy   String?
+  reviewedAt   DateTime?
+  createdAt    DateTime            @default(now())
+
+  user          User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  salaryRecords SalaryRecord[]
+
+  @@index([userId])
+  @@index([status])
 }

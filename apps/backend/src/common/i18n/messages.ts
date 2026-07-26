@@ -54,6 +54,14 @@ export const MESSAGES = {
     uk: 'Співробітник не підключив Telegram-бота',
     en: 'Staff member has not connected to the Telegram bot',
   },
+  MILEAGE_REPORT_NOT_FOUND: {
+    uk: 'Заявку на кілометраж не знайдено',
+    en: 'Mileage report not found',
+  },
+  MILEAGE_REPORT_ALREADY_REVIEWED: {
+    uk: 'Заявку на кілометраж вже оброблено',
+    en: 'Mileage report already reviewed',
+  },
 } as const;
 
 export type MessageKey = keyof typeof MESSAGES;

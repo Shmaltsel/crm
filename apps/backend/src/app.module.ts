@@ -31,6 +31,7 @@ import { DaysOffModule } from './days-off/days-off.module';
 import { DayOffRequestsModule } from './day-off-requests/day-off-requests.module';
 import { ReportsModule } from './reports/reports.module';
 import { SalaryModule } from './salary/salary.module';
+import { MileageReportsModule } from './mileage-reports/mileage-reports.module';
 import { SchoolCommentsModule } from './school-comments/school-comments.module';
 import { MetricsModule } from './metrics/metrics.module';
 import { NotificationsModule } from './notifications/notifications.module';
@@ -84,6 +85,7 @@ import { AllExceptionsFilter } from './common/filters/all-exceptions.filter';
     InventoryModule,
     ReportsModule,
     SalaryModule,
+    MileageReportsModule,
     SchoolCommentsModule,
     NotificationsModule,
     AnalyticsModule,

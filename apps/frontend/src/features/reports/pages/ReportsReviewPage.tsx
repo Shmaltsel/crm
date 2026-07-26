@@ -15,6 +15,7 @@ import { Input } from "../../../components/ui/Input";
 import { useToast } from "../../../components/ui/Toast";
 import SalaryEntryForm from "../../salary/components/SalaryEntryForm";
 import DayOffRequestsPanel from "../components/DayOffRequestsPanel";
+import MileageReportsPanel from "../components/MileageReportsPanel";
 import { useAuth } from "../../../context/AuthContext";
 import { hasRole } from "../../../utils/roles";
 
@@ -113,6 +114,8 @@ export default function ReportsReviewPage() {
       </div>
 
       {hasRole(user?.role, ["MANAGER", "SUPERADMIN"]) && <DayOffRequestsPanel />}
+
+      {hasRole(user?.role, ["MANAGER", "SUPERADMIN"]) && <MileageReportsPanel />}
 
       {isLoading && (
         <div className="space-y-4">
