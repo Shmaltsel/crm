@@ -1,9 +1,7 @@
-export type WorldKey = 'hologram' | 'drawing' | 'celebration'
+export type WorldKey = 'malyuvaika' | 'hologram' | 'popify'
 
 export interface WorldBeatData {
-  /** Beat indices that use this world (e.g. [3, 4] for hologram) */
   beatIndices: number[]
-  /** Which portal SVG group to show */
   portalKey: WorldKey
 }
 
@@ -13,17 +11,36 @@ export interface BeatContent {
   sub?: string
 }
 
-/** Maps beat index to its world key for portal overlay */
 export const WORLD_BEATS: WorldBeatData[] = [
-  { beatIndices: [3, 4], portalKey: 'hologram' },
-  { beatIndices: [5, 6], portalKey: 'drawing' },
-  { beatIndices: [7], portalKey: 'celebration' },
+  { beatIndices: [3, 4], portalKey: 'malyuvaika' },
+  { beatIndices: [5], portalKey: 'hologram' },
+  { beatIndices: [6, 7], portalKey: 'popify' },
 ]
 
 export const BEAT_CONTENT: Record<number, BeatContent> = {
-  3: { eyebrow: 'Світ 01', heading: 'Світ Голограм', sub: 'Об\'ємні проєкції оживають прямо в залі — без окулярів, тільки щирий подив.' },
-  4: { eyebrow: 'Своя атмосфера', heading: 'Світло, яке тримають у долонях', sub: 'Кожне шоу — окрема історія, написана під конкретний зал і вік дітей.' },
-  5: { eyebrow: 'Світ 02', heading: 'Світ Оживших Малюнків', sub: 'Проведіть курсором біля дерева — і побачите, як воно відповідає.' },
-  6: { eyebrow: 'Олівець. Фарба. Папір.', heading: 'Малюнок стає персонажем', sub: 'Дитина малює — і за кілька хвилин бачить, як її герой рухається на екрані.' },
-  7: { eyebrow: 'Світ 03', heading: 'Світ Свят', sub: 'Конфеті, ліхтарики та сценарій, який перетворює свято на подію.' },
+  3: {
+    eyebrow: 'Проєкт 01 · Малювайка',
+    heading: 'Світ фарб і фантазії',
+    sub: 'Розвивальний проєкт для дитячого садочка: уява, дрібна моторика й упевненість у собі через яскраву творчість.',
+  },
+  4: {
+    eyebrow: 'Чарівне море',
+    heading: 'Намалюй рибку — і вона оживе',
+    sub: "Кожна дитина малює свою рибку з любов'ю — а потім бачить, як та оживає й пливе в чарівному морі.",
+  },
+  5: {
+    eyebrow: 'Проєкт 02 · Голограма',
+    heading: 'Світ Голограм',
+    sub: "Об'ємні 3D-проекції оживають прямо в залі — без окулярів, тільки щирий подив дітей.",
+  },
+  6: {
+    eyebrow: 'Проєкт 03 · Popify',
+    heading: 'Відео на згадку',
+    sub: 'Сучасний формат зйомки яскравих 360°-відео. Уся апаратура — наша. Від дітей потрібні лише настрій і улюблена пісня.',
+  },
+  7: {
+    eyebrow: 'Як це працює',
+    heading: 'Своє відео за кілька хвилин',
+    sub: '1-2 людини у кадрі — 200 грн, 3 і більше — 100 грн з кожного. Спробувати може кожен охочий.',
+  },
 }

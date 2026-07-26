@@ -9,11 +9,11 @@ interface Props {
 }
 
 const WORLD_ICONS: Record<number, string> = {
-  3: 'Голограма',
-  4: 'Атмосфера',
-  5: 'Малюнок',
-  6: 'Олівець',
-  7: 'Свято',
+  3: 'Малювайка — заняття',
+  4: 'Рибка оживає',
+  5: 'Голограма — проекція',
+  6: 'Popify — зйомка',
+  7: 'Popify — прайс',
 }
 
 export function WorldBeat({ progress, beatIndex }: Props) {
