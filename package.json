@@ -21,7 +21,7 @@
     "test:all": "pnpm test:unit && pnpm test:e2e",
     "test:coverage": "concurrently \"pnpm --filter backend test:cov\" \"pnpm --filter frontend test:coverage\"",
     "seed:demo": "pnpm --filter backend seed:demo",
-    "build:info": "pnpm --filter @svitlo/hero build && node -e \"const fs=require('fs');const src='apps/hero/dist';const dst='apps/frontend/public/info';fs.rmSync(dst,{recursive:true,force:true});fs.cpSync(src,dst,{recursive:true});console.log('Hero dist copied to public/info')\""
+    "build:info": "pnpm --filter @svitlo/hero build && node apps/frontend/scripts/copy-hero.mjs"
   },
   "devDependencies": {
     "@openrouter/ai-sdk-provider": "^3.0.0",
