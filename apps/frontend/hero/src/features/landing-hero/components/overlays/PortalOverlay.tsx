@@ -17,11 +17,14 @@ interface PlanetState {
   p2x: number
   p2y: number
   drift: number
+  activePlanet: number
+  breathPhase: number
 }
 
 export function PortalOverlay({ tl, subscribe }: Props) {
   const [s, setS] = useState<PlanetState>({
     portalS: 0, p0x: 0, p0y: 0, p1x: 0, p1y: 0, p2x: 0, p2y: 0, drift: 0,
+    activePlanet: -1, breathPhase: 0,
   })
 
   useEffect(() => {
@@ -34,6 +37,11 @@ export function PortalOverlay({ tl, subscribe }: Props) {
       const portalS = clamp(Math.max(malyuvaikaS, hologramS, popifyS, f), 0, 1)
       const p = tl.progress
 
+      let activePlanet = -1
+      if (hologramS > 0.15) activePlanet = 0
+      else if (malyuvaikaS > 0.15) activePlanet = 1
+      else if (popifyS > 0.15) activePlanet = 2
+
       setS({
         portalS,
         p0x: 82 + Math.sin(p * 2.2) * 4,
@@ -43,9 +51,23 @@ export function PortalOverlay({ tl, subscribe }: Props) {
         p2x: 72 + Math.sin(p * 1.4 + 2) * 3,
         p2y: 74 + Math.cos(p * 1.8 + 1) * 3,
         drift: p * 360,
+        activePlanet,
+        breathPhase: (tl.elapsed / 1000) * 0.8,
       })
     })
   }, [tl, subscribe])
+
+  const breath = Math.sin(s.breathPhase) * 0.03 + 1
+
+  function planetScale(idx: number): string {
+    if (s.activePlanet === idx) return `scale(${breath})`
+    return 'scale(1)'
+  }
+
+  function glowOpacity(idx: number): number {
+    if (s.activePlanet === idx) return 0.3
+    return 0.12
+  }
 
   return (
     <svg
@@ -86,8 +108,12 @@ export function PortalOverlay({ tl, subscribe }: Props) {
       </defs>
 
       {/* Planet 0 — teal, with ring (Голограма) */}
-      <g opacity={s.portalS * 0.85} transform={`translate(${s.p0x},${s.p0y})`}>
-        <circle r="9" fill="url(#planet0-glow)" />
+      <g
+        opacity={s.portalS * 0.85}
+        transform={`translate(${s.p0x},${s.p0y}) ${planetScale(0)}`}
+        style={{ transition: 'transform 0.6s var(--ease-hero)' }}
+      >
+        <circle r="11" fill="url(#planet0-glow)" opacity={glowOpacity(0)} style={{ transition: 'opacity 0.5s' }} />
         <circle r="4.8" fill="url(#planet0)" />
         <ellipse
           rx="8.2"
@@ -111,8 +137,12 @@ export function PortalOverlay({ tl, subscribe }: Props) {
       </g>
 
       {/* Planet 1 — coral, large gas giant (Малювайка) */}
-      <g opacity={s.portalS * 0.7} transform={`translate(${s.p1x},${s.p1y})`}>
-        <circle r="7" fill="url(#planet1-glow)" />
+      <g
+        opacity={s.portalS * 0.7}
+        transform={`translate(${s.p1x},${s.p1y}) ${planetScale(1)}`}
+        style={{ transition: 'transform 0.6s var(--ease-hero)' }}
+      >
+        <circle r="9" fill="url(#planet1-glow)" opacity={glowOpacity(1)} style={{ transition: 'opacity 0.5s' }} />
         <circle r="3.6" fill="url(#planet1)" />
         <path
           d="M-3.2,-0.4 Q0,-1.2 3.2,-0.4"
@@ -131,8 +161,12 @@ export function PortalOverlay({ tl, subscribe }: Props) {
       </g>
 
       {/* Planet 2 — pink/magenta, with faint ring (Popify) */}
-      <g opacity={s.portalS * 0.65} transform={`translate(${s.p2x},${s.p2y})`}>
-        <circle r="6" fill="url(#planet2-glow)" />
+      <g
+        opacity={s.portalS * 0.65}
+        transform={`translate(${s.p2x},${s.p2y}) ${planetScale(2)}`}
+        style={{ transition: 'transform 0.6s var(--ease-hero)' }}
+      >
+        <circle r="8" fill="url(#planet2-glow)" opacity={glowOpacity(2)} style={{ transition: 'opacity 0.5s' }} />
         <circle r="3" fill="url(#planet2)" />
         <ellipse
           rx="5.5"

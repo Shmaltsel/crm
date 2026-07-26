@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { Z } from '../lib/zIndex'
 
 interface Props {
@@ -14,16 +14,57 @@ const NAV_LINKS = [
   { label: 'Команда', fraction: 0.78 },
 ]
 
+function getActiveIndex(progress: number): number {
+  let best = 0
+  let bestDist = Math.abs(progress - NAV_LINKS[0].fraction)
+  for (let i = 1; i < NAV_LINKS.length; i++) {
+    const d = Math.abs(progress - NAV_LINKS[i].fraction)
+    if (d < bestDist) {
+      best = i
+      bestDist = d
+    }
+  }
+  return best
+}
+
 export function Nav({ onOpenContact, onNavigate }: Props) {
   const [scrolled, setScrolled] = useState(false)
   const [mobileOpen, setMobileOpen] = useState(false)
+  const [activeIdx, setActiveIdx] = useState(0)
+  const [hidden, setHidden] = useState(false)
+  const lastScrollY = useRef(0)
+  const linkRefs = useRef<(HTMLAnchorElement | null)[]>([])
 
   useEffect(() => {
-    const handler = () => setScrolled(window.scrollY > 40)
+    const handler = () => {
+      const y = window.scrollY
+      setScrolled(y > 40)
+
+      const total = Math.max(1, document.documentElement.scrollHeight - window.innerHeight)
+      const progress = y / total
+      setActiveIdx(getActiveIndex(progress))
+
+      if (y > 200) {
+        setHidden(y > lastScrollY.current && y - lastScrollY.current > 8)
+      } else {
+        setHidden(false)
+      }
+      lastScrollY.current = y
+    }
     window.addEventListener('scroll', handler, { passive: true })
     handler()
     return () => window.removeEventListener('scroll', handler)
   }, [])
+
+  const activeLink = NAV_LINKS[activeIdx]
+  const activeEl = linkRefs.current[activeIdx]
+  const underlineStyle = activeEl
+    ? {
+        left: activeEl.offsetLeft,
+        width: activeEl.offsetWidth,
+        opacity: 1,
+      }
+    : { left: 0, width: 0, opacity: 0 }
 
   return (
     <header
@@ -31,8 +72,8 @@ export function Nav({ onOpenContact, onNavigate }: Props) {
         scrolled
           ? 'bg-night/72 py-3 backdrop-blur-[14px] border-b border-gold/12'
           : 'py-[18px]'
-      }`}
-      style={{ zIndex: Z.nav }}
+      } ${hidden ? '-translate-y-full' : 'translate-y-0'}`}
+      style={{ zIndex: Z.nav, transitionProperty: 'transform, background, padding, border-color' }}
     >
       <div className="mx-auto flex max-w-[1180px] items-center justify-between px-7">
         <a href="#top" className="flex items-center gap-2.5 font-display text-[18px] font-semibold text-paper">
@@ -42,19 +83,28 @@ export function Nav({ onOpenContact, onNavigate }: Props) {
 
         {/* Desktop nav */}
         <div className="hidden items-center gap-7 md:flex">
-          {NAV_LINKS.map((link) => (
-            <a
-              key={link.label}
-              href="#"
-              onClick={(e) => {
-                e.preventDefault()
-                onNavigate(link.fraction)
-              }}
-              className="text-[13.5px] font-medium text-mist transition-colors hover:text-gold"
-            >
-              {link.label}
-            </a>
-          ))}
+          <nav className="relative">
+            {NAV_LINKS.map((link, i) => (
+              <a
+                key={link.label}
+                ref={(el) => { linkRefs.current[i] = el }}
+                href="#"
+                onClick={(e) => {
+                  e.preventDefault()
+                  onNavigate(link.fraction)
+                }}
+                className={`text-[13.5px] font-medium transition-colors hover:text-gold ${
+                  i === activeIdx ? 'text-gold' : 'text-mist'
+                }`}
+              >
+                {link.label}
+              </a>
+            ))}
+            <span
+              className="absolute -bottom-1 h-[2px] rounded-full bg-gold transition-all duration-300"
+              style={underlineStyle as React.CSSProperties}
+            />
+          </nav>
           <button
             onClick={onOpenContact}
             className="rounded-full bg-gold px-[22px] py-2.5 text-[13.5px] font-bold text-night transition-all hover:-translate-y-[2px] hover:shadow-[0_10px_28px_rgba(242,184,75,0.38)]"

@@ -113,7 +113,7 @@ export function LandingHero() {
         onOpenContact={() => setContactOpen(true)}
         onNavigate={scrollToFraction}
       />
-      <CursorGlow />
+      <CursorGlow tl={tl} />
 
       {/* Universe (fixed background) */}
       <div className="fixed inset-0 overflow-hidden" style={{ zIndex: Z.overlays }} aria-hidden="true">
