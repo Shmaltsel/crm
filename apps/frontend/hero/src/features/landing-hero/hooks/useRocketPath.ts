@@ -1,3 +1,4 @@
+import { useState, useEffect } from 'react'
 import { MotionValue, useTransform } from 'framer-motion'
 import { ROCKET_WAYPOINTS, type RocketWaypoint } from '../data/rocket'
 import { lerp } from '../lib/animation'
@@ -20,9 +21,25 @@ function interpolateWaypoints(progress: number, vw: number, vh: number): RocketW
   return { x, y, r: headingDeg }
 }
 
+function useViewportSize() {
+  const [size, setSize] = useState({ w: 0, h: 0 })
+  useEffect(() => {
+    const update = () => setSize({ w: window.innerWidth, h: window.innerHeight })
+    update()
+    window.addEventListener('resize', update)
+    window.addEventListener('orientationchange', update)
+    return () => {
+      window.removeEventListener('resize', update)
+      window.removeEventListener('orientationchange', update)
+    }
+  }, [])
+  return size
+}
+
 export function useRocketPath(progress: MotionValue<number>) {
-  const rx = useTransform(progress, (p) => interpolateWaypoints(p, window.innerWidth, window.innerHeight).x)
-  const ry = useTransform(progress, (p) => interpolateWaypoints(p, window.innerWidth, window.innerHeight).y)
-  const rr = useTransform(progress, (p) => interpolateWaypoints(p, window.innerWidth, window.innerHeight).r + 90)
+  const { w, h } = useViewportSize()
+  const rx = useTransform(progress, (p) => interpolateWaypoints(p, w || window.innerWidth, h || window.innerHeight).x)
+  const ry = useTransform(progress, (p) => interpolateWaypoints(p, w || window.innerWidth, h || window.innerHeight).y)
+  const rr = useTransform(progress, (p) => interpolateWaypoints(p, w || window.innerWidth, h || window.innerHeight).r + 90)
   return { rx, ry, rr }
 }

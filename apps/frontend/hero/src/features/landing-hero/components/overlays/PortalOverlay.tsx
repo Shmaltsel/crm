@@ -1,6 +1,7 @@
 import { MotionValue, useMotionValueEvent } from 'framer-motion'
 import { useState } from 'react'
 import { clamp } from '../../lib/animation'
+import { Z } from '../../lib/zIndex'
 
 interface Props {
   progress: MotionValue<number>
@@ -44,10 +45,11 @@ export function PortalOverlay({ progress, beatStrengths }: Props) {
 
   return (
     <svg
-      className="pointer-events-none fixed inset-0 h-full w-full z-[1]"
+      className="pointer-events-none fixed inset-0 h-full w-full"
       viewBox="0 0 100 100"
       preserveAspectRatio="xMidYMid slice"
       aria-hidden="true"
+      style={{ zIndex: Z.overlays }}
     >
       <defs>
         <radialGradient id="planet0" cx="38%" cy="35%">

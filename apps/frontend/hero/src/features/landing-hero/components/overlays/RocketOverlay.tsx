@@ -1,6 +1,7 @@
 import { MotionValue, useTransform, useMotionValueEvent, useVelocity } from 'framer-motion'
 import { useState, useRef, useCallback, useEffect } from 'react'
 import { useRocketPath } from '../../hooks/useRocketPath'
+import { useReducedMotion } from '../../hooks/useReducedMotion'
 import { clamp } from '../../lib/animation'
 
 interface Props {
@@ -19,14 +20,38 @@ interface Particle {
 
 const TRAIL_COLORS = ['#F2B84B', '#FF7A59', '#FBF5EA']
 
+function flamePath(base: string, scale: number): string {
+  const m = base.match(/M([\d.-]+),([\d.-]+)\s*C([\d.-]+),([\d.-]+)\s+([\d.-]+),([\d.-]+)\s+([\d.-]+),([\d.-]+)/)
+  if (!m) return base
+  const cx1 = parseFloat(m[3]) * scale
+  const cy1 = parseFloat(m[4]) * scale
+  const cx2 = parseFloat(m[5]) * scale
+  const cy2 = parseFloat(m[6]) * scale
+  const ex = parseFloat(m[7]) * scale
+  const ey = parseFloat(m[8]) * scale
+  return `M${m[1]},${m[2]} C${cx1},${cy1} ${cx2},${cy2} ${ex},${ey}`
+}
+
+function flameTipPath(base: string, scale: number): string {
+  const m = base.match(/M([\d.-]+),([\d.-]+)\s*L([\d.-]+),([\d.-]+)\s*L([\d.-]+),([\d.-]+)/)
+  if (!m) return base
+  return `M${m[1]},${m[2]} L${m[3]},${parseFloat(m[4]) * scale} L${m[5]},${parseFloat(m[6]) * scale}`
+}
+
+const FLAME_OUTER_BASE = 'M-8,55 C-4,72 4,72 8,55'
+const FLAME_INNER_BASE = 'M-5,55 C-2,68 2,68 5,55'
+const FLAME_TIP_BASE = 'M-2,55 L0,68 L2,55'
+
 export function RocketOverlay({ progress, finaleStrength }: Props) {
   const { rx, ry, rr } = useRocketPath(progress)
   const scrollVelocity = useVelocity(progress)
+  const reduced = useReducedMotion()
   const [pos, setPos] = useState({ x: 0, y: 0, r: -6 })
   const posRef = useRef(pos)
   const velocityRef = useRef(0)
   const [opacity, setOpacity] = useState(1)
   const [particles, setParticles] = useState<Particle[]>([])
+  const [flameScale, setFlameScale] = useState(1)
   const idRef = useRef(0)
 
   const finaleS = useTransform(finaleStrength, (s) => clamp(1 - s * 1.4, 0, 1))
@@ -64,21 +89,22 @@ export function RocketOverlay({ progress, finaleStrength }: Props) {
         last = now
         const boost = clamp(Math.abs(velocityRef.current) / 700, 0, 2.5)
         spawnTrail(posRef.current.x, posRef.current.y, posRef.current.r, boost)
+        if (!reduced) setFlameScale(1 + Math.sin(now / 90) * 0.12)
       }
       raf = requestAnimationFrame(loop)
     }
     raf = requestAnimationFrame(loop)
     return () => cancelAnimationFrame(raf)
-  }, [spawnTrail])
+  }, [spawnTrail, reduced])
 
   const now = performance.now()
 
   return (
     <>
       <svg
-        className="pointer-events-none fixed inset-0 z-[6]"
+        className="pointer-events-none fixed inset-0"
         aria-hidden="true"
-        style={{ width: '100vw', height: '100vh' }}
+        style={{ width: '100vw', height: '100vh', zIndex: 6 }}
       >
         {particles.map((p) => {
           const age = clamp((now - p.born) / 800, 0, 1)
@@ -98,7 +124,7 @@ export function RocketOverlay({ progress, finaleStrength }: Props) {
       </svg>
 
       <div
-        className="pointer-events-none fixed z-[6]"
+        className="pointer-events-none fixed"
         aria-hidden="true"
         style={{
           width: 100,
@@ -106,6 +132,7 @@ export function RocketOverlay({ progress, finaleStrength }: Props) {
           transform: `translate(${pos.x - 50}px, ${pos.y - 50}px) rotate(${pos.r}deg)`,
           opacity,
           willChange: 'transform',
+          zIndex: 6,
         }}
       >
         <svg viewBox="-50 -80 100 160" className="h-full w-full overflow-visible">
@@ -149,15 +176,9 @@ export function RocketOverlay({ progress, finaleStrength }: Props) {
             <path d="M-22,18 L-32,38" stroke="#FBF5EA" strokeWidth="1" opacity="0.5" />
             <path d="M22,18 L32,38" stroke="#FBF5EA" strokeWidth="1" opacity="0.5" />
 
-            <path d="M-8,55 C-4,72 4,72 8,55" fill="url(#flameOuter)" opacity="0.5">
-              <animate attributeName="d" values="M-8,55 C-4,72 4,72 8,55;M-6,55 C-2,78 2,78 6,55;M-8,55 C-4,72 4,72 8,55" dur="0.15s" repeatCount="indefinite" />
-            </path>
-            <path d="M-5,55 C-2,68 2,68 5,55" fill="url(#flameInner)" opacity="0.9">
-              <animate attributeName="d" values="M-5,55 C-2,68 2,68 5,55;M-4,55 C-1,74 1,74 4,55;M-5,55 C-2,68 2,68 5,55" dur="0.12s" repeatCount="indefinite" />
-            </path>
-            <path d="M-2,55 L0,68 L2,55" fill="#FBF5EA" opacity="0.7">
-              <animate attributeName="d" values="M-2,55 L0,68 L2,55;M-1,55 L0,74 L1,55;M-2,55 L0,68 L2,55" dur="0.1s" repeatCount="indefinite" />
-            </path>
+            <path d={flamePath(FLAME_OUTER_BASE, flameScale)} fill="url(#flameOuter)" opacity="0.5" />
+            <path d={flamePath(FLAME_INNER_BASE, flameScale)} fill="url(#flameInner)" opacity="0.9" />
+            <path d={flameTipPath(FLAME_TIP_BASE, flameScale)} fill="#FBF5EA" opacity="0.7" />
           </g>
         </svg>
       </div>

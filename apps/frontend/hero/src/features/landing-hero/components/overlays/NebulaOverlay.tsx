@@ -2,6 +2,7 @@ import { MotionValue, useMotionValueEvent } from 'framer-motion'
 import { useState } from 'react'
 import { NEBULA_STOPS } from '../../data/nebula'
 import { lerpColor } from '../../lib/colors'
+import { Z } from '../../lib/zIndex'
 
 function nebulaColorsAt(p: number): { c1: string; c2: string } {
   for (let k = 0; k < NEBULA_STOPS.length - 1; k++) {
@@ -31,7 +32,7 @@ export function NebulaOverlay({ progress }: Props) {
   })
 
   return (
-    <div className="pointer-events-none absolute -inset-[8%] z-[1]" aria-hidden="true">
+    <div className="pointer-events-none absolute -inset-[8%]" style={{ zIndex: Z.overlays }} aria-hidden="true">
       <div
         className="absolute inset-0 transition-[background] duration-700"
         style={{ background: bg }}

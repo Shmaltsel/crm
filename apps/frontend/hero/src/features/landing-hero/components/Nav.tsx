@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react'
+import { Z } from '../lib/zIndex'
 
 interface Props {
   onOpenContact: () => void
@@ -26,11 +27,12 @@ export function Nav({ onOpenContact, onNavigate }: Props) {
 
   return (
     <header
-      className={`fixed top-0 left-0 right-0 z-[300] transition-all duration-[400ms] ${
+      className={`fixed top-0 left-0 right-0 transition-all duration-[400ms] ${
         scrolled
           ? 'bg-night/72 py-3 backdrop-blur-[14px] border-b border-gold/12'
           : 'py-[18px]'
       }`}
+      style={{ zIndex: Z.nav }}
     >
       <div className="mx-auto flex max-w-[1180px] items-center justify-between px-7">
         <a href="#top" className="flex items-center gap-2.5 font-display text-[18px] font-semibold text-paper">

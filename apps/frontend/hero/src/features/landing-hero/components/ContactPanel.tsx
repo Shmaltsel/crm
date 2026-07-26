@@ -1,5 +1,6 @@
-import { useState } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
+import { Z } from '../lib/zIndex'
 
 interface Props {
   isOpen: boolean
@@ -15,6 +16,37 @@ interface FormData {
 export function ContactPanel({ isOpen, onClose }: Props) {
   const [form, setForm] = useState<FormData>({ name: '', contact: '', message: '' })
   const [status, setStatus] = useState<'idle' | 'loading' | 'success' | 'error'>('idle')
+  const panelRef = useRef<HTMLDivElement>(null)
+  const closeRef = useRef<HTMLButtonElement>(null)
+
+  useEffect(() => {
+    if (!isOpen) return
+    document.body.style.overflow = 'hidden'
+    closeRef.current?.focus()
+    return () => { document.body.style.overflow = '' }
+  }, [isOpen])
+
+  useEffect(() => {
+    if (!isOpen) return
+    const trap = (e: KeyboardEvent) => {
+      if (e.key !== 'Tab' || !panelRef.current) return
+      const focusable = panelRef.current.querySelectorAll<HTMLElement>(
+        'button, [href], input, textarea, select, [tabindex]:not([tabindex="-1"])',
+      )
+      if (focusable.length === 0) return
+      const first = focusable[0]
+      const last = focusable[focusable.length - 1]
+      if (e.shiftKey && document.activeElement === first) {
+        e.preventDefault()
+        last.focus()
+      } else if (!e.shiftKey && document.activeElement === last) {
+        e.preventDefault()
+        first.focus()
+      }
+    }
+    window.addEventListener('keydown', trap)
+    return () => window.removeEventListener('keydown', trap)
+  }, [isOpen])
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -38,13 +70,19 @@ export function ContactPanel({ isOpen, onClose }: Props) {
     <AnimatePresence>
       {isOpen && (
         <motion.div
+          ref={panelRef}
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="contact-title"
           initial={{ y: 340 }}
           animate={{ y: 0 }}
           exit={{ y: 340 }}
           transition={{ type: 'spring', damping: 25, stiffness: 200 }}
-          className="fixed bottom-0 left-1/2 z-[400] w-[min(500px,92vw)] -translate-x-1/2 rounded-t-[22px] border border-gold/28 bg-[rgba(18,23,48,0.94)] px-[34px] pb-9 pt-8 backdrop-blur-[18px] shadow-[0_-24px_70px_rgba(0,0,0,0.45)]"
+          className="fixed bottom-0 left-1/2 w-[min(500px,92vw)] -translate-x-1/2 rounded-t-[22px] border border-gold/28 bg-[rgba(18,23,48,0.94)] px-[34px] pb-9 pt-8 backdrop-blur-[18px] shadow-[0_-24px_70px_rgba(0,0,0,0.45)]"
+          style={{ zIndex: Z.contactPanel }}
         >
           <button
+            ref={closeRef}
             onClick={onClose}
             className="absolute right-4 top-3.5 border-none bg-transparent text-[22px] text-mist-soft transition-colors hover:text-gold"
             aria-label="Закрити"
@@ -52,7 +90,7 @@ export function ContactPanel({ isOpen, onClose }: Props) {
             &times;
           </button>
 
-          <h3 className="font-display text-[21px]">Запросити подію</h3>
+          <h3 id="contact-title" className="font-display text-[21px]">Запросити подію</h3>
 
           {status === 'success' ? (
             <p className="mt-4 text-[15px] text-mist">

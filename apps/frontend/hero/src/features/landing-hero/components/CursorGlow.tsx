@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react'
+import { Z } from '../lib/zIndex'
 
 export function CursorGlow() {
   const [pos, setPos] = useState({ x: 0, y: 0 })
@@ -20,9 +21,10 @@ export function CursorGlow() {
 
   return (
     <div
-      className="pointer-events-none fixed z-[5] h-[180px] w-[180px] -translate-x-1/2 -translate-y-1/2 rounded-full transition-opacity duration-400"
+      className="pointer-events-none fixed h-[180px] w-[180px] -translate-x-1/2 -translate-y-1/2 rounded-full transition-opacity duration-400"
       aria-hidden="true"
       style={{
+        zIndex: Z.cursorGlow,
         left: pos.x,
         top: pos.y,
         opacity: visible ? 1 : 0,

@@ -1,5 +1,6 @@
 import { MotionValue, useMotionValueEvent } from 'framer-motion'
 import { useState } from 'react'
+import { Z } from '../lib/zIndex'
 
 interface Props {
   progress: MotionValue<number>
@@ -23,8 +24,8 @@ export function ScrollHint({ progress, finaleStrength }: Props) {
 
   return (
     <div
-      className="pointer-events-none fixed bottom-7 left-1/2 z-[150] -translate-x-1/2 text-center"
-      style={{ opacity }}
+      className="pointer-events-none fixed bottom-7 left-1/2 -translate-x-1/2 text-center"
+      style={{ zIndex: Z.scrollHint, opacity }}
     >
       <div className="mx-auto mb-2 h-8 w-px bg-gradient-to-b from-gold to-transparent">
         <div className="h-full w-full origin-top" style={{ animation: 'cueMove 2.4s cubic-bezier(.22,1,.36,1) infinite' }} />
