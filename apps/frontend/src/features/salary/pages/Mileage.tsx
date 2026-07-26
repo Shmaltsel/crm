@@ -1,9 +1,10 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useMemo } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Car, Plus, Trash2, Fuel, Wrench } from "lucide-react";
 import { Button } from "../../../components/ui/Button";
 import { EmptyState } from "../../../components/ui/EmptyState";
 import { staggerContainer, staggerItem } from "../../../lib/motion";
+import { useAuth } from "../../../context/AuthContext";
 
 interface MileageRecord {
   id: string;
@@ -15,8 +16,6 @@ interface MileageRecord {
 
 const FUEL_RATE = 6;
 const DEPRECIATION_RATE = 4;
-const STORAGE_KEY = "mileage-records";
-
 
 const fmt = (n: number) => new Intl.NumberFormat("uk-UA").format(n);
 
@@ -25,26 +24,28 @@ function getTodayISO() {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
 }
 
-function loadRecords(): MileageRecord[] {
+function loadRecords(storageKey: string): MileageRecord[] {
   try {
-    return JSON.parse(localStorage.getItem(STORAGE_KEY) || "[]");
+    return JSON.parse(localStorage.getItem(storageKey) || "[]");
   } catch {
     return [];
   }
 }
 
-function saveRecords(records: MileageRecord[]) {
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(records));
+function saveRecords(storageKey: string, records: MileageRecord[]) {
+  localStorage.setItem(storageKey, JSON.stringify(records));
 }
 
 export default function Mileage() {
-  const [records, setRecords] = useState<MileageRecord[]>(loadRecords);
+  const { user } = useAuth();
+  const storageKey = useMemo(() => `mileage-records-${user?.id ?? "anon"}`, [user?.id]);
+  const [records, setRecords] = useState<MileageRecord[]>(() => loadRecords(storageKey));
   const [date, setDate] = useState(getTodayISO);
   const [km, setKm] = useState("");
 
   useEffect(() => {
-    saveRecords(records);
-  }, [records]);
+    saveRecords(storageKey, records);
+  }, [records, storageKey]);
 
   const kmNum = Math.max(0, Math.floor(Number(km) || 0));
   const fuel = kmNum * FUEL_RATE;
