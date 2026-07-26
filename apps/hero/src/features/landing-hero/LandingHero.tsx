@@ -1,6 +1,7 @@
 import { useCallback, useState } from 'react'
 import { useScrollStory } from './hooks/useScrollStory'
 import { useBeatStrengths } from './hooks/useBeatStrengths'
+import { useScrollSnap } from './hooks/useScrollSnap'
 import { clamp } from './lib/animation'
 
 import { Nav } from './components/Nav'
@@ -32,6 +33,8 @@ export function LandingHero() {
   const [contactOpen, setContactOpen] = useState(false)
 
   const beatStrengths = useBeatStrengths(scrollYProgress)
+
+  useScrollSnap(scrollYProgress, containerRef)
 
   const drawingStrength = beatStrengths[5] // World beat 02
   const finaleStrength = beatStrengths[12]
