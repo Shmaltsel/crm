@@ -70,11 +70,6 @@ a {
   50% { text-shadow: 0 0 35px rgba(255,122,89,0.7), 0 0 70px rgba(255,122,89,0.3); }
 }
 
-@keyframes irisOpen {
-  from { clip-path: circle(0% at 50% 50%); }
-  to { clip-path: circle(100% at 50% 50%); }
-}
-
 @keyframes jellyWobble {
   0% { transform: scale(1, 1); }
   25% { transform: scale(0.97, 1.03); }
@@ -108,10 +103,6 @@ a {
 .glow-word-coral {
   animation: glowCoral 3s ease-in-out infinite;
   color: var(--color-coral);
-}
-
-.iris-reveal {
-  animation: irisOpen 1.2s var(--ease-hero) 0.2s both;
 }
 
 .jelly-hover:hover {

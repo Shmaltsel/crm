@@ -1,4 +1,4 @@
-import { useCallback, useRef, useState } from 'react'
+import { useCallback, useState } from 'react'
 import { motion } from 'framer-motion'
 import { useScrollStory } from './hooks/useScrollStory'
 import { useMotionTimeline } from './hooks/useMotionTimeline'
@@ -18,11 +18,11 @@ import { ContactPanel } from './components/ContactPanel'
 import { FilmGrain } from './components/FilmGrain'
 
 import { NebulaOverlay } from './components/overlays/NebulaOverlay'
-import { StarField } from './components/overlays/StarField'
 import { RocketOverlay } from './components/overlays/RocketOverlay'
 import { PortalOverlay } from './components/overlays/PortalOverlay'
 import { GrassGround } from './components/overlays/GrassGround'
-import { CampfireSparks } from './components/overlays/CampfireSparks'
+import { GlobalAmbientCanvas } from './components/overlays/GlobalAmbientCanvas'
+import { AmbientCtx, useAmbientCommands } from './context/AmbientContext'
 
 import { HeroBeat } from './components/beats/HeroBeat'
 import { ManifestBeat } from './components/beats/ManifestBeat'
@@ -47,7 +47,8 @@ export function LandingHero() {
 
   useScrollSnap(smoothProgress, containerRef)
 
-  const drawingStrength = beatStrengths[5]
+  const { ref: ambientRef, setCommands } = useAmbientCommands()
+
   const finaleStrength = beatStrengths[12]
 
   const WARP_HALF = 250
@@ -78,69 +79,10 @@ export function LandingHero() {
     }, WARP_HALF)
   }, [containerRef, smoothProgress, startWarp, reduced])
 
-  const confettiLockRef = useRef(false)
-  const handleConfetti = useCallback((x: number, y: number) => {
-    if (confettiLockRef.current) return
-    confettiLockRef.current = true
-    setTimeout(() => { confettiLockRef.current = false }, 600)
-    const colors = ['#F2B84B', '#FF7A59', '#8FE3E0', '#FBF5EA', '#FF6EC7']
-    const GRAVITY = 0.35
-    const BOUNCE = 0.45
-    const FRICTION = 0.98
-    const FLOOR_Y = window.innerHeight - 20
-
-    for (let i = 0; i < 35; i++) {
-      const bit = document.createElement('div')
-      const isCircle = Math.random() > 0.6
-      const w = isCircle ? 6 : 5 + Math.random() * 5
-      const h = isCircle ? 6 : 8 + Math.random() * 6
-      bit.style.cssText = `position:fixed;width:${w}px;height:${h}px;z-index:${Z.confetti};pointer-events:none;border-radius:${isCircle ? '50%' : '1px'};left:0;top:0;background:${colors[Math.floor(Math.random() * colors.length)]}`
-      document.body.appendChild(bit)
-
-      const ang = Math.random() * Math.PI * 2
-      const speed = 6 + Math.random() * 10
-      let vx = Math.cos(ang) * speed
-      let vy = Math.sin(ang) * speed * 0.7 - 8
-      let px = x
-      let py = y
-      let rx = 0
-      let ry = 0
-      const vrx = (Math.random() - 0.5) * 18
-      const vry = (Math.random() - 0.5) * 14
-      let life = 0
-      const maxLife = 90 + Math.floor(Math.random() * 40)
-
-      const tick = () => {
-        life++
-        vy += GRAVITY
-        vx *= FRICTION
-        px += vx
-        py += vy
-        rx += vrx
-        ry += vry
-
-        if (py > FLOOR_Y) {
-          py = FLOOR_Y
-          vy = -vy * BOUNCE
-          vx *= 0.85
-        }
-
-        const fade = life > maxLife - 15 ? (maxLife - life) / 15 : 1
-        bit.style.transform = `translate(${px}px,${py}px) rotateX(${rx}deg) rotateY(${ry}deg)`
-        bit.style.opacity = String(Math.max(0, fade))
-
-        if (life < maxLife) {
-          requestAnimationFrame(tick)
-        } else {
-          bit.remove()
-        }
-      }
-      requestAnimationFrame(tick)
-    }
-  }, [])
+  const onIntroComplete = useCallback(() => {}, [])
 
   const beats: [MotionValue<number>, React.ReactNode][] = [
-    [beatStrengths[0], <HeroBeat key="hero" progress={smoothProgress} onOpenContact={() => setContactOpen(true)} />],
+    [beatStrengths[0], <HeroBeat key="hero" progress={smoothProgress} onOpenContact={() => setContactOpen(true)} onIntroComplete={onIntroComplete} />],
     [beatStrengths[1], <ManifestBeat key="manifest" progress={smoothProgress} />],
     [beatStrengths[2], <PillarsBeat key="pillars" progress={smoothProgress} />],
     ...[3, 4, 5, 6, 7].map((i) => [beatStrengths[i], <WorldBeat key={`world-${i}`} progress={smoothProgress} beatIndex={i} />] as [MotionValue<number>, React.ReactNode]),
@@ -148,11 +90,11 @@ export function LandingHero() {
     [beatStrengths[9], <GalleryBeat key="gallery" progress={smoothProgress} />],
     [beatStrengths[10], <TeamVoicesBeat key="team" progress={smoothProgress} />],
     [beatStrengths[11], <StatsBeat key="stats" progress={smoothProgress} />],
-    [beatStrengths[12], <FinaleBeat key="finale" progress={smoothProgress} onOpenContact={() => setContactOpen(true)} onConfetti={handleConfetti} />],
+    [beatStrengths[12], <FinaleBeat key="finale" progress={smoothProgress} onOpenContact={() => setContactOpen(true)} />],
   ]
 
   return (
-    <>
+    <AmbientCtx.Provider value={ambientRef.current}>
       <a
         href="#main"
         className={`fixed -left-[999px] top-0 bg-gold px-5 py-3 font-bold text-night focus:left-4 focus:top-4`}
@@ -179,10 +121,9 @@ export function LandingHero() {
       {/* Universe (fixed background) */}
       <div className="fixed inset-0 overflow-hidden" style={{ zIndex: Z.overlays }} aria-hidden="true">
         <NebulaOverlay tl={tl} subscribe={subscribe} progress={smoothProgress} />
-        <StarField tl={tl} />
+        <GlobalAmbientCanvas tl={tl} subscribe={subscribe} setCommands={setCommands} />
         <PortalOverlay tl={tl} subscribe={subscribe} progress={smoothProgress} />
         <GrassGround tl={tl} subscribe={subscribe} />
-        <CampfireSparks subscribe={subscribe} tl={tl} />
         <RocketOverlay tl={tl} progress={smoothProgress} subscribe={subscribe} />
         <motion.div
           className="pointer-events-none fixed inset-0 bg-night"
@@ -208,6 +149,6 @@ export function LandingHero() {
       <SoundToggle />
       <ContactPanel isOpen={contactOpen} onClose={() => setContactOpen(false)} />
       <FilmGrain />
-    </>
+    </AmbientCtx.Provider>
   )
 }
