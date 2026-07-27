@@ -82,7 +82,7 @@ export function StarField({ tl }: Props) {
     }
   }, [reduced])
 
-  const warpScaleY = tl.isWarping ? 1 + tl.warpStrength * 4 : 1
+  const warpScale = tl.isWarping ? 1 + tl.warpStrength * 2 : 1
 
   return (
     <svg
@@ -91,9 +91,10 @@ export function StarField({ tl }: Props) {
       preserveAspectRatio="xMidYMid slice"
       aria-hidden="true"
       style={{
-        transform: `scaleY(${warpScaleY})`,
+        transform: `scale(${warpScale})`,
         transformOrigin: '50% 50%',
-        transition: tl.isWarping ? 'none' : 'transform 0.3s ease-out',
+        transition: tl.isWarping ? 'none' : 'transform 0.5s ease-out',
+        zIndex: 0,
       }}
     >
       <g>

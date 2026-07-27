@@ -140,8 +140,9 @@ export function useMotionTimeline(
         const elapsed = now - warp.startTime
         const progress01 = clamp(elapsed / WARP_DURATION_MS, 0, 1)
         t.warpStrength = progress01 < 0.5
-          ? progress01 * 2
-          : 2 - progress01 * 2
+          ? 2 * progress01 * progress01
+          : 1 - Math.pow(-2 * progress01 + 2, 2) / 2
+
         t.progress = warp.frozenProgress
 
         for (let i = 0; i < TOTAL_BEATS; i++) {

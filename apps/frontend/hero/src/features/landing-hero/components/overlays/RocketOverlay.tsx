@@ -116,7 +116,6 @@ export function RocketOverlay({ tl, progress, subscribe }: Props) {
 
   const ws = t.isWarping ? t.warpStrength : 0
   const flashOpacity = Math.pow(ws, 4)
-  const rocketStretch = 1 + ws * 10
 
   return (
     <>
@@ -147,7 +146,7 @@ export function RocketOverlay({ tl, progress, subscribe }: Props) {
         style={{
           width: 100,
           height: 100,
-          transform: `translate(${camX - 50}px, ${camY - 50}px) rotate(${rocket.heading}deg) scale(${t.camera.zoom}) scaleY(${rocketStretch})`,
+          transform: `translate(${camX - 50}px, ${camY - 50}px) rotate(${rocket.heading}deg) scale(${t.camera.zoom})`,
           opacity,
           willChange: 'transform',
           zIndex: Z.rocket,
@@ -209,10 +208,16 @@ export function RocketOverlay({ tl, progress, subscribe }: Props) {
       </div>
 
       {t.isWarping && (
-        <div className="pointer-events-none fixed inset-0 flex items-center justify-center" style={{ zIndex: Z.rocket + 10 }}>
-          <div className="absolute left-[35%] h-[200vh] w-px bg-teal/60" style={{ transform: `scaleY(${ws * 5})`, opacity: ws }} />
-          <div className="absolute right-[35%] h-[200vh] w-[2px] bg-gold/60" style={{ transform: `scaleY(${ws * 8})`, opacity: ws }} />
-          <div className="absolute inset-0 bg-paper transition-opacity" style={{ opacity: flashOpacity }} />
+        <div className="pointer-events-none fixed inset-0 flex items-center justify-center overflow-hidden" style={{ zIndex: Z.rocket + 10 }}>
+          <div
+            className="absolute inset-0"
+            style={{
+              background: `radial-gradient(circle at center, transparent 20%, rgba(255,255,255,${ws * 0.8}) 80%, rgba(143,227,224,${ws}) 100%)`,
+              transform: `scale(${1 + ws * 3})`,
+              opacity: Math.min(ws * 2, 1),
+            }}
+          />
+          <div className="absolute inset-0 bg-white mix-blend-overlay transition-opacity" style={{ opacity: flashOpacity }} />
         </div>
       )}
     </>

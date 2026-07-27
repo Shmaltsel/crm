@@ -39,6 +39,8 @@ export function Nav({ onOpenContact, onNavigate, progress }: Props) {
   const linkRefs = useRef<(HTMLAnchorElement | null)[]>([])
 
   useEffect(() => {
+    let scrollTimer: ReturnType<typeof setTimeout>
+
     const handler = () => {
       const y = window.scrollY
       setScrolled(y > 40)
@@ -47,18 +49,24 @@ export function Nav({ onOpenContact, onNavigate, progress }: Props) {
         setHidden(false)
       } else {
         const delta = y - lastScrollY.current
-        if (delta > 8) {
+        if (delta > 15) {
           setHidden(true)
-        } else if (delta < -8) {
+        } else if (delta < -15) {
           setHidden(false)
         }
       }
-
       lastScrollY.current = y
+
+      clearTimeout(scrollTimer)
+      scrollTimer = setTimeout(() => setHidden(false), 1000)
     }
+
     window.addEventListener('scroll', handler, { passive: true })
     handler()
-    return () => window.removeEventListener('scroll', handler)
+    return () => {
+      window.removeEventListener('scroll', handler)
+      clearTimeout(scrollTimer)
+    }
   }, [])
 
   useMotionValueEvent(progress, 'change', (p) => {
