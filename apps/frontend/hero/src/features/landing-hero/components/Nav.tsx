@@ -42,11 +42,18 @@ export function Nav({ onOpenContact, onNavigate, progress }: Props) {
     const handler = () => {
       const y = window.scrollY
       setScrolled(y > 40)
-      if (y > 200) {
-        setHidden(y > lastScrollY.current && y - lastScrollY.current > 8)
-      } else {
+
+      if (y < 200) {
         setHidden(false)
+      } else {
+        const delta = y - lastScrollY.current
+        if (delta > 8) {
+          setHidden(true)
+        } else if (delta < -8) {
+          setHidden(false)
+        }
       }
+
       lastScrollY.current = y
     }
     window.addEventListener('scroll', handler, { passive: true })
