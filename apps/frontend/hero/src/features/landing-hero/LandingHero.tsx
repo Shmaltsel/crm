@@ -4,6 +4,7 @@ import { useMotionTimeline } from './hooks/useMotionTimeline'
 import { useBeatStrengths } from './hooks/useBeatStrengths'
 import { useSmoothProgress } from './hooks/useSmoothProgress'
 import { useScrollSnap } from './hooks/useScrollSnap'
+import { useReducedMotion } from './hooks/useReducedMotion'
 import { clamp, tweenScrollTo } from './lib/animation'
 import { Z } from './lib/zIndex'
 
@@ -35,25 +36,46 @@ import { BeatWrapper } from './components/BeatWrapper'
 import type { MotionValue } from 'framer-motion'
 
 export function LandingHero() {
-  const { containerRef } = useScrollStory()
-  const smoothProgress = useSmoothProgress()
-  const { tl, subscribe } = useMotionTimeline(smoothProgress)
+  const { containerRef, scrollYProgress } = useScrollStory()
+  const smoothProgress = useSmoothProgress(scrollYProgress)
+  const { tl, subscribe, startWarp } = useMotionTimeline(smoothProgress)
   const [contactOpen, setContactOpen] = useState(false)
 
   const beatStrengths = useBeatStrengths(smoothProgress)
+  const reduced = useReducedMotion()
 
   useScrollSnap(smoothProgress, containerRef)
 
   const drawingStrength = beatStrengths[5]
   const finaleStrength = beatStrengths[12]
 
+  const WARP_HALF = 250
+
   const scrollToFraction = useCallback((frac: number) => {
     const track = containerRef.current
     if (!track) return
     const total = Math.max(1, track.scrollHeight - window.innerHeight)
     const target = clamp(frac, 0, 1) * total
-    tweenScrollTo(target)
-  }, [containerRef])
+    const currentProgress = clamp(smoothProgress.get(), 0, 1)
+    const fromBeat = Math.floor(currentProgress * 13)
+    const toBeat = Math.floor(frac * 13)
+    const distance = Math.abs(toBeat - fromBeat)
+
+    if (distance <= 1) {
+      tweenScrollTo(target)
+      return
+    }
+
+    if (reduced) {
+      window.scrollTo(0, target)
+      return
+    }
+
+    startWarp(currentProgress)
+    setTimeout(() => {
+      window.scrollTo(0, target)
+    }, WARP_HALF)
+  }, [containerRef, smoothProgress, startWarp, reduced])
 
   const confettiLockRef = useRef(false)
   const handleConfetti = useCallback((x: number, y: number) => {
@@ -149,13 +171,14 @@ export function LandingHero() {
       <Nav
         onOpenContact={() => setContactOpen(true)}
         onNavigate={scrollToFraction}
+        progress={smoothProgress}
       />
       <CursorGlow tl={tl} />
 
       {/* Universe (fixed background) */}
       <div className="fixed inset-0 overflow-hidden" style={{ zIndex: Z.overlays }} aria-hidden="true">
         <NebulaOverlay tl={tl} subscribe={subscribe} progress={smoothProgress} />
-        <StarField />
+        <StarField tl={tl} />
         <PortalOverlay tl={tl} subscribe={subscribe} progress={smoothProgress} />
         <GrassGround tl={tl} subscribe={subscribe} />
         <RocketOverlay tl={tl} progress={smoothProgress} subscribe={subscribe} />

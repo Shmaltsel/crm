@@ -6,7 +6,8 @@
   "scripts": {
     "dev": "vite",
     "build": "vite build",
-    "lint": "oxlint"
+    "lint": "oxlint",
+    "bundle": "node ../../bundle-hero.js"
   },
   "dependencies": {
     "@tailwindcss/vite": "^4.3.3",

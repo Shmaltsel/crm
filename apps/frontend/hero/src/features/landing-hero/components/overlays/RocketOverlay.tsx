@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { clamp, lerp } from '../../lib/animation'
+import { Z } from '../../lib/zIndex'
 import { useReducedMotion } from '../../hooks/useReducedMotion'
 import type { Timeline } from '../../types/timeline'
 import type { MotionValue } from 'framer-motion'
@@ -29,13 +30,19 @@ function interpolateRocket(progress: number, vw: number, vh: number) {
 function flamePath(base: string, scale: number): string {
   const m = base.match(/M([\d.-]+),([\d.-]+)\s*C([\d.-]+),([\d.-]+)\s+([\d.-]+),([\d.-]+)\s+([\d.-]+),([\d.-]+)/)
   if (!m) return base
-  return `M${m[1]},${m[2]} C${parseFloat(m[3]) * scale},${parseFloat(m[4]) * scale} ${parseFloat(m[5]) * scale},${parseFloat(m[6]) * scale} ${parseFloat(m[7]) * scale},${parseFloat(m[8]) * scale}`
+  const bx = parseFloat(m[1])
+  const by = parseFloat(m[2])
+  const s = (x: number, y: number) => `${bx + (x - bx) * scale},${by + (y - by) * scale}`
+  return `M${m[1]},${m[2]} C${s(parseFloat(m[3]), parseFloat(m[4]))} ${s(parseFloat(m[5]), parseFloat(m[6]))} ${s(parseFloat(m[7]), parseFloat(m[8]))}`
 }
 
 function flameTipPath(base: string, scale: number): string {
   const m = base.match(/M([\d.-]+),([\d.-]+)\s*L([\d.-]+),([\d.-]+)\s*L([\d.-]+),([\d.-]+)/)
   if (!m) return base
-  return `M${m[1]},${m[2]} L${m[3]},${parseFloat(m[4]) * scale} L${m[5]},${parseFloat(m[6]) * scale}`
+  const bx = parseFloat(m[1])
+  const by = parseFloat(m[2])
+  const s = (x: number, y: number) => `${bx + (x - bx) * scale},${by + (y - by) * scale}`
+  return `M${m[1]},${m[2]} L${s(parseFloat(m[3]), parseFloat(m[4]))} L${s(parseFloat(m[5]), parseFloat(m[6]))}`
 }
 
 const FLAME_OUTER = 'M-8,55 C-4,72 4,72 8,55'
@@ -68,12 +75,66 @@ export function RocketOverlay({ tl, progress, subscribe }: Props) {
 
   const now = t.elapsed
 
+  if (t.isWarping) {
+    const ws = t.warpStrength
+    return (
+      <>
+        <svg
+          className="pointer-events-none fixed inset-0"
+          aria-hidden="true"
+          style={{ width: '100vw', height: '100vh', zIndex: Z.rocket }}
+        >
+          {t.trailParticles.map((p) => {
+            const age = clamp((now - p.born) / 800, 0, 1)
+            const fade = 1 - age * age
+            return (
+              <circle
+                key={p.id}
+                cx={p.x}
+                cy={p.y}
+                r={p.r * (1 - age * 0.6)}
+                fill={p.color}
+                opacity={p.opacity * fade * (1 - ws)}
+              />
+            )
+          })}
+        </svg>
+
+        <div
+          className="pointer-events-none fixed left-1/2 top-0 -translate-x-1/2"
+          aria-hidden="true"
+          style={{
+            width: 60,
+            height: '100vh',
+            background: 'linear-gradient(to bottom, transparent 0%, #F2B84B 20%, #FF7A59 50%, #FF4020 80%, transparent 100%)',
+            opacity: ws * 0.7,
+            filter: `blur(${8 - ws * 4}px)`,
+            zIndex: Z.rocket,
+          }}
+        />
+
+        <div
+          className="pointer-events-none fixed left-1/2 top-0 -translate-x-1/2"
+          aria-hidden="true"
+          style={{
+            width: 100,
+            height: '100vh',
+            background: 'linear-gradient(to bottom, transparent 0%, #FF7A5940 30%, #FF402020 70%, transparent 100%)',
+            opacity: ws * 0.5,
+            filter: 'blur(20px)',
+            zIndex: Z.rocket,
+          }}
+        />
+      </>
+    )
+  }
+
   return (
     <>
       <svg
         className="pointer-events-none fixed inset-0"
         aria-hidden="true"
-        style={{ width: '100vw', height: '100vh', zIndex: 6 }}
+        style={{ width: '100vw', height: '100vh', zIndex: Z.rocket }}
       >
         {t.trailParticles.map((p) => {
           const age = clamp((now - p.born) / 800, 0, 1)
@@ -100,7 +161,7 @@ export function RocketOverlay({ tl, progress, subscribe }: Props) {
           transform: `translate(${camX - 50}px, ${camY - 50}px) rotate(${rocket.heading}deg) scale(${t.camera.zoom})`,
           opacity,
           willChange: 'transform',
-          zIndex: 6,
+          zIndex: Z.rocket,
         }}
       >
         <svg viewBox="-50 -80 100 160" className="h-full w-full overflow-visible">

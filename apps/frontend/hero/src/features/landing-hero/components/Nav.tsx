@@ -1,9 +1,12 @@
 import { useState, useEffect, useRef } from 'react'
+import { useMotionValueEvent } from 'framer-motion'
 import { Z } from '../lib/zIndex'
+import type { MotionValue } from 'framer-motion'
 
 interface Props {
   onOpenContact: () => void
   onNavigate: (fraction: number) => void
+  progress: MotionValue<number>
 }
 
 const NAV_LINKS = [
@@ -27,7 +30,7 @@ function getActiveIndex(progress: number): number {
   return best
 }
 
-export function Nav({ onOpenContact, onNavigate }: Props) {
+export function Nav({ onOpenContact, onNavigate, progress }: Props) {
   const [scrolled, setScrolled] = useState(false)
   const [mobileOpen, setMobileOpen] = useState(false)
   const [activeIdx, setActiveIdx] = useState(0)
@@ -39,11 +42,6 @@ export function Nav({ onOpenContact, onNavigate }: Props) {
     const handler = () => {
       const y = window.scrollY
       setScrolled(y > 40)
-
-      const total = Math.max(1, document.documentElement.scrollHeight - window.innerHeight)
-      const progress = y / total
-      setActiveIdx(getActiveIndex(progress))
-
       if (y > 200) {
         setHidden(y > lastScrollY.current && y - lastScrollY.current > 8)
       } else {
@@ -56,7 +54,10 @@ export function Nav({ onOpenContact, onNavigate }: Props) {
     return () => window.removeEventListener('scroll', handler)
   }, [])
 
-  const activeLink = NAV_LINKS[activeIdx]
+  useMotionValueEvent(progress, 'change', (p) => {
+    setActiveIdx(getActiveIndex(p))
+  })
+
   const activeEl = linkRefs.current[activeIdx]
   const underlineStyle = activeEl
     ? {
@@ -83,7 +84,7 @@ export function Nav({ onOpenContact, onNavigate }: Props) {
 
         {/* Desktop nav */}
         <div className="hidden items-center gap-7 md:flex">
-          <nav className="relative">
+          <nav className="relative flex items-center gap-6">
             {NAV_LINKS.map((link, i) => (
               <a
                 key={link.label}

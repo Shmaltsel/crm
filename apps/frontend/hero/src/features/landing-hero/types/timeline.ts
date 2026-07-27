@@ -54,4 +54,6 @@ export interface Timeline {
   parallax: ParallaxLayer[]
   trailParticles: TrailParticle[]
   ambientParticles: TrailParticle[]
+  isWarping: boolean
+  warpStrength: number
 }

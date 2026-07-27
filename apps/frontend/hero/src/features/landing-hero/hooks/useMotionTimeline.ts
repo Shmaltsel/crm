@@ -8,6 +8,7 @@ const DAMPING = 0.08
 const SPRING_K = 0.012
 const TRAIL_COLORS = ['#F2B84B', '#FF7A59', '#FBF5EA']
 const AMBIENT_COLORS = ['#F2B84B', '#8FE3E0', '#FF7A59', '#FBF5EA']
+const WARP_DURATION_MS = 500
 
 let nextParticleId = 0
 
@@ -55,10 +56,17 @@ const NEBULA_SCENE_COLORS: [number, number, number][] = [
 ]
 
 type SubscribeFn = (cb: () => void) => () => void
+type StartWarpFn = (fromProgress: number) => void
+
+interface WarpState {
+  active: boolean
+  startTime: number
+  frozenProgress: number
+}
 
 export function useMotionTimeline(
   smoothProgress: MotionValue<number>,
-): { tl: Timeline; subscribe: SubscribeFn } {
+): { tl: Timeline; subscribe: SubscribeFn; startWarp: StartWarpFn } {
   const tl = useRef<Timeline>({
     progress: 0, dt: 0, elapsed: 0,
     velocity: 0, acceleration: 0, direction: 0, isScrolling: false,
@@ -70,6 +78,8 @@ export function useMotionTimeline(
     parallax: Array.from({ length: 8 }, () => ({ x: 0, y: 0 })),
     trailParticles: [],
     ambientParticles: [],
+    isWarping: false,
+    warpStrength: 0,
   })
 
   const scrollRef = useRef({ y: 0, lastY: 0, velocitySmooth: 0 })
@@ -77,10 +87,24 @@ export function useMotionTimeline(
   const shakeAccum = useRef(0)
   const idRef = useRef(0)
   const subscribersRef = useRef<Set<() => void>>(new Set())
+  const warpRef = useRef<WarpState>({ active: false, startTime: 0, frozenProgress: 0 })
 
   const subscribe: SubscribeFn = useCallback((cb: () => void) => {
     subscribersRef.current.add(cb)
     return () => { subscribersRef.current.delete(cb) }
+  }, [])
+
+  const startWarp: StartWarpFn = useCallback((fromProgress: number) => {
+    warpRef.current = {
+      active: true,
+      startTime: performance.now(),
+      frozenProgress: fromProgress,
+    }
+    tl.current.isWarping = true
+    tl.current.progress = fromProgress
+    for (let i = 0; i < TOTAL_BEATS; i++) {
+      tl.current.beatStrengths[i] = computeBeatStrength(fromProgress, i)
+    }
   }, [])
 
   const syncViewport = useCallback(() => {
@@ -111,22 +135,42 @@ export function useMotionTimeline(
       t.dt = dt
       t.elapsed = now
 
-      const rawProgress = smoothProgress.get()
-      t.progress = clamp(rawProgress, 0, 1)
+      const warp = warpRef.current
+      if (warp.active) {
+        const elapsed = now - warp.startTime
+        const progress01 = clamp(elapsed / WARP_DURATION_MS, 0, 1)
+        t.warpStrength = progress01 < 0.5
+          ? progress01 * 2
+          : 2 - progress01 * 2
+        t.progress = warp.frozenProgress
 
-      const scroll = scrollRef.current
-      scroll.y = window.scrollY
-      const rawVelocity = (scroll.y - scroll.lastY) / Math.max(dt, 0.001)
-      scroll.velocitySmooth = lerp(scroll.velocitySmooth, rawVelocity, clamp(dt * 12, 0, 1))
-      scroll.lastY = scroll.y
+        for (let i = 0; i < TOTAL_BEATS; i++) {
+          t.beatStrengths[i] = computeBeatStrength(warp.frozenProgress, i)
+        }
 
-      t.velocity = clamp(scroll.velocitySmooth, -3000, 3000)
-      t.acceleration = (t.velocity - scroll.velocitySmooth) * 3
-      t.direction = t.velocity > 50 ? 1 : t.velocity < -50 ? -1 : 0
-      t.isScrolling = Math.abs(t.velocity) > 30
+        if (progress01 >= 1) {
+          warp.active = false
+          t.isWarping = false
+          t.warpStrength = 0
+        }
+      } else {
+        const rawProgress = smoothProgress.get()
+        t.progress = clamp(rawProgress, 0, 1)
 
-      for (let i = 0; i < TOTAL_BEATS; i++) {
-        t.beatStrengths[i] = computeBeatStrength(t.progress, i)
+        const scroll = scrollRef.current
+        scroll.y = window.scrollY
+        const rawVelocity = (scroll.y - scroll.lastY) / Math.max(dt, 0.001)
+        scroll.velocitySmooth = lerp(scroll.velocitySmooth, rawVelocity, clamp(dt * 12, 0, 1))
+        scroll.lastY = scroll.y
+
+        t.velocity = clamp(scroll.velocitySmooth, -3000, 3000)
+        t.acceleration = (t.velocity - scroll.velocitySmooth) * 3
+        t.direction = t.velocity > 50 ? 1 : t.velocity < -50 ? -1 : 0
+        t.isScrolling = Math.abs(t.velocity) > 30
+
+        for (let i = 0; i < TOTAL_BEATS; i++) {
+          t.beatStrengths[i] = computeBeatStrength(t.progress, i)
+        }
       }
 
       const speedFactor = clamp(Math.abs(t.velocity) / 2000, 0, 1)
@@ -141,7 +185,7 @@ export function useMotionTimeline(
       t.camera.tiltY = lerp(t.camera.tiltY, cameraTarget.current.tiltY, SPRING_K)
       t.camera.zoom = lerp(t.camera.zoom, 1 - speedFactor * 0.015, DAMPING)
 
-      if (t.isScrolling) {
+      if (t.isScrolling && !t.isWarping) {
         shakeAccum.current += dt * (8 + speedFactor * 15)
         t.camera.shakeX = Math.sin(shakeAccum.current * 1.1) * speedFactor * 0.4
         t.camera.shakeY = Math.cos(shakeAccum.current * 1.7) * speedFactor * 0.3
@@ -179,7 +223,7 @@ export function useMotionTimeline(
         p.opacity = Math.sin(age * Math.PI) * 0.15
       }
 
-      if (t.isScrolling && Math.abs(t.velocity) > 150 && t.trailParticles.length < 60) {
+      if (t.isScrolling && Math.abs(t.velocity) > 150 && t.trailParticles.length < 60 && !t.isWarping) {
         const rocketBeatIdx = Math.floor(t.progress * 12.99)
         const rocketBeat = t.beatStrengths[clamp(rocketBeatIdx, 0, 12)]
         if (rocketBeat > 0.05) {
@@ -249,5 +293,5 @@ export function useMotionTimeline(
     return () => cancelAnimationFrame(raf)
   }, [subscribe, smoothProgress])
 
-  return { tl: tl.current, subscribe }
+  return { tl: tl.current, subscribe, startWarp }
 }

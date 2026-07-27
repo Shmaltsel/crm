@@ -1,5 +1,10 @@
 import { useMemo, useState, useEffect, useRef } from 'react'
 import { useReducedMotion } from '../../hooks/useReducedMotion'
+import type { Timeline } from '../../types/timeline'
+
+interface Props {
+  tl: Timeline
+}
 
 interface Star {
   cx: number
@@ -54,7 +59,7 @@ function createShootingStar(id: number): ShootingStar {
   }
 }
 
-export function StarField() {
+export function StarField({ tl }: Props) {
   const reduced = useReducedMotion()
   const stars = useMemo(() => generateStars(70), [])
   const [shootingStars, setShootingStars] = useState<ShootingStar[]>([])
@@ -77,12 +82,19 @@ export function StarField() {
     }
   }, [reduced])
 
+  const warpScaleY = tl.isWarping ? 1 + tl.warpStrength * 4 : 1
+
   return (
     <svg
       className="absolute inset-0 h-full w-full"
       viewBox="0 0 1600 900"
       preserveAspectRatio="xMidYMid slice"
       aria-hidden="true"
+      style={{
+        transform: `scaleY(${warpScaleY})`,
+        transformOrigin: '50% 50%',
+        transition: tl.isWarping ? 'none' : 'transform 0.3s ease-out',
+      }}
     >
       <g>
         {stars.map((star, i) => (
