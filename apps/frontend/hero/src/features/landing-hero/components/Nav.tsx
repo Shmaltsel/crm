@@ -36,6 +36,7 @@ export function Nav({ onOpenContact, onNavigate, progress }: Props) {
   const [activeIdx, setActiveIdx] = useState(0)
   const [hidden, setHidden] = useState(false)
   const lastScrollY = useRef(0)
+  const navLock = useRef(false)
   const linkRefs = useRef<(HTMLAnchorElement | null)[]>([])
 
   useEffect(() => {
@@ -44,6 +45,11 @@ export function Nav({ onOpenContact, onNavigate, progress }: Props) {
     const handler = () => {
       const y = window.scrollY
       setScrolled(y > 40)
+
+      if (navLock.current) {
+        lastScrollY.current = y
+        return
+      }
 
       if (y < 200) {
         setHidden(false)
@@ -82,6 +88,12 @@ export function Nav({ onOpenContact, onNavigate, progress }: Props) {
       }
     : { left: 0, width: 0, opacity: 0 }
 
+  const handleNavClick = (fraction: number) => {
+    navLock.current = true
+    setTimeout(() => { navLock.current = false }, 1200)
+    onNavigate(fraction)
+  }
+
   return (
     <header
       className={`fixed top-0 left-0 right-0 transition-all duration-[400ms] ${
@@ -97,7 +109,6 @@ export function Nav({ onOpenContact, onNavigate, progress }: Props) {
           Світло Знань
         </a>
 
-        {/* Desktop nav */}
         <div className="hidden items-center gap-7 md:flex">
           <nav className="relative flex items-center gap-6">
             {NAV_LINKS.map((link, i) => (
@@ -107,7 +118,7 @@ export function Nav({ onOpenContact, onNavigate, progress }: Props) {
                 href="#"
                 onClick={(e) => {
                   e.preventDefault()
-                  onNavigate(link.fraction)
+                  handleNavClick(link.fraction)
                 }}
                 className={`text-[13.5px] font-medium transition-colors hover:text-gold ${
                   i === activeIdx ? 'text-gold' : 'text-mist'
@@ -129,7 +140,6 @@ export function Nav({ onOpenContact, onNavigate, progress }: Props) {
           </button>
         </div>
 
-        {/* Mobile burger */}
         <button
           className="flex flex-col gap-1.5 md:hidden"
           onClick={() => setMobileOpen(!mobileOpen)}
@@ -142,7 +152,6 @@ export function Nav({ onOpenContact, onNavigate, progress }: Props) {
         </button>
       </div>
 
-      {/* Mobile menu */}
       {mobileOpen && (
         <div className="absolute top-full left-0 right-0 border-t border-gold/12 bg-night/95 backdrop-blur-[14px] md:hidden">
           <div className="flex flex-col items-center gap-5 py-6">
@@ -152,7 +161,7 @@ export function Nav({ onOpenContact, onNavigate, progress }: Props) {
                 href="#"
                 onClick={(e) => {
                   e.preventDefault()
-                  onNavigate(link.fraction)
+                  handleNavClick(link.fraction)
                   setMobileOpen(false)
                 }}
                 className="text-[15px] font-medium text-mist transition-colors hover:text-gold"

@@ -47,14 +47,13 @@ function VideoMedia({ src, className }: { src: string; className: string }) {
     if (!el) return
     const observer = new IntersectionObserver(
       ([entry]) => { if (entry.isIntersecting) setInView(true) },
-      { rootMargin: '200px' },
+      { rootMargin: '400px' },
     )
     observer.observe(el)
     return () => observer.disconnect()
   }, [])
 
   const onCanPlay = useCallback(() => setReady(true), [])
-
   const onError = useCallback(() => {
     setFailed(true)
     console.error('[VideoMedia] failed to load:', src)
@@ -62,15 +61,10 @@ function VideoMedia({ src, className }: { src: string; className: string }) {
 
   useEffect(() => {
     const v = videoRef.current
-    if (!v || !inView) return
-    v.addEventListener('loadeddata', onCanPlay)
-    v.addEventListener('error', onError)
-    v.load()
-    return () => {
-      v.removeEventListener('loadeddata', onCanPlay)
-      v.removeEventListener('error', onError)
+    if (v && v.readyState >= 2) {
+      setReady(true)
     }
-  }, [src, inView, onCanPlay, onError])
+  }, [inView])
 
   return (
     <div ref={containerRef} className={`relative overflow-hidden rounded-2xl bg-night ${className}`}>
@@ -83,11 +77,13 @@ function VideoMedia({ src, className }: { src: string; className: string }) {
           autoPlay
           playsInline
           preload="metadata"
-          className={`h-full w-full object-cover transition-opacity duration-500 ${ready ? 'opacity-100' : 'opacity-0'}`}
+          onLoadedData={onCanPlay}
+          onError={onError}
+          className={`h-full w-full object-cover transition-opacity duration-700 ${ready ? 'opacity-100' : 'opacity-0'}`}
         />
       )}
       {(!ready && !failed) && (
-        <div className="absolute inset-0 flex items-center justify-center">
+        <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
           <PlaceholderIcon />
         </div>
       )}
