@@ -1,6 +1,6 @@
 # @svitlo/hero — Project Bundle
 
-**Generated:** 2026-07-27T23:15:01.127Z
+**Generated:** 2026-07-27T23:40:07.077Z
 
 ## Project Tree
 
@@ -473,7 +473,8 @@ function GalCard({
 
 ### `src/features/landing-hero/components/beats/HeroBeat.tsx`
 ```typescript
-import { motion } from 'framer-motion'
+import { useState } from 'react'
+import { motion, useMotionValueEvent } from 'framer-motion'
 import { useBeatStrength } from '../../hooks/useBeatStrength'
 import type { MotionValue } from 'framer-motion'
 
@@ -484,13 +485,15 @@ interface Props {
 
 export function HeroBeat({ progress, onOpenContact }: Props) {
   const strength = useBeatStrength(progress, 0)
+  const [visible, setVisible] = useState(true)
+  useMotionValueEvent(strength, 'change', (s) => setVisible(s > 0.005))
 
   return (
     <motion.div
       role="region"
       aria-label="Головна секція"
       className="absolute inset-0 flex flex-col items-center justify-center px-6 text-center"
-      style={{ opacity: strength }}
+      style={{ opacity: strength, visibility: visible ? 'visible' : 'hidden' }}
     >
       <div className="max-w-[680px]">
         <h1 className="text-[clamp(42px,7.2vw,86px)] leading-[1.02] text-paper">
@@ -4547,4 +4550,4 @@ createRoot(document.getElementById('root')!).render(
 
 ---
 
-**Files:** 63 | **Lines:** 4,099
+**Files:** 63 | **Lines:** 4,102
