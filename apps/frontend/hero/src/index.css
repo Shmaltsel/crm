@@ -220,6 +220,19 @@ a {
   100% { stroke-dashoffset: 0; opacity: 0; }
 }
 
+.heat-haze { filter: url(#heat); }
+
+.pulse-line {
+  background: linear-gradient(90deg, transparent, rgba(242,184,75,0.8), transparent);
+  background-size: 200% 100%;
+  animation: energyPulse 3s linear infinite;
+}
+
+@keyframes energyPulse {
+  0% { background-position: 100% 0; }
+  100% { background-position: -100% 0; }
+}
+
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after {
     animation-duration: .01ms !important;

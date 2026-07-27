@@ -111,7 +111,7 @@ export function RocketOverlay({ tl, progress, subscribe }: Props) {
 
   const ws = t.isWarping ? t.warpStrength : 0
   const flashOpacity = Math.pow(ws, 4)
-  const rocketStretch = 1 + ws * 12
+  const rocketStretch = 1 + ws * 10
 
   return (
     <>
@@ -205,8 +205,8 @@ export function RocketOverlay({ tl, progress, subscribe }: Props) {
 
       {t.isWarping && (
         <div className="pointer-events-none fixed inset-0 flex items-center justify-center" style={{ zIndex: Z.rocket + 10 }}>
-          <div className="absolute left-[30%] h-[200vh] w-[2px] bg-teal shadow-[0_0_20px_4px_#8FE3E0]" style={{ transform: `scaleY(${ws * 5})`, opacity: ws }} />
-          <div className="absolute right-[30%] h-[200vh] w-[3px] bg-gold shadow-[0_0_20px_5px_#F2B84B]" style={{ transform: `scaleY(${ws * 8})`, opacity: ws }} />
+          <div className="absolute left-[35%] h-[200vh] w-px bg-teal/60" style={{ transform: `scaleY(${ws * 5})`, opacity: ws }} />
+          <div className="absolute right-[35%] h-[200vh] w-[2px] bg-gold/60" style={{ transform: `scaleY(${ws * 8})`, opacity: ws }} />
           <div className="absolute inset-0 bg-paper transition-opacity" style={{ opacity: flashOpacity }} />
         </div>
       )}
