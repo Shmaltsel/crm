@@ -43,7 +43,7 @@ export function TeamVoicesBeat({ progress }: Props) {
             </svg>
           </div>
 
-          <div className="relative w-[min(500px,90vw)]" style={{ minHeight: 110 }}>
+          <div className="relative w-[min(500px,90vw)] heat-haze" style={{ minHeight: 110 }}>
             {CAMPFIRE_QUOTES.map((quote, idx) => (
               <div
                 key={idx}

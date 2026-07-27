@@ -38,6 +38,7 @@ export function TimelineBeat({ progress }: Props) {
         </h2>
         <div className="relative mx-auto mt-[42px] w-[min(700px,90vw)] pt-2">
           <div className="absolute top-[9px] left-0 right-0 h-px bg-gold/22" />
+          <div className="absolute top-[9px] left-0 right-0 h-px pulse-line" />
           <div
             className="absolute top-[9px] left-0 h-px bg-gradient-to-r from-gold to-coral"
             style={{ width: `${linePct}%`, transition: 'width 0.4s var(--ease-hero)' }}

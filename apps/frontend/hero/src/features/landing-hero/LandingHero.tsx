@@ -22,6 +22,7 @@ import { StarField } from './components/overlays/StarField'
 import { RocketOverlay } from './components/overlays/RocketOverlay'
 import { PortalOverlay } from './components/overlays/PortalOverlay'
 import { GrassGround } from './components/overlays/GrassGround'
+import { CampfireSparks } from './components/overlays/CampfireSparks'
 
 import { HeroBeat } from './components/beats/HeroBeat'
 import { ManifestBeat } from './components/beats/ManifestBeat'
@@ -181,6 +182,7 @@ export function LandingHero() {
         <StarField tl={tl} />
         <PortalOverlay tl={tl} subscribe={subscribe} progress={smoothProgress} />
         <GrassGround tl={tl} subscribe={subscribe} />
+        <CampfireSparks subscribe={subscribe} tl={tl} />
         <RocketOverlay tl={tl} progress={smoothProgress} subscribe={subscribe} />
       </div>
 

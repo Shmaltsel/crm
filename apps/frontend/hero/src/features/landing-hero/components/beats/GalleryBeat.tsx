@@ -58,6 +58,8 @@ function GalCard({
     <motion.div
       className="flex flex-col items-center gap-2"
       style={{ opacity, scale: scaleVal }}
+      whileHover={{ rotate: 0, scale: 1.05, zIndex: 10 }}
+      transition={{ type: 'spring', stiffness: 300, damping: 20 }}
     >
       <div
         className="overflow-hidden rounded-xl border-2 bg-white/[0.03] transition-shadow hover:shadow-[0_0_20px_rgba(242,184,75,0.15)]"

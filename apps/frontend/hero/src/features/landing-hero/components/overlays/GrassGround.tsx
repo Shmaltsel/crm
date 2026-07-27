@@ -14,6 +14,7 @@ const BLADE_SPACING = 1528 / BLADE_COUNT
 interface Blade {
   x: number
   el: SVGLineElement | null
+  phase: number
 }
 
 export function GrassGround({ tl, subscribe }: Props) {
@@ -52,13 +53,18 @@ export function GrassGround({ tl, subscribe }: Props) {
       lastFrameRef.current = now
 
       if (strengthRef.current > 0.12) {
+        const wind = Math.sin(now * 0.001) * 6
         bladesRef.current.forEach((blade) => {
           if (!blade.el) return
           const bladeScreenX = blade.x / scaleX
           const dist = Math.abs(mouseRef.current.x - bladeScreenX)
           const influence = clamp(1 - dist / 140, 0, 1)
           const bend = influence * 16 * (mouseRef.current.x > bladeScreenX ? 1 : -1)
-          blade.el.setAttribute('transform', `translate(${blade.x},0) skewX(${bend.toFixed(2)})`)
+
+          const localWind = Math.sin(now * 0.0015 + blade.phase) * 4
+          const totalBend = bend + wind + localWind
+
+          blade.el.setAttribute('transform', `translate(${blade.x},0) skewX(${totalBend.toFixed(2)})`)
         })
       }
       rafRef.current = requestAnimationFrame(tick)
@@ -86,7 +92,11 @@ export function GrassGround({ tl, subscribe }: Props) {
             <line
               key={i}
               ref={(el) => {
-                bladesRef.current[i] = { x, el }
+                if (!bladesRef.current[i]) {
+                  bladesRef.current[i] = { x, el, phase: Math.random() * Math.PI * 2 }
+                } else {
+                  bladesRef.current[i].el = el
+                }
               }}
               x1={x}
               y1={0}

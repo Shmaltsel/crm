@@ -97,6 +97,8 @@ function PillarItem({
       ref={elRef}
       className="max-w-[180px] text-center"
       style={{ opacity, y: translateY, scale }}
+      whileHover={{ scale: 1.04, y: -4 }}
+      transition={{ type: 'spring', stiffness: 300, damping: 20 }}
     >
       {icon}
       <h3 className="mb-1.5 text-[15px] font-bold">{pillar.title}</h3>
