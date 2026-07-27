@@ -1,4 +1,5 @@
 import { useCallback, useRef, useState } from 'react'
+import { motion } from 'framer-motion'
 import { useScrollStory } from './hooks/useScrollStory'
 import { useMotionTimeline } from './hooks/useMotionTimeline'
 import { useBeatStrengths } from './hooks/useBeatStrengths'
@@ -183,8 +184,8 @@ export function LandingHero() {
         <GrassGround tl={tl} subscribe={subscribe} />
         <CampfireSparks subscribe={subscribe} tl={tl} />
         <RocketOverlay tl={tl} progress={smoothProgress} subscribe={subscribe} />
-        <div
-          className="pointer-events-none fixed inset-0 bg-night transition-opacity duration-1000"
+        <motion.div
+          className="pointer-events-none fixed inset-0 bg-night"
           style={{ opacity: finaleStrength, zIndex: 4 }}
           aria-hidden="true"
         />
