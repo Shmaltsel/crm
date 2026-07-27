@@ -1,6 +1,6 @@
 # @svitlo/hero — Project Bundle
 
-**Generated:** 2026-07-27T22:02:45.594Z
+**Generated:** 2026-07-27T22:34:23.814Z
 
 ## Project Tree
 
@@ -23,6 +23,7 @@
 │   │       │   │   ├── TimelineBeat.tsx
 │   │       │   │   └── WorldBeat.tsx
 │   │       │   ├── overlays/
+│   │       │   │   ├── CampfireSparks.tsx
 │   │       │   │   ├── GrassGround.tsx
 │   │       │   │   ├── NebulaOverlay.tsx
 │   │       │   │   ├── PortalOverlay.tsx
@@ -273,15 +274,12 @@ export function FinaleBeat({ progress, onOpenContact, onConfetti }: Props) {
       style={{ opacity: strength, y }}
     >
       <div className="max-w-[680px]">
-        <p className="mb-3.5 text-xs font-bold uppercase tracking-[0.18em] text-gold opacity-90">
-          Запрошення
-        </p>
-        <h2 className="text-[clamp(26px,3.9vw,42px)] leading-[1.15] text-paper">
+        <h2 className="text-[clamp(26px,3.9vw,42px)] leading-[1.3] text-paper">
           Наступна історія<br />
-          може початися{' '}
-          <em className="font-serif italic text-gold">у вашій школі</em>
+          може початися<br />
+          <em className="font-serif italic text-gold glow-word">саме у вашому закладі.</em>
         </h2>
-        <div className="mt-9 flex flex-wrap justify-center gap-3.5">
+        <div className="mt-12 flex flex-wrap justify-center gap-3.5">
           <button
             onClick={handleClick}
             className="rounded-full border border-gold bg-gold px-7 py-3.5 text-[14.5px] font-bold text-night transition-all hover:-translate-y-[3px] hover:shadow-[0_16px_36px_rgba(242,184,75,0.38)]"
@@ -358,6 +356,8 @@ function GalCard({
     <motion.div
       className="flex flex-col items-center gap-2"
       style={{ opacity, scale: scaleVal }}
+      whileHover={{ rotate: 0, scale: 1.05, zIndex: 10 }}
+      transition={{ type: 'spring', stiffness: 300, damping: 20 }}
     >
       <div
         className="overflow-hidden rounded-xl border-2 bg-white/[0.03] transition-shadow hover:shadow-[0_0_20px_rgba(242,184,75,0.15)]"
@@ -630,6 +630,8 @@ function PillarItem({
       ref={elRef}
       className="max-w-[180px] text-center"
       style={{ opacity, y: translateY, scale }}
+      whileHover={{ scale: 1.04, y: -4 }}
+      transition={{ type: 'spring', stiffness: 300, damping: 20 }}
     >
       {icon}
       <h3 className="mb-1.5 text-[15px] font-bold">{pillar.title}</h3>
@@ -804,7 +806,7 @@ export function TeamVoicesBeat({ progress }: Props) {
             </svg>
           </div>
 
-          <div className="relative w-[min(500px,90vw)]" style={{ minHeight: 110 }}>
+          <div className="relative w-[min(500px,90vw)] heat-haze" style={{ minHeight: 110 }}>
             {CAMPFIRE_QUOTES.map((quote, idx) => (
               <div
                 key={idx}
@@ -902,6 +904,7 @@ export function TimelineBeat({ progress }: Props) {
         </h2>
         <div className="relative mx-auto mt-[42px] w-[min(700px,90vw)] pt-2">
           <div className="absolute top-[9px] left-0 right-0 h-px bg-gold/22" />
+          <div className="absolute top-[9px] left-0 right-0 h-px pulse-line" />
           <div
             className="absolute top-[9px] left-0 h-px bg-gradient-to-r from-gold to-coral"
             style={{ width: `${linePct}%`, transition: 'width 0.4s var(--ease-hero)' }}
@@ -1534,11 +1537,18 @@ export function Nav({ onOpenContact, onNavigate, progress }: Props) {
     const handler = () => {
       const y = window.scrollY
       setScrolled(y > 40)
-      if (y > 200) {
-        setHidden(y > lastScrollY.current && y - lastScrollY.current > 8)
-      } else {
+
+      if (y < 200) {
         setHidden(false)
+      } else {
+        const delta = y - lastScrollY.current
+        if (delta > 8) {
+          setHidden(true)
+        } else if (delta < -8) {
+          setHidden(false)
+        }
       }
+
       lastScrollY.current = y
     }
     window.addEventListener('scroll', handler, { passive: true })
@@ -1655,6 +1665,89 @@ export function Nav({ onOpenContact, onNavigate, progress }: Props) {
 
 ```
 
+### `src/features/landing-hero/components/overlays/CampfireSparks.tsx`
+```typescript
+import { useEffect, useRef, useState } from 'react'
+import { Z } from '../../lib/zIndex'
+import type { Timeline } from '../../types/timeline'
+
+interface Props {
+  tl: Timeline
+  subscribe: (cb: () => void) => () => void
+}
+
+interface Spark {
+  x: number
+  y: number
+  speed: number
+  drift: number
+  phase: number
+  el: SVGCircleElement | null
+}
+
+export function CampfireSparks({ tl, subscribe }: Props) {
+  const strengthRef = useRef(0)
+  const sparksRef = useRef<Spark[]>([])
+  const rafRef = useRef(0)
+  const [opacity, setOpacity] = useState(0)
+
+  useEffect(() => {
+    return subscribe(() => {
+      const s = tl.beatStrengths[10]
+      strengthRef.current = s
+      setOpacity(s)
+    })
+  }, [tl, subscribe])
+
+  useEffect(() => {
+    const tick = (now: number) => {
+      if (strengthRef.current > 0.05) {
+        sparksRef.current.forEach((spark) => {
+          if (!spark.el) return
+          spark.y -= spark.speed
+          const xOffset = Math.sin(now * 0.002 + spark.phase) * spark.drift
+
+          if (spark.y < -50) {
+            spark.y = 900 + Math.random() * 100
+            spark.x = 200 + Math.random() * 1200
+          }
+
+          spark.el.setAttribute('cx', String(spark.x + xOffset))
+          spark.el.setAttribute('cy', String(spark.y))
+        })
+      }
+      rafRef.current = requestAnimationFrame(tick)
+    }
+    rafRef.current = requestAnimationFrame(tick)
+    return () => cancelAnimationFrame(rafRef.current)
+  }, [])
+
+  return (
+    <svg className="pointer-events-none absolute inset-0 h-full w-full" viewBox="0 0 1600 900" preserveAspectRatio="xMidYMid slice" style={{ opacity, zIndex: Z.overlays + 1 }}>
+      {Array.from({ length: 25 }, (_, i) => {
+        const isGold = Math.random() > 0.5
+        return (
+          <circle
+            key={i}
+            ref={(el) => {
+              if (!sparksRef.current[i]) {
+                sparksRef.current[i] = { x: 200 + Math.random() * 1200, y: 900 + Math.random() * 400, speed: 1 + Math.random() * 2.5, drift: 2 + Math.random() * 5, phase: Math.random() * Math.PI * 2, el }
+              } else {
+                sparksRef.current[i].el = el
+              }
+            }}
+            r={Math.random() * 1.5 + 1}
+            fill={isGold ? '#F2B84B' : '#FF7A59'}
+            opacity={0.4 + Math.random() * 0.6}
+          />
+        )
+      })}
+    </svg>
+  )
+}
+
+```
+
 ### `src/features/landing-hero/components/overlays/GrassGround.tsx`
 ```typescript
 import { useEffect, useRef, useState } from 'react'
@@ -1673,6 +1766,7 @@ const BLADE_SPACING = 1528 / BLADE_COUNT
 interface Blade {
   x: number
   el: SVGLineElement | null
+  phase: number
 }
 
 export function GrassGround({ tl, subscribe }: Props) {
@@ -1711,13 +1805,18 @@ export function GrassGround({ tl, subscribe }: Props) {
       lastFrameRef.current = now
 
       if (strengthRef.current > 0.12) {
+        const wind = Math.sin(now * 0.001) * 6
         bladesRef.current.forEach((blade) => {
           if (!blade.el) return
           const bladeScreenX = blade.x / scaleX
           const dist = Math.abs(mouseRef.current.x - bladeScreenX)
           const influence = clamp(1 - dist / 140, 0, 1)
           const bend = influence * 16 * (mouseRef.current.x > bladeScreenX ? 1 : -1)
-          blade.el.setAttribute('transform', `translate(${blade.x},0) skewX(${bend.toFixed(2)})`)
+
+          const localWind = Math.sin(now * 0.0015 + blade.phase) * 4
+          const totalBend = bend + wind + localWind
+
+          blade.el.setAttribute('transform', `translate(${blade.x},0) skewX(${totalBend.toFixed(2)})`)
         })
       }
       rafRef.current = requestAnimationFrame(tick)
@@ -1745,7 +1844,11 @@ export function GrassGround({ tl, subscribe }: Props) {
             <line
               key={i}
               ref={(el) => {
-                bladesRef.current[i] = { x, el }
+                if (!bladesRef.current[i]) {
+                  bladesRef.current[i] = { x, el, phase: Math.random() * Math.PI * 2 }
+                } else {
+                  bladesRef.current[i].el = el
+                }
               }}
               x1={x}
               y1={0}
@@ -2081,7 +2184,7 @@ export function PortalOverlay({ tl, subscribe, progress }: Props) {
 ### `src/features/landing-hero/components/overlays/RocketOverlay.tsx`
 ```typescript
 import { useEffect, useRef, useState } from 'react'
-import { clamp, lerp } from '../../lib/animation'
+import { clamp } from '../../lib/animation'
 import { Z } from '../../lib/zIndex'
 import { useReducedMotion } from '../../hooks/useReducedMotion'
 import type { Timeline } from '../../types/timeline'
@@ -2094,18 +2197,52 @@ interface Props {
   subscribe: (cb: () => void) => () => void
 }
 
+function catmullRom(p0: number, p1: number, p2: number, p3: number, t: number) {
+  const t2 = t * t
+  const t3 = t2 * t
+  return 0.5 * (
+    (2 * p1) +
+    (-p0 + p2) * t +
+    (2 * p0 - 5 * p1 + 4 * p2 - p3) * t2 +
+    (-p0 + 3 * p1 - 3 * p2 + p3) * t3
+  )
+}
+
 function interpolateRocket(progress: number, vw: number, vh: number) {
   const wp = ROCKET_WAYPOINTS
-  const idx = progress * (wp.length - 1)
-  const i0 = Math.min(Math.floor(idx), wp.length - 2)
-  const f = idx - i0
-  const a = wp[i0]
-  const b = wp[i0 + 1]
-  const x = lerp(a.x, b.x, f) * vw
-  const y = lerp(a.y, b.y, f) * vh
-  const dxPx = (b.x - a.x) * vw
-  const dyPx = (b.y - a.y) * vh
-  const heading = Math.atan2(dyPx, dxPx) * (180 / Math.PI) + 90
+  if (wp.length < 2) return { x: 0, y: 0, heading: 0 }
+
+  const maxIdx = wp.length - 1
+  const p = Math.max(0, Math.min(1, progress))
+
+  const floatIdx = p * maxIdx
+  const i1 = Math.floor(floatIdx)
+  const t = floatIdx - i1
+
+  const i0 = Math.max(0, i1 - 1)
+  const i2 = Math.min(maxIdx, i1 + 1)
+  const i3 = Math.min(maxIdx, i1 + 2)
+
+  const x = catmullRom(wp[i0].x, wp[i1].x, wp[i2].x, wp[i3].x, t) * vw
+  const y = catmullRom(wp[i0].y, wp[i1].y, wp[i2].y, wp[i3].y, t) * vh
+
+  const pAhead = Math.min(1, p + 0.005)
+  const floatIdxAhead = pAhead * maxIdx
+  const i1A = Math.floor(floatIdxAhead)
+  const tA = floatIdxAhead - i1A
+
+  const i0A = Math.max(0, i1A - 1)
+  const i2A = Math.min(maxIdx, i1A + 1)
+  const i3A = Math.min(maxIdx, i1A + 2)
+
+  const nextX = catmullRom(wp[i0A].x, wp[i1A].x, wp[i2A].x, wp[i3A].x, tA) * vw
+  const nextY = catmullRom(wp[i0A].y, wp[i1A].y, wp[i2A].y, wp[i3A].y, tA) * vh
+
+  const dx = nextX - x || 0.001
+  const dy = nextY - y || 0.001
+
+  const heading = Math.atan2(dy, dx) * (180 / Math.PI) + 90
+
   return { x, y, heading }
 }
 
@@ -2146,70 +2283,25 @@ export function RocketOverlay({ tl, progress, subscribe }: Props) {
   const rocket = interpolateRocket(p, t.vw, t.vh)
   const camX = rocket.x + t.parallax[5].x + t.camera.x + t.camera.shakeX
   const camY = rocket.y + t.parallax[5].y + t.camera.y + t.camera.shakeY
-  const opacity = clamp(1 - t.beatStrengths[12] * 1.4, 0, 1)
+
+  const opacity = 1
 
   if (!reduced) {
     flameRef.current = 1 + Math.sin(t.elapsed / 90) * 0.12
   }
-  const flameScale = flameRef.current
+
   const speedFactor = clamp(Math.abs(t.velocity) / 2000, 0, 1)
-  const engineGlow = 0.5 + speedFactor * 0.5
+
+  const isParked = p < 0.005
+  const isLanded = p > 0.985
+  const engineGlow = (isParked || isLanded) ? 0 : 0.5 + speedFactor * 0.5
+  const flameScale = (isParked || isLanded) ? 0 : flameRef.current
 
   const now = t.elapsed
 
-  if (t.isWarping) {
-    const ws = t.warpStrength
-    return (
-      <>
-        <svg
-          className="pointer-events-none fixed inset-0"
-          aria-hidden="true"
-          style={{ width: '100vw', height: '100vh', zIndex: Z.rocket }}
-        >
-          {t.trailParticles.map((p) => {
-            const age = clamp((now - p.born) / 800, 0, 1)
-            const fade = 1 - age * age
-            return (
-              <circle
-                key={p.id}
-                cx={p.x}
-                cy={p.y}
-                r={p.r * (1 - age * 0.6)}
-                fill={p.color}
-                opacity={p.opacity * fade * (1 - ws)}
-              />
-            )
-          })}
-        </svg>
-
-        <div
-          className="pointer-events-none fixed left-1/2 top-0 -translate-x-1/2"
-          aria-hidden="true"
-          style={{
-            width: 60,
-            height: '100vh',
-            background: 'linear-gradient(to bottom, transparent 0%, #F2B84B 20%, #FF7A59 50%, #FF4020 80%, transparent 100%)',
-            opacity: ws * 0.7,
-            filter: `blur(${8 - ws * 4}px)`,
-            zIndex: Z.rocket,
-          }}
-        />
-
-        <div
-          className="pointer-events-none fixed left-1/2 top-0 -translate-x-1/2"
-          aria-hidden="true"
-          style={{
-            width: 100,
-            height: '100vh',
-            background: 'linear-gradient(to bottom, transparent 0%, #FF7A5940 30%, #FF402020 70%, transparent 100%)',
-            opacity: ws * 0.5,
-            filter: 'blur(20px)',
-            zIndex: Z.rocket,
-          }}
-        />
-      </>
-    )
-  }
+  const ws = t.isWarping ? t.warpStrength : 0
+  const flashOpacity = Math.pow(ws, 4)
+  const rocketStretch = 1 + ws * 10
 
   return (
     <>
@@ -2240,7 +2332,7 @@ export function RocketOverlay({ tl, progress, subscribe }: Props) {
         style={{
           width: 100,
           height: 100,
-          transform: `translate(${camX - 50}px, ${camY - 50}px) rotate(${rocket.heading}deg) scale(${t.camera.zoom})`,
+          transform: `translate(${camX - 50}px, ${camY - 50}px) rotate(${rocket.heading}deg) scale(${t.camera.zoom}) scaleY(${rocketStretch})`,
           opacity,
           willChange: 'transform',
           zIndex: Z.rocket,
@@ -2300,6 +2392,14 @@ export function RocketOverlay({ tl, progress, subscribe }: Props) {
           </g>
         </svg>
       </div>
+
+      {t.isWarping && (
+        <div className="pointer-events-none fixed inset-0 flex items-center justify-center" style={{ zIndex: Z.rocket + 10 }}>
+          <div className="absolute left-[35%] h-[200vh] w-px bg-teal/60" style={{ transform: `scaleY(${ws * 5})`, opacity: ws }} />
+          <div className="absolute right-[35%] h-[200vh] w-[2px] bg-gold/60" style={{ transform: `scaleY(${ws * 8})`, opacity: ws }} />
+          <div className="absolute inset-0 bg-paper transition-opacity" style={{ opacity: flashOpacity }} />
+        </div>
+      )}
     </>
   )
 }
@@ -2683,6 +2783,7 @@ export interface RocketWaypoint {
 }
 
 export const ROCKET_WAYPOINTS: RocketWaypoint[] = [
+  { x: 0.18, y: 0.04 },
   { x: 0.50, y: 0.38 },
   { x: 0.78, y: 0.26 },
   { x: 0.18, y: 0.52 },
@@ -2696,6 +2797,7 @@ export const ROCKET_WAYPOINTS: RocketWaypoint[] = [
   { x: 0.72, y: 0.48 },
   { x: 0.50, y: 0.22 },
   { x: 0.50, y: 0.48 },
+  { x: 0.50, y: 0.85 },
 ]
 
 ```
@@ -3485,7 +3587,7 @@ export function useScrollStory() {
 
 ### `src/features/landing-hero/hooks/useSmoothProgress.ts`
 ```typescript
-import { useSpring } from 'framer-motion'
+import { useSpring, useMotionValueEvent } from 'framer-motion'
 import { useReducedMotion } from './useReducedMotion'
 import type { MotionValue } from 'framer-motion'
 
@@ -3496,6 +3598,12 @@ export function useSmoothProgress(source: MotionValue<number>) {
     damping: 32,
     mass: 1.1,
     restDelta: 0.0001,
+  })
+
+  useMotionValueEvent(source, 'change', (latest) => {
+    if (Math.abs(latest - smooth.get()) > 0.1) {
+      smooth.jump(latest)
+    }
   })
 
   return reduced ? source : smooth
@@ -3521,7 +3629,6 @@ import { SoundToggle } from './components/SoundToggle'
 import { CursorGlow } from './components/CursorGlow'
 import { ScrollHint } from './components/ScrollHint'
 import { ContactPanel } from './components/ContactPanel'
-import { Footer } from './components/Footer'
 import { FilmGrain } from './components/FilmGrain'
 
 import { NebulaOverlay } from './components/overlays/NebulaOverlay'
@@ -3529,6 +3636,7 @@ import { StarField } from './components/overlays/StarField'
 import { RocketOverlay } from './components/overlays/RocketOverlay'
 import { PortalOverlay } from './components/overlays/PortalOverlay'
 import { GrassGround } from './components/overlays/GrassGround'
+import { CampfireSparks } from './components/overlays/CampfireSparks'
 
 import { HeroBeat } from './components/beats/HeroBeat'
 import { ManifestBeat } from './components/beats/ManifestBeat'
@@ -3688,7 +3796,13 @@ export function LandingHero() {
         <StarField tl={tl} />
         <PortalOverlay tl={tl} subscribe={subscribe} progress={smoothProgress} />
         <GrassGround tl={tl} subscribe={subscribe} />
+        <CampfireSparks subscribe={subscribe} tl={tl} />
         <RocketOverlay tl={tl} progress={smoothProgress} subscribe={subscribe} />
+        <div
+          className="pointer-events-none fixed inset-0 bg-night transition-opacity duration-1000"
+          style={{ opacity: finaleStrength, zIndex: 4 }}
+          aria-hidden="true"
+        />
       </div>
 
       {/* Story beats */}
@@ -3707,7 +3821,6 @@ export function LandingHero() {
       <ScrollHint progress={smoothProgress} finaleStrength={finaleStrength} />
       <SoundToggle />
       <ContactPanel isOpen={contactOpen} onClose={() => setContactOpen(false)} />
-      <Footer onOpenContact={() => setContactOpen(true)} />
       <FilmGrain />
     </>
   )
@@ -4083,6 +4196,19 @@ a {
   100% { stroke-dashoffset: 0; opacity: 0; }
 }
 
+.heat-haze { filter: url(#heat); }
+
+.pulse-line {
+  background: linear-gradient(90deg, transparent, rgba(242,184,75,0.8), transparent);
+  background-size: 200% 100%;
+  animation: energyPulse 3s linear infinite;
+}
+
+@keyframes energyPulse {
+  0% { background-position: 100% 0; }
+  100% { background-position: -100% 0; }
+}
+
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after {
     animation-duration: .01ms !important;
@@ -4110,4 +4236,4 @@ createRoot(document.getElementById('root')!).render(
 
 ---
 
-**Files:** 60 | **Lines:** 3,678
+**Files:** 61 | **Lines:** 3,799
