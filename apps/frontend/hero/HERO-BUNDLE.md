@@ -1,6 +1,6 @@
 # @svitlo/hero — Project Bundle
 
-**Generated:** 2026-07-27T22:40:21.096Z
+**Generated:** 2026-07-27T22:42:34.908Z
 
 ## Project Tree
 
@@ -2299,7 +2299,7 @@ export function RocketOverlay({ tl, progress, subscribe }: Props) {
 
   const speedFactor = clamp(Math.abs(t.velocity) / 2000, 0, 1)
 
-  const enginePower = clamp(p / 0.015, 0, 1) * clamp((1 - p) / 0.03, 0, 1)
+  const enginePower = clamp(p / 0.015, 0, 1) * clamp((1 - p) / 0.015, 0, 1)
 
   const engineGlow = (0.5 + speedFactor * 0.5) * enginePower
   const flameScale = flameRef.current * enginePower
@@ -2405,14 +2405,14 @@ export function RocketOverlay({ tl, progress, subscribe }: Props) {
       {t.isWarping && (
         <div className="pointer-events-none fixed inset-0 flex items-center justify-center overflow-hidden" style={{ zIndex: Z.rocket + 10 }}>
           <div
-            className="absolute inset-0"
-            style={{
-              background: `radial-gradient(circle at center, transparent 20%, rgba(255,255,255,${ws * 0.8}) 80%, rgba(143,227,224,${ws}) 100%)`,
-              transform: `scale(${1 + ws * 3})`,
-              opacity: Math.min(ws * 2, 1),
-            }}
+            className="absolute h-[100vh] w-[140px] bg-gradient-to-r from-transparent via-gold to-transparent mix-blend-screen"
+            style={{ transform: `scaleY(${ws * 15})`, opacity: ws }}
           />
-          <div className="absolute inset-0 bg-white mix-blend-overlay transition-opacity" style={{ opacity: flashOpacity }} />
+          <div className="absolute left-[30%] h-[150vh] w-[2px] bg-teal shadow-[0_0_15px_3px_#8FE3E0]" style={{ transform: `scaleY(${ws * 8})`, opacity: ws * 0.8 }} />
+          <div className="absolute right-[25%] h-[200vh] w-[4px] bg-coral shadow-[0_0_20px_5px_#FF7A59]" style={{ transform: `scaleY(${ws * 12})`, opacity: ws * 0.9 }} />
+          <div className="absolute left-[40%] h-[120vh] w-[1px] bg-white" style={{ transform: `scaleY(${ws * 20})`, opacity: ws * 0.5 }} />
+
+          <div className="absolute inset-0 bg-white transition-opacity" style={{ opacity: flashOpacity }} />
         </div>
       )}
     </>
