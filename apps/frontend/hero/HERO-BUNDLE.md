@@ -1,6 +1,6 @@
 # @svitlo/hero — Project Bundle
 
-**Generated:** 2026-07-27T22:34:23.814Z
+**Generated:** 2026-07-27T22:38:15.309Z
 
 ## Project Tree
 
@@ -1534,6 +1534,8 @@ export function Nav({ onOpenContact, onNavigate, progress }: Props) {
   const linkRefs = useRef<(HTMLAnchorElement | null)[]>([])
 
   useEffect(() => {
+    let scrollTimer: ReturnType<typeof setTimeout>
+
     const handler = () => {
       const y = window.scrollY
       setScrolled(y > 40)
@@ -1542,18 +1544,24 @@ export function Nav({ onOpenContact, onNavigate, progress }: Props) {
         setHidden(false)
       } else {
         const delta = y - lastScrollY.current
-        if (delta > 8) {
+        if (delta > 15) {
           setHidden(true)
-        } else if (delta < -8) {
+        } else if (delta < -15) {
           setHidden(false)
         }
       }
-
       lastScrollY.current = y
+
+      clearTimeout(scrollTimer)
+      scrollTimer = setTimeout(() => setHidden(false), 1000)
     }
+
     window.addEventListener('scroll', handler, { passive: true })
     handler()
-    return () => window.removeEventListener('scroll', handler)
+    return () => {
+      window.removeEventListener('scroll', handler)
+      clearTimeout(scrollTimer)
+    }
   }, [])
 
   useMotionValueEvent(progress, 'change', (p) => {
@@ -2301,7 +2309,6 @@ export function RocketOverlay({ tl, progress, subscribe }: Props) {
 
   const ws = t.isWarping ? t.warpStrength : 0
   const flashOpacity = Math.pow(ws, 4)
-  const rocketStretch = 1 + ws * 10
 
   return (
     <>
@@ -2332,7 +2339,7 @@ export function RocketOverlay({ tl, progress, subscribe }: Props) {
         style={{
           width: 100,
           height: 100,
-          transform: `translate(${camX - 50}px, ${camY - 50}px) rotate(${rocket.heading}deg) scale(${t.camera.zoom}) scaleY(${rocketStretch})`,
+          transform: `translate(${camX - 50}px, ${camY - 50}px) rotate(${rocket.heading}deg) scale(${t.camera.zoom})`,
           opacity,
           willChange: 'transform',
           zIndex: Z.rocket,
@@ -2394,10 +2401,16 @@ export function RocketOverlay({ tl, progress, subscribe }: Props) {
       </div>
 
       {t.isWarping && (
-        <div className="pointer-events-none fixed inset-0 flex items-center justify-center" style={{ zIndex: Z.rocket + 10 }}>
-          <div className="absolute left-[35%] h-[200vh] w-px bg-teal/60" style={{ transform: `scaleY(${ws * 5})`, opacity: ws }} />
-          <div className="absolute right-[35%] h-[200vh] w-[2px] bg-gold/60" style={{ transform: `scaleY(${ws * 8})`, opacity: ws }} />
-          <div className="absolute inset-0 bg-paper transition-opacity" style={{ opacity: flashOpacity }} />
+        <div className="pointer-events-none fixed inset-0 flex items-center justify-center overflow-hidden" style={{ zIndex: Z.rocket + 10 }}>
+          <div
+            className="absolute inset-0"
+            style={{
+              background: `radial-gradient(circle at center, transparent 20%, rgba(255,255,255,${ws * 0.8}) 80%, rgba(143,227,224,${ws}) 100%)`,
+              transform: `scale(${1 + ws * 3})`,
+              opacity: Math.min(ws * 2, 1),
+            }}
+          />
+          <div className="absolute inset-0 bg-white mix-blend-overlay transition-opacity" style={{ opacity: flashOpacity }} />
         </div>
       )}
     </>
@@ -2492,7 +2505,7 @@ export function StarField({ tl }: Props) {
     }
   }, [reduced])
 
-  const warpScaleY = tl.isWarping ? 1 + tl.warpStrength * 4 : 1
+  const warpScale = tl.isWarping ? 1 + tl.warpStrength * 2 : 1
 
   return (
     <svg
@@ -2501,9 +2514,10 @@ export function StarField({ tl }: Props) {
       preserveAspectRatio="xMidYMid slice"
       aria-hidden="true"
       style={{
-        transform: `scaleY(${warpScaleY})`,
+        transform: `scale(${warpScale})`,
         transformOrigin: '50% 50%',
-        transition: tl.isWarping ? 'none' : 'transform 0.3s ease-out',
+        transition: tl.isWarping ? 'none' : 'transform 0.5s ease-out',
+        zIndex: 0,
       }}
     >
       <g>
@@ -3259,8 +3273,9 @@ export function useMotionTimeline(
         const elapsed = now - warp.startTime
         const progress01 = clamp(elapsed / WARP_DURATION_MS, 0, 1)
         t.warpStrength = progress01 < 0.5
-          ? progress01 * 2
-          : 2 - progress01 * 2
+          ? 2 * progress01 * progress01
+          : 1 - Math.pow(-2 * progress01 + 2, 2) / 2
+
         t.progress = warp.frozenProgress
 
         for (let i = 0; i < TOTAL_BEATS; i++) {
@@ -4236,4 +4251,4 @@ createRoot(document.getElementById('root')!).render(
 
 ---
 
-**Files:** 61 | **Lines:** 3,799
+**Files:** 61 | **Lines:** 3,814
