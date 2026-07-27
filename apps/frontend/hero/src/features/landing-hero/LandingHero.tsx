@@ -47,7 +47,7 @@ export function LandingHero() {
 
   useScrollSnap(smoothProgress, containerRef, !reduced)
 
-  const { ref: ambientRef, setCommands } = useAmbientCommands()
+  const { commands, setCommands } = useAmbientCommands()
 
   const finaleStrength = beatStrengths[12]
 
@@ -79,10 +79,8 @@ export function LandingHero() {
     }, WARP_HALF)
   }, [containerRef, smoothProgress, startWarp, reduced])
 
-  const onIntroComplete = useCallback(() => {}, [])
-
   const beats: [MotionValue<number>, React.ReactNode][] = [
-    [beatStrengths[0], <HeroBeat key="hero" progress={smoothProgress} onOpenContact={() => setContactOpen(true)} onIntroComplete={onIntroComplete} />],
+    [beatStrengths[0], <HeroBeat key="hero" progress={smoothProgress} onOpenContact={() => setContactOpen(true)} />],
     [beatStrengths[1], <ManifestBeat key="manifest" progress={smoothProgress} />],
     [beatStrengths[2], <PillarsBeat key="pillars" progress={smoothProgress} />],
     ...[3, 4, 5, 6, 7].map((i) => [beatStrengths[i], <WorldBeat key={`world-${i}`} progress={smoothProgress} beatIndex={i} />] as [MotionValue<number>, React.ReactNode]),
@@ -94,7 +92,7 @@ export function LandingHero() {
   ]
 
   return (
-    <AmbientCtx.Provider value={ambientRef.current}>
+    <AmbientCtx.Provider value={commands}>
       <a
         href="#main"
         className={`fixed -left-[999px] top-0 bg-gold px-5 py-3 font-bold text-night focus:left-4 focus:top-4`}

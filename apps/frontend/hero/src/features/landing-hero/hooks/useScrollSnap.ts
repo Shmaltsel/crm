@@ -6,7 +6,7 @@ const TOTAL_BEATS = 13
 const STOP_DELAY = 250
 
 function getBeatCenters(): number[] {
-  const centers: number[] = [0]
+  const centers: number[] = []
   for (let i = 0; i < TOTAL_BEATS; i++) {
     centers.push((i + 0.5) / TOTAL_BEATS)
   }
@@ -38,6 +38,7 @@ export function useScrollSnap(
   const userInputRef = useRef(false)
   const lastScrollRef = useRef(0)
   const lastTimeRef = useRef(0)
+  const scrollEndFiredRef = useRef(false)
 
   useEffect(() => {
     if (!enabled || !containerRef.current) return
@@ -45,12 +46,6 @@ export function useScrollSnap(
     const markUserInput = () => { userInputRef.current = true }
     window.addEventListener('wheel', markUserInput, { passive: true })
     window.addEventListener('touchmove', markUserInput, { passive: true })
-
-    const onScroll = () => {
-      const now = performance.now()
-      lastScrollRef.current = window.scrollY
-      lastTimeRef.current = now
-    }
 
     const evaluate = () => {
       if (snappingRef.current) return
@@ -82,31 +77,37 @@ export function useScrollSnap(
       })
     }
 
-    const scheduleEvaluate = () => {
+    const onScroll = () => {
+      const now = performance.now()
+      lastScrollRef.current = window.scrollY
+      lastTimeRef.current = now
+
       clearTimeout(timerRef.current)
-      timerRef.current = window.setTimeout(evaluate, STOP_DELAY)
+      if (!scrollEndFiredRef.current) {
+        timerRef.current = window.setTimeout(evaluate, STOP_DELAY)
+      }
+    }
+
+    const onScrollEnd = () => {
+      scrollEndFiredRef.current = true
+      clearTimeout(timerRef.current)
+      evaluate()
+      setTimeout(() => { scrollEndFiredRef.current = false }, 50)
     }
 
     window.addEventListener('scroll', onScroll, { passive: true })
 
-    let scrollEndSupported = false
-    const onScrollEnd = () => { scrollEndSupported = true; evaluate() }
-    window.addEventListener('scrollend', onScrollEnd)
-
-    const fallbackTimer = window.setTimeout(() => {
-      if (!scrollEndSupported) {
-        window.addEventListener('scroll', scheduleEvaluate, { passive: true })
-      }
-    }, 0)
+    const hasScrollEnd = 'onscrollend' in window
+    if (hasScrollEnd) {
+      window.addEventListener('scrollend', onScrollEnd)
+    }
 
     return () => {
       window.removeEventListener('scroll', onScroll)
       window.removeEventListener('scrollend', onScrollEnd)
-      window.removeEventListener('scroll', scheduleEvaluate)
       window.removeEventListener('wheel', markUserInput)
       window.removeEventListener('touchmove', markUserInput)
       clearTimeout(timerRef.current)
-      clearTimeout(fallbackTimer)
     }
   }, [containerRef, enabled])
 }

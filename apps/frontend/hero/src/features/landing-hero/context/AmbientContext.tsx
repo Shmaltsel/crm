@@ -1,18 +1,16 @@
-import { createContext, useCallback, useContext, useRef } from 'react'
+import { createContext, useCallback, useContext, useState } from 'react'
 import type { AmbientCommands } from '../components/overlays/GlobalAmbientCanvas'
 
 const AmbientCtx = createContext<AmbientCommands | null>(null)
 
 export function useAmbient() {
-  const ctx = useContext(AmbientCtx)
-  if (!ctx) return null
-  return ctx
+  return useContext(AmbientCtx)
 }
 
 export function useAmbientCommands() {
-  const ref = useRef<AmbientCommands | null>(null)
-  const setCommands = useCallback((cmds: AmbientCommands) => { ref.current = cmds }, [])
-  return { ref, setCommands }
+  const [commands, setCommandsState] = useState<AmbientCommands | null>(null)
+  const setCommands = useCallback((cmds: AmbientCommands) => setCommandsState(cmds), [])
+  return { commands, setCommands }
 }
 
 export { AmbientCtx }
