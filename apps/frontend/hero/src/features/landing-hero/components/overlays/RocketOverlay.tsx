@@ -117,7 +117,6 @@ export function RocketOverlay({ tl, progress, subscribe }: Props) {
   const camY = rocket.y + t.parallax[5].y + t.camera.y + t.camera.shakeY + idleHover
 
   const ws = t.isWarping ? t.warpStrength : 0
-  const flashOpacity = Math.pow(ws, 4)
 
   return (
     <>
@@ -218,8 +217,6 @@ export function RocketOverlay({ tl, progress, subscribe }: Props) {
           <div className="absolute left-[30%] h-[150vh] w-[2px] bg-teal shadow-[0_0_15px_3px_#8FE3E0]" style={{ transform: `scaleY(${ws * 8})`, opacity: ws * 0.8 }} />
           <div className="absolute right-[25%] h-[200vh] w-[4px] bg-coral shadow-[0_0_20px_5px_#FF7A59]" style={{ transform: `scaleY(${ws * 12})`, opacity: ws * 0.9 }} />
           <div className="absolute left-[40%] h-[120vh] w-[1px] bg-white" style={{ transform: `scaleY(${ws * 20})`, opacity: ws * 0.5 }} />
-
-          <div className="absolute inset-0 bg-white transition-opacity" style={{ opacity: flashOpacity }} />
         </div>
       )}
     </>
