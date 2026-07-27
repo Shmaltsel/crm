@@ -45,7 +45,7 @@ export function LandingHero() {
   const beatStrengths = useBeatStrengths(smoothProgress)
   const reduced = useReducedMotion()
 
-  useScrollSnap(smoothProgress, containerRef)
+  useScrollSnap(smoothProgress, containerRef, !reduced)
 
   const { ref: ambientRef, setCommands } = useAmbientCommands()
 
