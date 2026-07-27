@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import { clamp, lerp } from '../../lib/animation'
+import { clamp } from '../../lib/animation'
 import { Z } from '../../lib/zIndex'
 import { useReducedMotion } from '../../hooks/useReducedMotion'
 import type { Timeline } from '../../types/timeline'
@@ -12,18 +12,52 @@ interface Props {
   subscribe: (cb: () => void) => () => void
 }
 
+function catmullRom(p0: number, p1: number, p2: number, p3: number, t: number) {
+  const t2 = t * t
+  const t3 = t2 * t
+  return 0.5 * (
+    (2 * p1) +
+    (-p0 + p2) * t +
+    (2 * p0 - 5 * p1 + 4 * p2 - p3) * t2 +
+    (-p0 + 3 * p1 - 3 * p2 + p3) * t3
+  )
+}
+
 function interpolateRocket(progress: number, vw: number, vh: number) {
   const wp = ROCKET_WAYPOINTS
-  const idx = progress * (wp.length - 1)
-  const i0 = Math.min(Math.floor(idx), wp.length - 2)
-  const f = idx - i0
-  const a = wp[i0]
-  const b = wp[i0 + 1]
-  const x = lerp(a.x, b.x, f) * vw
-  const y = lerp(a.y, b.y, f) * vh
-  const dxPx = (b.x - a.x) * vw
-  const dyPx = (b.y - a.y) * vh
-  const heading = Math.atan2(dyPx, dxPx) * (180 / Math.PI) + 90
+  if (wp.length < 2) return { x: 0, y: 0, heading: 0 }
+
+  const maxIdx = wp.length - 1
+  const p = Math.max(0, Math.min(1, progress))
+
+  const floatIdx = p * maxIdx
+  const i1 = Math.floor(floatIdx)
+  const t = floatIdx - i1
+
+  const i0 = Math.max(0, i1 - 1)
+  const i2 = Math.min(maxIdx, i1 + 1)
+  const i3 = Math.min(maxIdx, i1 + 2)
+
+  const x = catmullRom(wp[i0].x, wp[i1].x, wp[i2].x, wp[i3].x, t) * vw
+  const y = catmullRom(wp[i0].y, wp[i1].y, wp[i2].y, wp[i3].y, t) * vh
+
+  const pAhead = Math.min(1, p + 0.005)
+  const floatIdxAhead = pAhead * maxIdx
+  const i1A = Math.floor(floatIdxAhead)
+  const tA = floatIdxAhead - i1A
+
+  const i0A = Math.max(0, i1A - 1)
+  const i2A = Math.min(maxIdx, i1A + 1)
+  const i3A = Math.min(maxIdx, i1A + 2)
+
+  const nextX = catmullRom(wp[i0A].x, wp[i1A].x, wp[i2A].x, wp[i3A].x, tA) * vw
+  const nextY = catmullRom(wp[i0A].y, wp[i1A].y, wp[i2A].y, wp[i3A].y, tA) * vh
+
+  const dx = nextX - x || 0.001
+  const dy = nextY - y || 0.001
+
+  const heading = Math.atan2(dy, dx) * (180 / Math.PI) + 90
+
   return { x, y, heading }
 }
 
