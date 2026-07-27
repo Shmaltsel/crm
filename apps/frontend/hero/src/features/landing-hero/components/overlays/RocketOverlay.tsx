@@ -109,59 +109,9 @@ export function RocketOverlay({ tl, progress, subscribe }: Props) {
 
   const now = t.elapsed
 
-  if (t.isWarping) {
-    const ws = t.warpStrength
-    return (
-      <>
-        <svg
-          className="pointer-events-none fixed inset-0"
-          aria-hidden="true"
-          style={{ width: '100vw', height: '100vh', zIndex: Z.rocket }}
-        >
-          {t.trailParticles.map((p) => {
-            const age = clamp((now - p.born) / 800, 0, 1)
-            const fade = 1 - age * age
-            return (
-              <circle
-                key={p.id}
-                cx={p.x}
-                cy={p.y}
-                r={p.r * (1 - age * 0.6)}
-                fill={p.color}
-                opacity={p.opacity * fade * (1 - ws)}
-              />
-            )
-          })}
-        </svg>
-
-        <div
-          className="pointer-events-none fixed left-1/2 top-0 -translate-x-1/2"
-          aria-hidden="true"
-          style={{
-            width: 60,
-            height: '100vh',
-            background: 'linear-gradient(to bottom, transparent 0%, #F2B84B 20%, #FF7A59 50%, #FF4020 80%, transparent 100%)',
-            opacity: ws * 0.7,
-            filter: `blur(${8 - ws * 4}px)`,
-            zIndex: Z.rocket,
-          }}
-        />
-
-        <div
-          className="pointer-events-none fixed left-1/2 top-0 -translate-x-1/2"
-          aria-hidden="true"
-          style={{
-            width: 100,
-            height: '100vh',
-            background: 'linear-gradient(to bottom, transparent 0%, #FF7A5940 30%, #FF402020 70%, transparent 100%)',
-            opacity: ws * 0.5,
-            filter: 'blur(20px)',
-            zIndex: Z.rocket,
-          }}
-        />
-      </>
-    )
-  }
+  const ws = t.isWarping ? t.warpStrength : 0
+  const flashOpacity = Math.pow(ws, 4)
+  const rocketStretch = 1 + ws * 12
 
   return (
     <>
@@ -192,7 +142,7 @@ export function RocketOverlay({ tl, progress, subscribe }: Props) {
         style={{
           width: 100,
           height: 100,
-          transform: `translate(${camX - 50}px, ${camY - 50}px) rotate(${rocket.heading}deg) scale(${t.camera.zoom})`,
+          transform: `translate(${camX - 50}px, ${camY - 50}px) rotate(${rocket.heading}deg) scale(${t.camera.zoom}) scaleY(${rocketStretch})`,
           opacity,
           willChange: 'transform',
           zIndex: Z.rocket,
@@ -252,6 +202,14 @@ export function RocketOverlay({ tl, progress, subscribe }: Props) {
           </g>
         </svg>
       </div>
+
+      {t.isWarping && (
+        <div className="pointer-events-none fixed inset-0 flex items-center justify-center" style={{ zIndex: Z.rocket + 10 }}>
+          <div className="absolute left-[30%] h-[200vh] w-[2px] bg-teal shadow-[0_0_20px_4px_#8FE3E0]" style={{ transform: `scaleY(${ws * 5})`, opacity: ws }} />
+          <div className="absolute right-[30%] h-[200vh] w-[3px] bg-gold shadow-[0_0_20px_5px_#F2B84B]" style={{ transform: `scaleY(${ws * 8})`, opacity: ws }} />
+          <div className="absolute inset-0 bg-paper transition-opacity" style={{ opacity: flashOpacity }} />
+        </div>
+      )}
     </>
   )
 }

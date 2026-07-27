@@ -1,4 +1,4 @@
-import { useSpring } from 'framer-motion'
+import { useSpring, useMotionValueEvent } from 'framer-motion'
 import { useReducedMotion } from './useReducedMotion'
 import type { MotionValue } from 'framer-motion'
 
@@ -9,6 +9,12 @@ export function useSmoothProgress(source: MotionValue<number>) {
     damping: 32,
     mass: 1.1,
     restDelta: 0.0001,
+  })
+
+  useMotionValueEvent(source, 'change', (latest) => {
+    if (Math.abs(latest - smooth.get()) > 0.1) {
+      smooth.jump(latest)
+    }
   })
 
   return reduced ? source : smooth
