@@ -3,10 +3,12 @@ import { NEBULA_STOPS } from '../../data/nebula'
 import { lerpColor } from '../../lib/colors'
 import { Z } from '../../lib/zIndex'
 import type { Timeline } from '../../types/timeline'
+import type { MotionValue } from 'framer-motion'
 
 interface Props {
   tl: Timeline
   subscribe: (cb: () => void) => () => void
+  progress: MotionValue<number>
 }
 
 function buildGradient(accentR: number, accentG: number, accentB: number, progress: number): string {
@@ -33,21 +35,21 @@ function buildGradient(accentR: number, accentG: number, accentB: number, progre
   ].join(', ')
 }
 
-export function NebulaOverlay({ tl, subscribe }: Props) {
+export function NebulaOverlay({ tl, subscribe, progress }: Props) {
   const bgRef = useRef('')
   const [, setTick] = useState(0)
 
   useEffect(() => {
-    bgRef.current = buildGradient(tl.lighting.accentR, tl.lighting.accentG, tl.lighting.accentB, tl.progress)
+    bgRef.current = buildGradient(tl.lighting.accentR, tl.lighting.accentG, tl.lighting.accentB, progress.get())
     const unsub = subscribe(() => {
-      const g = buildGradient(tl.lighting.accentR, tl.lighting.accentG, tl.lighting.accentB, tl.progress)
+      const g = buildGradient(tl.lighting.accentR, tl.lighting.accentG, tl.lighting.accentB, progress.get())
       if (g !== bgRef.current) {
         bgRef.current = g
         setTick((t) => t + 1)
       }
     })
     return unsub
-  }, [tl, subscribe])
+  }, [tl, subscribe, progress])
 
   return (
     <div className="pointer-events-none absolute -inset-[8%]" style={{ zIndex: Z.overlays }} aria-hidden="true">

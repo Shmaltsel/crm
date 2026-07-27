@@ -2,10 +2,12 @@ import { useEffect, useRef, useState } from 'react'
 import { clamp, lerp } from '../../lib/animation'
 import { useReducedMotion } from '../../hooks/useReducedMotion'
 import type { Timeline } from '../../types/timeline'
+import type { MotionValue } from 'framer-motion'
 import { ROCKET_WAYPOINTS } from '../../data/rocket'
 
 interface Props {
   tl: Timeline
+  progress: MotionValue<number>
 }
 
 function interpolateRocket(progress: number, vw: number, vh: number) {
@@ -39,7 +41,7 @@ const FLAME_OUTER = 'M-8,55 C-4,72 4,72 8,55'
 const FLAME_INNER = 'M-5,55 C-2,68 2,68 5,55'
 const FLAME_TIP = 'M-2,55 L0,68 L2,55'
 
-export function RocketOverlay({ tl }: Props) {
+export function RocketOverlay({ tl, progress }: Props) {
   const reduced = useReducedMotion()
   const [, setTick] = useState(0)
   const flameRef = useRef(1)
@@ -50,7 +52,8 @@ export function RocketOverlay({ tl }: Props) {
   }, [tl])
 
   const t = tl
-  const rocket = interpolateRocket(t.progress, t.vw, t.vh)
+  const p = progress.get()
+  const rocket = interpolateRocket(p, t.vw, t.vh)
   const camX = rocket.x + t.parallax[5].x + t.camera.x + t.camera.shakeX
   const camY = rocket.y + t.parallax[5].y + t.camera.y + t.camera.shakeY
   const opacity = clamp(1 - t.beatStrengths[12] * 1.4, 0, 1)

@@ -1,6 +1,7 @@
 import { useRef, useEffect, useCallback } from 'react'
 import { lerp, clamp, smoothstep } from '../lib/animation'
 import type { Timeline } from '../types/timeline'
+import type { MotionValue } from 'framer-motion'
 
 const TOTAL_BEATS = 13
 const DAMPING = 0.08
@@ -56,7 +57,7 @@ const NEBULA_SCENE_COLORS: [number, number, number][] = [
 type SubscribeFn = (cb: () => void) => () => void
 
 export function useMotionTimeline(
-  containerRef: React.RefObject<HTMLDivElement | null>,
+  smoothProgress: MotionValue<number>,
 ): { tl: Timeline; subscribe: SubscribeFn } {
   const tl = useRef<Timeline>({
     progress: 0, dt: 0, elapsed: 0,
@@ -110,9 +111,7 @@ export function useMotionTimeline(
       t.dt = dt
       t.elapsed = now
 
-      const track = containerRef.current
-      const total = track ? Math.max(1, track.scrollHeight - window.innerHeight) : 1
-      const rawProgress = window.scrollY / total
+      const rawProgress = smoothProgress.get()
       t.progress = clamp(rawProgress, 0, 1)
 
       const scroll = scrollRef.current
@@ -248,7 +247,7 @@ export function useMotionTimeline(
 
     raf = requestAnimationFrame(tick)
     return () => cancelAnimationFrame(raf)
-  }, [containerRef, subscribe])
+  }, [subscribe, smoothProgress])
 
   return { tl: tl.current, subscribe }
 }

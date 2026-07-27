@@ -2,10 +2,12 @@ import { useEffect, useState } from 'react'
 import { clamp } from '../../lib/animation'
 import { Z } from '../../lib/zIndex'
 import type { Timeline } from '../../types/timeline'
+import type { MotionValue } from 'framer-motion'
 
 interface Props {
   tl: Timeline
   subscribe: (cb: () => void) => () => void
+  progress: MotionValue<number>
 }
 
 interface PlanetState {
@@ -21,7 +23,7 @@ interface PlanetState {
   breathPhase: number
 }
 
-export function PortalOverlay({ tl, subscribe }: Props) {
+export function PortalOverlay({ tl, subscribe, progress }: Props) {
   const [s, setS] = useState<PlanetState>({
     portalS: 0, p0x: 0, p0y: 0, p1x: 0, p1y: 0, p2x: 0, p2y: 0, drift: 0,
     activePlanet: -1, breathPhase: 0,
@@ -35,7 +37,7 @@ export function PortalOverlay({ tl, subscribe }: Props) {
       const popifyS = Math.max(bs[6], bs[7])
       const f = bs[12]
       const portalS = clamp(Math.max(malyuvaikaS, hologramS, popifyS, f), 0, 1)
-      const p = tl.progress
+      const p = progress.get()
 
       let activePlanet = -1
       if (hologramS > 0.15) activePlanet = 0
@@ -55,7 +57,7 @@ export function PortalOverlay({ tl, subscribe }: Props) {
         breathPhase: (tl.elapsed / 1000) * 0.8,
       })
     })
-  }, [tl, subscribe])
+  }, [tl, subscribe, progress])
 
   const breath = Math.sin(s.breathPhase) * 0.03 + 1
 

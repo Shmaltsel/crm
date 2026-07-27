@@ -2,7 +2,7 @@ import { useCallback, useRef, useState } from 'react'
 import { useScrollStory } from './hooks/useScrollStory'
 import { useMotionTimeline } from './hooks/useMotionTimeline'
 import { useBeatStrengths } from './hooks/useBeatStrengths'
-import { useProgressMV } from './hooks/useProgressMV'
+import { useSmoothProgress } from './hooks/useSmoothProgress'
 import { useScrollSnap } from './hooks/useScrollSnap'
 import { clamp, tweenScrollTo } from './lib/animation'
 import { Z } from './lib/zIndex'
@@ -36,13 +36,13 @@ import type { MotionValue } from 'framer-motion'
 
 export function LandingHero() {
   const { containerRef } = useScrollStory()
-  const { tl, subscribe } = useMotionTimeline(containerRef)
+  const smoothProgress = useSmoothProgress()
+  const { tl, subscribe } = useMotionTimeline(smoothProgress)
   const [contactOpen, setContactOpen] = useState(false)
 
-  const scrollYProgress = useProgressMV(tl, subscribe)
-  const beatStrengths = useBeatStrengths(scrollYProgress)
+  const beatStrengths = useBeatStrengths(smoothProgress)
 
-  useScrollSnap(scrollYProgress, containerRef)
+  useScrollSnap(smoothProgress, containerRef)
 
   const drawingStrength = beatStrengths[5]
   const finaleStrength = beatStrengths[12]
@@ -117,15 +117,15 @@ export function LandingHero() {
   }, [])
 
   const beats: [MotionValue<number>, React.ReactNode][] = [
-    [beatStrengths[0], <HeroBeat key="hero" progress={scrollYProgress} onOpenContact={() => setContactOpen(true)} />],
-    [beatStrengths[1], <ManifestBeat key="manifest" progress={scrollYProgress} />],
-    [beatStrengths[2], <PillarsBeat key="pillars" progress={scrollYProgress} />],
-    ...[3, 4, 5, 6, 7].map((i) => [beatStrengths[i], <WorldBeat key={`world-${i}`} progress={scrollYProgress} beatIndex={i} />] as [MotionValue<number>, React.ReactNode]),
-    [beatStrengths[8], <TimelineBeat key="timeline" progress={scrollYProgress} />],
-    [beatStrengths[9], <GalleryBeat key="gallery" progress={scrollYProgress} />],
-    [beatStrengths[10], <TeamVoicesBeat key="team" progress={scrollYProgress} />],
-    [beatStrengths[11], <StatsBeat key="stats" progress={scrollYProgress} />],
-    [beatStrengths[12], <FinaleBeat key="finale" progress={scrollYProgress} onOpenContact={() => setContactOpen(true)} onConfetti={handleConfetti} />],
+    [beatStrengths[0], <HeroBeat key="hero" progress={smoothProgress} onOpenContact={() => setContactOpen(true)} />],
+    [beatStrengths[1], <ManifestBeat key="manifest" progress={smoothProgress} />],
+    [beatStrengths[2], <PillarsBeat key="pillars" progress={smoothProgress} />],
+    ...[3, 4, 5, 6, 7].map((i) => [beatStrengths[i], <WorldBeat key={`world-${i}`} progress={smoothProgress} beatIndex={i} />] as [MotionValue<number>, React.ReactNode]),
+    [beatStrengths[8], <TimelineBeat key="timeline" progress={smoothProgress} />],
+    [beatStrengths[9], <GalleryBeat key="gallery" progress={smoothProgress} />],
+    [beatStrengths[10], <TeamVoicesBeat key="team" progress={smoothProgress} />],
+    [beatStrengths[11], <StatsBeat key="stats" progress={smoothProgress} />],
+    [beatStrengths[12], <FinaleBeat key="finale" progress={smoothProgress} onOpenContact={() => setContactOpen(true)} onConfetti={handleConfetti} />],
   ]
 
   return (
@@ -145,7 +145,7 @@ export function LandingHero() {
         Пропустити до форми
       </a>
 
-      <ProgressRail progress={scrollYProgress} />
+      <ProgressRail progress={smoothProgress} />
       <Nav
         onOpenContact={() => setContactOpen(true)}
         onNavigate={scrollToFraction}
@@ -154,11 +154,11 @@ export function LandingHero() {
 
       {/* Universe (fixed background) */}
       <div className="fixed inset-0 overflow-hidden" style={{ zIndex: Z.overlays }} aria-hidden="true">
-        <NebulaOverlay tl={tl} subscribe={subscribe} />
+        <NebulaOverlay tl={tl} subscribe={subscribe} progress={smoothProgress} />
         <StarField />
-        <PortalOverlay tl={tl} subscribe={subscribe} />
+        <PortalOverlay tl={tl} subscribe={subscribe} progress={smoothProgress} />
         <GrassGround tl={tl} subscribe={subscribe} />
-        <RocketOverlay tl={tl} />
+        <RocketOverlay tl={tl} progress={smoothProgress} />
       </div>
 
       {/* Story beats */}
@@ -174,7 +174,7 @@ export function LandingHero() {
         </div>
       </main>
 
-      <ScrollHint progress={scrollYProgress} finaleStrength={finaleStrength} />
+      <ScrollHint progress={smoothProgress} finaleStrength={finaleStrength} />
       <SoundToggle />
       <ContactPanel isOpen={contactOpen} onClose={() => setContactOpen(false)} />
       <Footer onOpenContact={() => setContactOpen(true)} />
