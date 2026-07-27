@@ -1,6 +1,6 @@
 # @svitlo/hero — Project Bundle
 
-**Generated:** 2026-07-27T22:38:15.309Z
+**Generated:** 2026-07-27T22:40:21.096Z
 
 ## Project Tree
 
@@ -2289,23 +2289,25 @@ export function RocketOverlay({ tl, progress, subscribe }: Props) {
   const t = tl
   const p = progress.get()
   const rocket = interpolateRocket(p, t.vw, t.vh)
-  const camX = rocket.x + t.parallax[5].x + t.camera.x + t.camera.shakeX
-  const camY = rocket.y + t.parallax[5].y + t.camera.y + t.camera.shakeY
 
+  const now = t.elapsed
   const opacity = 1
 
   if (!reduced) {
-    flameRef.current = 1 + Math.sin(t.elapsed / 90) * 0.12
+    flameRef.current = 1 + Math.sin(now / 90) * 0.12
   }
 
   const speedFactor = clamp(Math.abs(t.velocity) / 2000, 0, 1)
 
-  const isParked = p < 0.005
-  const isLanded = p > 0.985
-  const engineGlow = (isParked || isLanded) ? 0 : 0.5 + speedFactor * 0.5
-  const flameScale = (isParked || isLanded) ? 0 : flameRef.current
+  const enginePower = clamp(p / 0.015, 0, 1) * clamp((1 - p) / 0.03, 0, 1)
 
-  const now = t.elapsed
+  const engineGlow = (0.5 + speedFactor * 0.5) * enginePower
+  const flameScale = flameRef.current * enginePower
+
+  const idleHover = (1 - enginePower) * Math.sin(now / 300) * 8
+
+  const camX = rocket.x + t.parallax[5].x + t.camera.x + t.camera.shakeX
+  const camY = rocket.y + t.parallax[5].y + t.camera.y + t.camera.shakeY + idleHover
 
   const ws = t.isWarping ? t.warpStrength : 0
   const flashOpacity = Math.pow(ws, 4)
@@ -3629,6 +3631,7 @@ export function useSmoothProgress(source: MotionValue<number>) {
 ### `src/features/landing-hero/LandingHero.tsx`
 ```typescript
 import { useCallback, useRef, useState } from 'react'
+import { motion } from 'framer-motion'
 import { useScrollStory } from './hooks/useScrollStory'
 import { useMotionTimeline } from './hooks/useMotionTimeline'
 import { useBeatStrengths } from './hooks/useBeatStrengths'
@@ -3813,8 +3816,8 @@ export function LandingHero() {
         <GrassGround tl={tl} subscribe={subscribe} />
         <CampfireSparks subscribe={subscribe} tl={tl} />
         <RocketOverlay tl={tl} progress={smoothProgress} subscribe={subscribe} />
-        <div
-          className="pointer-events-none fixed inset-0 bg-night transition-opacity duration-1000"
+        <motion.div
+          className="pointer-events-none fixed inset-0 bg-night"
           style={{ opacity: finaleStrength, zIndex: 4 }}
           aria-hidden="true"
         />
@@ -4251,4 +4254,4 @@ createRoot(document.getElementById('root')!).render(
 
 ---
 
-**Files:** 61 | **Lines:** 3,814
+**Files:** 61 | **Lines:** 3,817
