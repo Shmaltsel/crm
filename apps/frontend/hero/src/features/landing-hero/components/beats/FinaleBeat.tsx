@@ -24,15 +24,12 @@ export function FinaleBeat({ progress, onOpenContact, onConfetti }: Props) {
       style={{ opacity: strength, y }}
     >
       <div className="max-w-[680px]">
-        <p className="mb-3.5 text-xs font-bold uppercase tracking-[0.18em] text-gold opacity-90">
-          Запрошення
-        </p>
-        <h2 className="text-[clamp(26px,3.9vw,42px)] leading-[1.15] text-paper">
+        <h2 className="text-[clamp(26px,3.9vw,42px)] leading-[1.3] text-paper">
           Наступна історія<br />
-          може початися{' '}
-          <em className="font-serif italic text-gold">у вашій школі</em>
+          може початися<br />
+          <em className="font-serif italic text-gold glow-word">саме у вашому закладі.</em>
         </h2>
-        <div className="mt-9 flex flex-wrap justify-center gap-3.5">
+        <div className="mt-12 flex flex-wrap justify-center gap-3.5">
           <button
             onClick={handleClick}
             className="rounded-full border border-gold bg-gold px-7 py-3.5 text-[14.5px] font-bold text-night transition-all hover:-translate-y-[3px] hover:shadow-[0_16px_36px_rgba(242,184,75,0.38)]"

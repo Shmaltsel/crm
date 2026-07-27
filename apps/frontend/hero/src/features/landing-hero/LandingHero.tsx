@@ -14,7 +14,6 @@ import { SoundToggle } from './components/SoundToggle'
 import { CursorGlow } from './components/CursorGlow'
 import { ScrollHint } from './components/ScrollHint'
 import { ContactPanel } from './components/ContactPanel'
-import { Footer } from './components/Footer'
 import { FilmGrain } from './components/FilmGrain'
 
 import { NebulaOverlay } from './components/overlays/NebulaOverlay'
@@ -184,6 +183,11 @@ export function LandingHero() {
         <GrassGround tl={tl} subscribe={subscribe} />
         <CampfireSparks subscribe={subscribe} tl={tl} />
         <RocketOverlay tl={tl} progress={smoothProgress} subscribe={subscribe} />
+        <div
+          className="pointer-events-none fixed inset-0 bg-night transition-opacity duration-1000"
+          style={{ opacity: finaleStrength, zIndex: 4 }}
+          aria-hidden="true"
+        />
       </div>
 
       {/* Story beats */}
@@ -202,7 +206,6 @@ export function LandingHero() {
       <ScrollHint progress={smoothProgress} finaleStrength={finaleStrength} />
       <SoundToggle />
       <ContactPanel isOpen={contactOpen} onClose={() => setContactOpen(false)} />
-      <Footer onOpenContact={() => setContactOpen(true)} />
       <FilmGrain />
     </>
   )

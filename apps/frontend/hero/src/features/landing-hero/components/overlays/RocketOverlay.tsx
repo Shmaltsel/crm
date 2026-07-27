@@ -98,14 +98,19 @@ export function RocketOverlay({ tl, progress, subscribe }: Props) {
   const rocket = interpolateRocket(p, t.vw, t.vh)
   const camX = rocket.x + t.parallax[5].x + t.camera.x + t.camera.shakeX
   const camY = rocket.y + t.parallax[5].y + t.camera.y + t.camera.shakeY
-  const opacity = clamp(1 - t.beatStrengths[12] * 1.4, 0, 1)
+
+  const opacity = 1
 
   if (!reduced) {
     flameRef.current = 1 + Math.sin(t.elapsed / 90) * 0.12
   }
-  const flameScale = flameRef.current
+
   const speedFactor = clamp(Math.abs(t.velocity) / 2000, 0, 1)
-  const engineGlow = 0.5 + speedFactor * 0.5
+
+  const isParked = p < 0.005
+  const isLanded = p > 0.985
+  const engineGlow = (isParked || isLanded) ? 0 : 0.5 + speedFactor * 0.5
+  const flameScale = (isParked || isLanded) ? 0 : flameRef.current
 
   const now = t.elapsed
 

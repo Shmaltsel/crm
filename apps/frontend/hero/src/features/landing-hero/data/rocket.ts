@@ -6,6 +6,7 @@ export interface RocketWaypoint {
 }
 
 export const ROCKET_WAYPOINTS: RocketWaypoint[] = [
+  { x: 0.18, y: 0.04 },
   { x: 0.50, y: 0.38 },
   { x: 0.78, y: 0.26 },
   { x: 0.18, y: 0.52 },
@@ -19,4 +20,5 @@ export const ROCKET_WAYPOINTS: RocketWaypoint[] = [
   { x: 0.72, y: 0.48 },
   { x: 0.50, y: 0.22 },
   { x: 0.50, y: 0.48 },
+  { x: 0.50, y: 0.85 },
 ]
