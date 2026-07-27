@@ -158,7 +158,7 @@ export function LandingHero() {
         <StarField />
         <PortalOverlay tl={tl} subscribe={subscribe} progress={smoothProgress} />
         <GrassGround tl={tl} subscribe={subscribe} />
-        <RocketOverlay tl={tl} progress={smoothProgress} />
+        <RocketOverlay tl={tl} progress={smoothProgress} subscribe={subscribe} />
       </div>
 
       {/* Story beats */}

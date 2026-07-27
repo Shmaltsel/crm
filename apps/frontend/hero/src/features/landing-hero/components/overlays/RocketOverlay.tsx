@@ -8,6 +8,7 @@ import { ROCKET_WAYPOINTS } from '../../data/rocket'
 interface Props {
   tl: Timeline
   progress: MotionValue<number>
+  subscribe: (cb: () => void) => () => void
 }
 
 function interpolateRocket(progress: number, vw: number, vh: number) {
@@ -41,15 +42,15 @@ const FLAME_OUTER = 'M-8,55 C-4,72 4,72 8,55'
 const FLAME_INNER = 'M-5,55 C-2,68 2,68 5,55'
 const FLAME_TIP = 'M-2,55 L0,68 L2,55'
 
-export function RocketOverlay({ tl, progress }: Props) {
+export function RocketOverlay({ tl, progress, subscribe }: Props) {
   const reduced = useReducedMotion()
   const [, setTick] = useState(0)
   const flameRef = useRef(1)
 
   useEffect(() => {
-    const unsub = tl.subscribe(() => setTick((t) => t + 1))
+    const unsub = subscribe(() => setTick((t) => t + 1))
     return unsub
-  }, [tl])
+  }, [subscribe])
 
   const t = tl
   const p = progress.get()
