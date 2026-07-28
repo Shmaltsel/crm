@@ -107,3 +107,23 @@
 - Що робити якщо фіча не працює
 - Як відкотити зміни без втрати даних
 - Залежності від backend змін
+
+---
+
+## Vercel Deploy (hero пакет)
+
+### Алгоритм (WORKING — НЕ ЗМІНЮВАТИ)
+```
+1. pnpm --filter hero build          # локальний build
+2. vercel build --yes --target production   # Vercel build → .vercel/output
+3. vercel deploy --prebuilt --prod --yes    # деплой prebuilt output
+```
+
+### Важливі нюанси
+- `vercel deploy dist` НЕ працює — створює новий проєкт замість hero.
+- `vercel --prod --yes` з hero директорії — тягне весь monorepo (1.3GB) і зависає.
+- `--prebuilt` дивиться на `.vercel/output` в поточній директорії — треба запускати з `apps/frontend/hero`.
+- `vercel build --target production` генерує production output; `vercel build` без `--target` генерує preview → mismatch при `--prod --prebuilt`.
+- `.vercelignore` не допомагає з монорепо — Vercel CLI ігнорує його при деплої prebuilt.
+- Vercel project: `shmaltsels-projects/hero`, alias: `hero-seven-bice.vercel.app`.
+- `vite.config.ts` `base: '/'` для root deployment.
