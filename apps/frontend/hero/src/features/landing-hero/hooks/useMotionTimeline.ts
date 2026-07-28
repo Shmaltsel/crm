@@ -166,7 +166,7 @@ export function useMotionTimeline(
         scroll.lastY = scroll.y
 
         t.velocity = clamp(scroll.velocitySmooth, -3000, 3000)
-        t.acceleration = (t.velocity - scroll.velocitySmooth) * 3
+        t.acceleration = (rawVelocity - scroll.velocitySmooth) * 3
         t.direction = t.velocity > 50 ? 1 : t.velocity < -50 ? -1 : 0
         t.isScrolling = Math.abs(t.velocity) > 30
 
@@ -199,7 +199,7 @@ export function useMotionTimeline(
       t.camera.depth = lerp(t.camera.depth, t.progress * 0.3, DAMPING)
 
       const parallaxSpeeds = [0.02, 0.05, 0.1, 0.15, 0.25, 0.35, 0.5, 1.0]
-      const parallaxInertia = [0.02, 0.03, 0.05, 0.06, 0.08, 0.1, 0.12, 0.15]
+      const parallaxInertia = [0.02, 0.03, 0.05, 0.06, 0.08, 0.1, 0.25, 0.15]
       for (let i = 0; i < 8; i++) {
         const targetPx = t.progress * t.vh * parallaxSpeeds[i] * t.direction
         const targetPy = t.progress * t.vh * parallaxSpeeds[i] * 0.3

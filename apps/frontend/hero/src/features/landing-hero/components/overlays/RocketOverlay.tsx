@@ -59,7 +59,7 @@ export function RocketOverlay({ tl, progress, subscribe }: Props) {
   if (currentHeading.current === null) {
     currentHeading.current = rawHeading
   } else {
-    currentHeading.current = lerpAngle(currentHeading.current, rawHeading, 0.12)
+    currentHeading.current = lerpAngle(currentHeading.current, rawHeading, 0.20)
   }
 
   const camX = rocket.x + t.parallax[5].x + t.camera.x + t.camera.shakeX
