@@ -41,16 +41,45 @@ export function FinaleBeat({ progress, onOpenContact }: Props) {
 
   useEffect(() => {
     if (reduced || landingAnimDone.current) return
+
+    const controls: ReturnType<typeof animate>[] = []
+    let isMounted = true
+
     let prevVal = 0
-    const unsub = strength.on('change', (v) => {
+    const unsub = strength.on('change', async (v) => {
       if (v > 0.9 && prevVal <= 0.9) {
         landingAnimDone.current = true
-        animate('[data-cta-button]', { opacity: 1, scale: 1, width: 160, height: 48 }, { duration: 1.4, ease: [0.25, 0.1, 0.25, 1] })
-          .then(() => animate('[data-cta-label]', { opacity: 1 }, { duration: 0.3 }))
+
+        if (reduced) {
+          await Promise.all([
+            animate('[data-cta-button]', { opacity: 1, scale: 1, width: 160, height: 48 }, { duration: 0 }),
+            animate('[data-cta-label]', { opacity: 1 }, { duration: 0 }),
+          ])
+          return
+        }
+
+        const c1 = await animate('[data-finale-spark]', { y: [-80, 0], opacity: [0, 1, 1] }, { duration: 0.5, ease: 'easeIn' })
+        controls.push(c1)
+        if (!isMounted) return
+
+        const c2 = await Promise.all([
+          animate('[data-finale-spark]', { opacity: 0, scale: 0 }, { duration: 0.15 }),
+          animate('[data-cta-button]', { opacity: 1, scale: 1, width: 160, height: 48 }, { type: 'spring', stiffness: 200, damping: 20 }),
+        ])
+        controls.push(...c2)
+        if (!isMounted) return
+
+        const c3 = await animate('[data-cta-label]', { opacity: 1 }, { duration: 0.3 })
+        controls.push(c3)
       }
       prevVal = v
     })
-    return unsub
+
+    return () => {
+      isMounted = false
+      unsub()
+      controls.forEach((c) => c.stop?.())
+    }
   }, [strength, animate, reduced])
 
   const handleCtaClick = () => {
@@ -100,12 +129,17 @@ export function FinaleBeat({ progress, onOpenContact }: Props) {
           </span>
         </h2>
 
-        <div className="flex justify-center">
+        <div className="relative flex justify-center">
+          <div
+            data-finale-spark
+            className="absolute h-3 w-3 rounded-full bg-gold shadow-[0_0_20px_4px_rgba(242,184,75,0.8)]"
+            style={{ opacity: 0, zIndex: 10 }}
+          />
           <button
             data-cta-button
             onClick={handleCtaClick}
-            className="flex items-center justify-center rounded-full border border-gold bg-gold font-bold text-night transition-shadow hover:-translate-y-[3px] hover:shadow-[0_16px_36px_rgba(242,184,75,0.38)]"
-            style={{ opacity: 0, scale: 0, width: 8, height: 8, borderRadius: 9999, overflow: 'hidden' }}
+            className="relative flex items-center justify-center rounded-full border border-gold bg-gold font-bold text-night transition-shadow hover:-translate-y-[3px] hover:shadow-[0_16px_36px_rgba(242,184,75,0.38)]"
+            style={{ opacity: 0, scale: 0, width: 8, height: 8, borderRadius: 9999, overflow: 'hidden', zIndex: 5 }}
           >
             <span data-cta-label className="text-[14.5px] px-7 py-3.5 whitespace-nowrap" style={{ opacity: 0 }}>
               Запросити подію

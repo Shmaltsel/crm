@@ -1,6 +1,7 @@
-import { useState } from 'react'
-import { motion, useMotionValueEvent } from 'framer-motion'
+import { useEffect, useState } from 'react'
+import { motion, useAnimate, useMotionValueEvent } from 'framer-motion'
 import { useBeatStrength } from '../../hooks/useBeatStrength'
+import { useReducedMotion } from '../../hooks/useReducedMotion'
 import type { MotionValue } from 'framer-motion'
 
 interface Props {
@@ -10,18 +11,46 @@ interface Props {
 
 export function HeroBeat({ progress, onOpenContact }: Props) {
   const strength = useBeatStrength(progress, 0)
+  const reduced = useReducedMotion()
   const [visible, setVisible] = useState(true)
+  const [titleRef, animate] = useAnimate()
+
   useMotionValueEvent(strength, 'change', (s) => setVisible(s > 0.005))
+
+  useEffect(() => {
+    let isMounted = true
+
+    const run = async () => {
+      if (reduced) {
+        animate('[data-hero-title]', { clipPath: 'inset(0% 0% 0% 0%)' }, { duration: 0 })
+        return
+      }
+
+      await new Promise<void>((r) => setTimeout(r, 400))
+      if (!isMounted) return
+
+      await animate('[data-hero-title]', { clipPath: 'inset(0% 0% 0% 0%)' }, { duration: 1.6, ease: [0.25, 0.1, 0.25, 1] })
+    }
+
+    run()
+
+    return () => { isMounted = false }
+  }, [animate, reduced])
 
   return (
     <motion.div
+      ref={titleRef}
       role="region"
       aria-label="Головна секція"
       className="absolute inset-0 flex flex-col items-center justify-center px-6 text-center"
       style={{ opacity: strength, visibility: visible ? 'visible' : 'hidden' }}
     >
       <div className="max-w-[680px]">
-        <h1 className="stagger-word text-[clamp(42px,7.2vw,86px)] leading-[1.02] text-paper" style={{ animationDelay: '0.1s' }}>
+        <h1
+          data-hero-title
+          className="text-[clamp(42px,7.2vw,86px)] leading-[1.02] text-paper"
+          style={{ clipPath: 'inset(0% 100% 0% 0%)' }}
+        >
           Уява<br />
           <em className="font-serif italic text-gold glow-word">оживає</em>
         </h1>
