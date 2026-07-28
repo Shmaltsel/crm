@@ -162,12 +162,12 @@ export function useMotionTimeline(
         const scroll = scrollRef.current
         scroll.y = window.scrollY
         const rawVelocity = (scroll.y - scroll.lastY) / Math.max(dt, 0.001)
-        scroll.velocitySmooth = lerp(scroll.velocitySmooth, rawVelocity, clamp(dt * 12, 0, 1))
-        if (Math.abs(scroll.velocitySmooth) < 40) scroll.velocitySmooth = 0
+        scroll.velocitySmooth = lerp(scroll.velocitySmooth, rawVelocity, clamp(dt * 4, 0, 1))
+        if (Math.abs(scroll.velocitySmooth) < 80) scroll.velocitySmooth = 0
         scroll.lastY = scroll.y
 
         t.velocity = clamp(scroll.velocitySmooth, -3000, 3000)
-        t.acceleration = Math.abs(scroll.velocitySmooth) > 40 ? (rawVelocity - scroll.velocitySmooth) * 3 : 0
+        t.acceleration = Math.abs(scroll.velocitySmooth) > 80 ? (rawVelocity - scroll.velocitySmooth) * 2 : 0
         t.direction = t.velocity > 50 ? 1 : t.velocity < -50 ? -1 : 0
         t.isScrolling = Math.abs(t.velocity) > 30
 
@@ -177,10 +177,10 @@ export function useMotionTimeline(
       }
 
       const speedFactor = clamp(Math.abs(t.velocity) / 2000, 0, 1)
-      cameraTarget.current.x = clamp(t.velocity * 0.003, -6, 6)
-      cameraTarget.current.y = clamp(t.acceleration * 0.0004, -4, 4)
-      cameraTarget.current.tiltX = clamp(t.velocity * 0.0015, -3, 3)
-      cameraTarget.current.tiltY = clamp(t.acceleration * 0.0002, -2, 2)
+      cameraTarget.current.x = clamp(t.velocity * 0.002, -6, 6)
+      cameraTarget.current.y = clamp(t.acceleration * 0.0003, -4, 4)
+      cameraTarget.current.tiltX = clamp(t.velocity * 0.001, -3, 3)
+      cameraTarget.current.tiltY = clamp(t.acceleration * 0.00015, -2, 2)
 
       t.camera.x = lerp(t.camera.x, cameraTarget.current.x, SPRING_K)
       t.camera.y = lerp(t.camera.y, cameraTarget.current.y, SPRING_K)
