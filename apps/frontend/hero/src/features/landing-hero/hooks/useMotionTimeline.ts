@@ -83,7 +83,7 @@ export function useMotionTimeline(
     warpStrength: 0,
   })
 
-  const scrollRef = useRef({ y: 0, lastY: 0, velocitySmooth: 0 })
+  const scrollRef = useRef({ y: 0, lastY: 0, velocitySmooth: 0, stoppedFrames: 0 })
   const cameraTarget = useRef({ x: 0, y: 0, tiltX: 0, tiltY: 0 })
   const shakeAccum = useRef(0)
   const idRef = useRef(0)
@@ -162,12 +162,20 @@ export function useMotionTimeline(
         const scroll = scrollRef.current
         scroll.y = window.scrollY
         const rawVelocity = (scroll.y - scroll.lastY) / Math.max(dt, 0.001)
-        scroll.velocitySmooth = lerp(scroll.velocitySmooth, rawVelocity, clamp(dt * 4, 0, 1))
-        if (Math.abs(scroll.velocitySmooth) < 80) scroll.velocitySmooth = 0
+        if (Math.abs(rawVelocity) < 20) {
+          scroll.stoppedFrames++
+        } else {
+          scroll.stoppedFrames = 0
+        }
+        if (scroll.stoppedFrames > 2) {
+          scroll.velocitySmooth = 0
+        } else {
+          scroll.velocitySmooth = lerp(scroll.velocitySmooth, rawVelocity, clamp(dt * 6, 0, 1))
+        }
         scroll.lastY = scroll.y
 
         t.velocity = clamp(scroll.velocitySmooth, -3000, 3000)
-        t.acceleration = Math.abs(scroll.velocitySmooth) > 80 ? (rawVelocity - scroll.velocitySmooth) * 2 : 0
+        t.acceleration = scroll.stoppedFrames > 2 ? 0 : (rawVelocity - scroll.velocitySmooth) * 1.5
         t.direction = t.velocity > 50 ? 1 : t.velocity < -50 ? -1 : 0
         t.isScrolling = Math.abs(t.velocity) > 30
 
