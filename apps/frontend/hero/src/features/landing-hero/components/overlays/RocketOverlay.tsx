@@ -170,14 +170,64 @@ export function RocketOverlay({ tl, progress, subscribe }: Props) {
       </div>
 
       {t.isWarping && (
-        <div className="pointer-events-none fixed inset-0 flex items-center justify-center overflow-hidden" style={{ zIndex: Z.rocket + 10 }}>
+        <div className="pointer-events-none fixed inset-0 overflow-hidden" style={{ zIndex: Z.rocket + 10 }}>
           <div
-            className="absolute h-[100vh] w-[140px] bg-gradient-to-r from-transparent via-gold to-transparent mix-blend-screen"
-            style={{ transform: `scaleY(${ws * 15})`, opacity: ws }}
+            className="absolute inset-0"
+            style={{
+              background: `radial-gradient(ellipse 40% 40% at 50% 50%, rgba(242,184,75,${ws * 0.25}) 0%, rgba(143,227,224,${ws * 0.12}) 40%, transparent 70%)`,
+            }}
           />
-          <div className="absolute left-[30%] h-[150vh] w-[2px] bg-teal shadow-[0_0_15px_3px_#8FE3E0]" style={{ transform: `scaleY(${ws * 8})`, opacity: ws * 0.8 }} />
-          <div className="absolute right-[25%] h-[200vh] w-[4px] bg-coral shadow-[0_0_20px_5px_#FF7A59]" style={{ transform: `scaleY(${ws * 12})`, opacity: ws * 0.9 }} />
-          <div className="absolute left-[40%] h-[120vh] w-[1px] bg-white" style={{ transform: `scaleY(${ws * 20})`, opacity: ws * 0.5 }} />
+          <div
+            className="absolute inset-0"
+            style={{
+              background: `radial-gradient(ellipse 20% 20% at 50% 50%, rgba(255,255,255,${ws * 0.6}) 0%, transparent 100%)`,
+              mixBlendMode: 'overlay',
+            }}
+          />
+          <svg className="absolute inset-0 h-full w-full" viewBox="0 0 100 100" preserveAspectRatio="none">
+            {Array.from({ length: 16 }, (_, i) => {
+              const angle = (i / 16) * Math.PI * 2
+              const len = 30 + (i % 3) * 15
+              const delay = (i % 4) * 0.08
+              const lineWs = clamp((ws - delay) / (1 - delay), 0, 1)
+              const x1 = 50 + Math.cos(angle) * 4
+              const y1 = 50 + Math.sin(angle) * 4
+              const x2 = 50 + Math.cos(angle) * len * lineWs
+              const y2 = 50 + Math.sin(angle) * len * lineWs
+              const opacity = lineWs * (1 - lineWs * 0.5) * 0.7
+              const colors = ['#F2B84B', '#8FE3E0', '#FF7A59', '#FBF5EA']
+              return (
+                <line
+                  key={i}
+                  x1={x1}
+                  y1={y1}
+                  x2={x2}
+                  y2={y2}
+                  stroke={colors[i % 4]}
+                  strokeWidth={0.15 + (i % 2) * 0.08}
+                  strokeLinecap="round"
+                  opacity={opacity}
+                />
+              )
+            })}
+          </svg>
+          <div
+            className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 rounded-full"
+            style={{
+              width: 60 + ws * 80,
+              height: 60 + ws * 80,
+              background: `radial-gradient(circle, rgba(242,184,75,${ws * 0.5}) 0%, rgba(255,122,89,${ws * 0.3}) 50%, transparent 100%)`,
+              filter: `blur(${8 + ws * 12}px)`,
+            }}
+          />
+          <div
+            className="absolute inset-0"
+            style={{
+              background: 'linear-gradient(90deg, transparent 0%, rgba(255,255,255,0.08) 50%, transparent 100%)',
+              transform: `translateX(${(ws - 0.5) * 200}%)`,
+              opacity: ws * 0.5,
+            }}
+          />
         </div>
       )}
     </>
