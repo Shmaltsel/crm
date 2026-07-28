@@ -21,14 +21,14 @@ export function HeroBeat({ progress, onOpenContact }: Props) {
       style={{ opacity: strength, visibility: visible ? 'visible' : 'hidden' }}
     >
       <div className="max-w-[680px]">
-        <h1 className="text-[clamp(42px,7.2vw,86px)] leading-[1.02] text-paper">
+        <h1 className="stagger-word text-[clamp(42px,7.2vw,86px)] leading-[1.02] text-paper" style={{ animationDelay: '0.1s' }}>
           Уява<br />
           <em className="font-serif italic text-gold glow-word">оживає</em>
         </h1>
-        <p className="mx-auto mt-[22px] max-w-[460px] text-[17px] leading-[1.55] text-mist">
+        <p className="stagger-word mx-auto mt-[22px] max-w-[460px] text-[17px] leading-[1.55] text-mist" style={{ animationDelay: '0.3s' }}>
           Ми створюємо сучасні освітні події, які діти пам&apos;ятають роками.
         </p>
-        <div className="mt-9 flex flex-wrap justify-center gap-3.5">
+        <div className="stagger-word mt-9 flex flex-wrap justify-center gap-3.5" style={{ animationDelay: '0.5s' }}>
           <button
             onClick={() => onOpenContact()}
             className="rounded-full border border-gold bg-gold px-7 py-3.5 text-[14.5px] font-bold text-night transition-all hover:-translate-y-[3px] hover:shadow-[0_16px_36px_rgba(242,184,75,0.38)] active:scale-[0.97]"

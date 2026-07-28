@@ -1,6 +1,6 @@
 # @svitlo/hero — Project Bundle
 
-**Generated:** 2026-07-27T23:40:07.077Z
+**Generated:** 2026-07-28T11:24:22.629Z
 
 ## Project Tree
 
@@ -268,13 +268,12 @@ export function FinaleBeat({ progress, onOpenContact }: Props) {
   const reduced = useReducedMotion()
   const ambient = useAmbient()
   const [scope, animate] = useAnimate()
-  const [ctaVisible, setCtaVisible] = useState(false)
   const [dustSpawned, setDustSpawned] = useState(false)
   const isSunriseActive = useRef(false)
   const landingAnimDone = useRef(false)
 
-  const horizonY = useTransform(strength, [0, 0.5, 1], [110, 85, 75])
-  const rocketY = useTransform(strength, [0, 0.7, 0.9, 1], [50, 70, 80, 82])
+  const horizonY = useTransform(strength, [0, 0.5, 1], ['110%', '85%', '75%'])
+  const rocketY = useTransform(strength, [0, 0.7, 0.9, 1], ['50%', '70%', '80%', '82%'])
   const rocketOpacity = useTransform(strength, [0, 0.1, 0.85, 1], [0, 1, 1, 0.8])
 
   useEffect(() => {
@@ -296,11 +295,8 @@ export function FinaleBeat({ progress, onOpenContact }: Props) {
     const unsub = strength.on('change', (v) => {
       if (v > 0.9 && prevVal <= 0.9) {
         landingAnimDone.current = true
-        animate('[data-cta-dot]', { scale: 1, opacity: 1 }, { duration: 0.8, ease: [0.25, 0.1, 0.25, 1] })
-          .then(() => animate('[data-cta-dot]', { width: 160, height: 48, borderRadius: 9999 }, { duration: 0.6, ease: [0.25, 0.1, 0.25, 1] }))
-          .then(() => {
-            setCtaVisible(true)
-          })
+        animate('[data-cta-button]', { opacity: 1, scale: 1, width: 160, height: 48 }, { duration: 1.4, ease: [0.25, 0.1, 0.25, 1] })
+          .then(() => animate('[data-cta-label]', { opacity: 1 }, { duration: 0.3 }))
       }
       prevVal = v
     })
@@ -344,7 +340,7 @@ export function FinaleBeat({ progress, onOpenContact }: Props) {
         </svg>
       </motion.div>
 
-      {/* CTA materialization */}
+      {/* CTA materialization — single element, no DOM swap */}
       <div className="relative z-10 mt-32 max-w-[680px]">
         <h2 className="mb-10 text-[clamp(26px,3.9vw,42px)] leading-[1.3] text-paper" style={{ perspective: 600 }}>
           <span style={{ display: 'inline-block', transform: 'rotateX(2deg)' }}>
@@ -354,25 +350,17 @@ export function FinaleBeat({ progress, onOpenContact }: Props) {
           </span>
         </h2>
 
-        {/* CTA starts as a light dot, morphs into button */}
         <div className="flex justify-center">
-          {!ctaVisible ? (
-            <div
-              data-cta-dot
-              className="h-2 w-2 rounded-full bg-gold shadow-[0_0_20px_6px_rgba(242,184,75,0.6)]"
-              style={{ opacity: 0, transform: 'scale(0)' }}
-            />
-          ) : (
-            <motion.button
-              initial={{ opacity: 0, scale: 0.8 }}
-              animate={{ opacity: 1, scale: 1 }}
-              transition={{ type: 'spring', mass: 2.5, stiffness: 100, damping: 15 }}
-              onClick={handleCtaClick}
-              className="rounded-full border border-gold bg-gold px-7 py-3.5 text-[14.5px] font-bold text-night transition-all hover:-translate-y-[3px] hover:shadow-[0_16px_36px_rgba(242,184,75,0.38)]"
-            >
+          <button
+            data-cta-button
+            onClick={handleCtaClick}
+            className="flex items-center justify-center rounded-full border border-gold bg-gold font-bold text-night transition-shadow hover:-translate-y-[3px] hover:shadow-[0_16px_36px_rgba(242,184,75,0.38)]"
+            style={{ opacity: 0, scale: 0, width: 8, height: 8, borderRadius: 9999, overflow: 'hidden' }}
+          >
+            <span data-cta-label className="text-[14.5px] px-7 py-3.5 whitespace-nowrap" style={{ opacity: 0 }}>
               Запросити подію
-            </motion.button>
-          )}
+            </span>
+          </button>
         </div>
       </div>
     </div>
@@ -496,14 +484,14 @@ export function HeroBeat({ progress, onOpenContact }: Props) {
       style={{ opacity: strength, visibility: visible ? 'visible' : 'hidden' }}
     >
       <div className="max-w-[680px]">
-        <h1 className="text-[clamp(42px,7.2vw,86px)] leading-[1.02] text-paper">
+        <h1 className="stagger-word text-[clamp(42px,7.2vw,86px)] leading-[1.02] text-paper" style={{ animationDelay: '0.1s' }}>
           Уява<br />
           <em className="font-serif italic text-gold glow-word">оживає</em>
         </h1>
-        <p className="mx-auto mt-[22px] max-w-[460px] text-[17px] leading-[1.55] text-mist">
+        <p className="stagger-word mx-auto mt-[22px] max-w-[460px] text-[17px] leading-[1.55] text-mist" style={{ animationDelay: '0.3s' }}>
           Ми створюємо сучасні освітні події, які діти пам&apos;ятають роками.
         </p>
-        <div className="mt-9 flex flex-wrap justify-center gap-3.5">
+        <div className="stagger-word mt-9 flex flex-wrap justify-center gap-3.5" style={{ animationDelay: '0.5s' }}>
           <button
             onClick={() => onOpenContact()}
             className="rounded-full border border-gold bg-gold px-7 py-3.5 text-[14.5px] font-bold text-night transition-all hover:-translate-y-[3px] hover:shadow-[0_16px_36px_rgba(242,184,75,0.38)] active:scale-[0.97]"
@@ -4550,4 +4538,4 @@ createRoot(document.getElementById('root')!).render(
 
 ---
 
-**Files:** 63 | **Lines:** 4,102
+**Files:** 63 | **Lines:** 4,090
