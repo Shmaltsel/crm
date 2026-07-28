@@ -49,29 +49,26 @@ export function HeroBeat({ progress, onOpenContact, onHeroComplete }: Props) {
     const animateAll = async () => {
       if (!titleRef.current || !subtitleRef.current || !ctaRef.current) return
 
-      await new Promise((r) => setTimeout(r, 400))
-      if (cancelled || !titleRef.current) return
       await animate(
         titleRef.current,
         { clipPath: 'inset(0% 0% 0% 0%)' },
-        { duration: 1.4, ease: [0.25, 0.1, 0.25, 1] },
+        { duration: 0.8, ease: [0.25, 0.1, 0.25, 1] },
       )
 
-      await new Promise((r) => setTimeout(r, 0))
       if (cancelled || !subtitleRef.current) return
       await Promise.all([
         animate(
           subtitleRef.current,
           { opacity: 1, y: 0 },
-          { duration: 0.8, ease: [0.25, 0.1, 0.25, 1] },
+          { duration: 0.6, ease: [0.25, 0.1, 0.25, 1] },
         ),
         (async () => {
-          await new Promise((r) => setTimeout(r, 600))
+          await new Promise((r) => setTimeout(r, 350))
           if (!cancelled && ctaRef.current) {
             animate(
               ctaRef.current,
               { opacity: 1, y: 0 },
-              { duration: 0.8, ease: [0.25, 0.1, 0.25, 1] },
+              { duration: 0.6, ease: [0.25, 0.1, 0.25, 1] },
             )
           }
         })(),

@@ -22,7 +22,7 @@ export function useHeroIntro(): HeroIntroState {
     }
 
     const startTime = performance.now()
-    const INTRO_DURATION = 3000
+    const INTRO_DURATION = 600
 
     setPhase('intro')
 
