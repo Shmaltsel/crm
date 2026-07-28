@@ -84,7 +84,6 @@ export function useMotionTimeline(
   })
 
   const scrollRef = useRef({ y: 0, lastY: 0, velocitySmooth: 0, stoppedFrames: 0 })
-  const cameraTarget = useRef({ x: 0, y: 0, tiltX: 0, tiltY: 0 })
   const shakeAccum = useRef(0)
   const idRef = useRef(0)
   const subscribersRef = useRef<Set<() => void>>(new Set())
@@ -175,7 +174,7 @@ export function useMotionTimeline(
         scroll.lastY = scroll.y
 
         t.velocity = clamp(scroll.velocitySmooth, -3000, 3000)
-        t.acceleration = scroll.stoppedFrames > 2 ? 0 : (rawVelocity - scroll.velocitySmooth) * 1.5
+        t.acceleration = 0
         t.direction = t.velocity > 50 ? 1 : t.velocity < -50 ? -1 : 0
         t.isScrolling = Math.abs(t.velocity) > 30
 
@@ -185,15 +184,11 @@ export function useMotionTimeline(
       }
 
       const speedFactor = clamp(Math.abs(t.velocity) / 2000, 0, 1)
-      cameraTarget.current.x = clamp(t.velocity * 0.002, -6, 6)
-      cameraTarget.current.y = clamp(t.acceleration * 0.0003, -4, 4)
-      cameraTarget.current.tiltX = clamp(t.velocity * 0.001, -3, 3)
-      cameraTarget.current.tiltY = clamp(t.acceleration * 0.00015, -2, 2)
 
-      t.camera.x = lerp(t.camera.x, cameraTarget.current.x, SPRING_K)
-      t.camera.y = lerp(t.camera.y, cameraTarget.current.y, SPRING_K)
-      t.camera.tiltX = lerp(t.camera.tiltX, cameraTarget.current.tiltX, SPRING_K)
-      t.camera.tiltY = lerp(t.camera.tiltY, cameraTarget.current.tiltY, SPRING_K)
+      t.camera.x = 0
+      t.camera.y = 0
+      t.camera.tiltX = 0
+      t.camera.tiltY = 0
       t.camera.zoom = lerp(t.camera.zoom, 1 - speedFactor * 0.015, DAMPING)
 
       if (t.isScrolling && !t.isWarping) {
@@ -208,9 +203,9 @@ export function useMotionTimeline(
       t.camera.depth = lerp(t.camera.depth, t.progress * 0.3, DAMPING)
 
       const parallaxSpeeds = [0.02, 0.05, 0.1, 0.15, 0.25, 0.35, 0.5, 1.0]
-      const parallaxInertia = [0.02, 0.03, 0.05, 0.06, 0.08, 0.1, 0.25, 0.15]
+      const parallaxInertia = [0.02, 0.03, 0.05, 0.06, 0.08, 0.1, 0.15, 0.1]
       for (let i = 0; i < 8; i++) {
-        const targetPx = t.progress * t.vh * parallaxSpeeds[i] * t.direction
+        const targetPx = t.progress * t.vh * parallaxSpeeds[i] * 0.12
         const targetPy = t.progress * t.vh * parallaxSpeeds[i] * 0.3
         t.parallax[i].x = lerp(t.parallax[i].x, targetPx, parallaxInertia[i])
         t.parallax[i].y = lerp(t.parallax[i].y, targetPy, parallaxInertia[i])
