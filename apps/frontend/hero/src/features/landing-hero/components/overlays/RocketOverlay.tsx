@@ -63,28 +63,6 @@ function interpolateRocket(progress: number, vw: number, vh: number) {
   return { x, y, heading }
 }
 
-function flamePath(base: string, scale: number): string {
-  const m = base.match(/M([\d.-]+),([\d.-]+)\s*C([\d.-]+),([\d.-]+)\s+([\d.-]+),([\d.-]+)\s+([\d.-]+),([\d.-]+)/)
-  if (!m) return base
-  const bx = parseFloat(m[1])
-  const by = parseFloat(m[2])
-  const s = (x: number, y: number) => `${bx + (x - bx) * scale},${by + (y - by) * scale}`
-  return `M${m[1]},${m[2]} C${s(parseFloat(m[3]), parseFloat(m[4]))} ${s(parseFloat(m[5]), parseFloat(m[6]))} ${s(parseFloat(m[7]), parseFloat(m[8]))}`
-}
-
-function flameTipPath(base: string, scale: number): string {
-  const m = base.match(/M([\d.-]+),([\d.-]+)\s*L([\d.-]+),([\d.-]+)\s*L([\d.-]+),([\d.-]+)/)
-  if (!m) return base
-  const bx = parseFloat(m[1])
-  const by = parseFloat(m[2])
-  const s = (x: number, y: number) => `${bx + (x - bx) * scale},${by + (y - by) * scale}`
-  return `M${m[1]},${m[2]} L${s(parseFloat(m[3]), parseFloat(m[4]))} L${s(parseFloat(m[5]), parseFloat(m[6]))}`
-}
-
-const FLAME_OUTER = 'M-8,55 C-4,72 4,72 8,55'
-const FLAME_INNER = 'M-5,55 C-2,68 2,68 5,55'
-const FLAME_TIP = 'M-2,55 L0,68 L2,55'
-
 export function RocketOverlay({ tl, progress, subscribe }: Props) {
   const reduced = useReducedMotion()
   const [, setTick] = useState(0)
@@ -189,8 +167,8 @@ export function RocketOverlay({ tl, progress, subscribe }: Props) {
           </defs>
 
           <g>
-            <ellipse cx="0" cy="68" rx={14 + speedFactor * 4} ry={3 + speedFactor * 1.5} fill="rgba(11,14,31,0.25)" opacity={clamp(t.camera.depth * 2, 0, 0.35)} />
-            <circle cx="0" cy="60" r={20 + speedFactor * 15} fill="url(#engineGlow)" />
+            <ellipse cx="0" cy="72" rx={16 + speedFactor * 5} ry={4 + speedFactor * 2} fill="rgba(11,14,31,0.25)" opacity={clamp(t.camera.depth * 2, 0, 0.35)} />
+            <circle cx="0" cy="62" r={24 + speedFactor * 18} fill="url(#engineGlow)" />
 
             <path
               d="M0,-65 C20,-48 22,-15 22,10 C22,30 12,48 0,55 C-12,48 -22,30 -22,10 C-22,-15 -20,-48 0,-65 Z"
@@ -211,9 +189,24 @@ export function RocketOverlay({ tl, progress, subscribe }: Props) {
             <path d="M-22,18 L-32,38" stroke="#FBF5EA" strokeWidth="1" opacity="0.5" />
             <path d="M22,18 L32,38" stroke="#FBF5EA" strokeWidth="1" opacity="0.5" />
 
-            <path d={flamePath(FLAME_OUTER, flameScale * (1 + speedFactor * 0.3))} fill="url(#flameOuter)" opacity={engineGlow} />
-            <path d={flamePath(FLAME_INNER, flameScale)} fill="url(#flameInner)" opacity={0.9 * engineGlow} />
-            <path d={flameTipPath(FLAME_TIP, flameScale * (1 + speedFactor * 0.2))} fill="#FBF5EA" opacity={0.7 * engineGlow} />
+            <path
+              d="M-10,55 C-5,85 5,85 10,55"
+              fill="url(#flameOuter)"
+              opacity={engineGlow}
+              style={{ transformOrigin: '0px 55px', transform: `scale(${1 + speedFactor * 0.15}, ${flameScale * (1 + speedFactor * 0.3)})` }}
+            />
+            <path
+              d="M-7,55 C-3,78 3,78 7,55"
+              fill="url(#flameInner)"
+              opacity={0.9 * engineGlow}
+              style={{ transformOrigin: '0px 55px', transform: `scale(1, ${flameScale})` }}
+            />
+            <path
+              d="M-3,55 L0,82 L3,55"
+              fill="#FBF5EA"
+              opacity={0.7 * engineGlow}
+              style={{ transformOrigin: '0px 55px', transform: `scale(1, ${flameScale * (1 + speedFactor * 0.2)})` }}
+            />
           </g>
         </svg>
       </div>
