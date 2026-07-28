@@ -144,7 +144,7 @@ export function LandingHero() {
       {/* Story beats */}
       <main id="main" ref={containerRef} className="relative" style={{ zIndex: Z.content }}>
         <div className="h-[1100vh] max-md:h-[700vh]">
-          <div className="fixed inset-0 pointer-events-none" style={{ zIndex: Z.content }}>
+          <div className="fixed inset-0 overflow-visible pointer-events-none" style={{ zIndex: Z.content }}>
             {beats.map(([strength, child], i) => (
               <BeatWrapper key={i} strength={strength}>
                 {child}

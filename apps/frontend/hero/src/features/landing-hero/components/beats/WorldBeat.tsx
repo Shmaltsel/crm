@@ -55,7 +55,7 @@ export function WorldBeat({ progress, beatIndex }: Props) {
     <motion.div
       role="region"
       aria-label={content.heading}
-      className="absolute inset-0 flex flex-col items-center justify-center px-6 text-center"
+      className="absolute inset-0 flex flex-col items-center justify-center overflow-visible px-6 text-center"
       style={{ opacity: strength, y }}
     >
       {isHologram ? (
