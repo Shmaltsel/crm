@@ -20,6 +20,9 @@ function PlaceholderIcon() {
 
 export function MediaPlaceholder({ label, icon, className = '', src }: Props) {
   if (src) {
+    if (IMAGE_EXTS.test(src)) {
+      return <ImageMedia src={src} className={className} />
+    }
     return <VideoMedia src={src} className={className} />
   }
 
@@ -31,6 +34,26 @@ export function MediaPlaceholder({ label, icon, className = '', src }: Props) {
         {icon ?? <PlaceholderIcon />}
         <span className="text-[11px] uppercase tracking-[0.12em] text-mist-soft/50">{label}</span>
       </div>
+    </div>
+  )
+}
+
+const IMAGE_EXTS = /\.(jpg|jpeg|png|webp|gif|avif)(\?.*)?$/i
+
+function ImageMedia({ src, className }: { src: string; className: string }) {
+  const [ready, setReady] = useState(false)
+  return (
+    <div className={`relative overflow-hidden rounded-2xl bg-night ${className}`}>
+      <img
+        src={src}
+        onLoad={() => setReady(true)}
+        className={`h-full w-full object-cover transition-opacity duration-700 ${ready ? 'opacity-100' : 'opacity-0'}`}
+      />
+      {!ready && (
+        <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+          <PlaceholderIcon />
+        </div>
+      )}
     </div>
   )
 }
