@@ -1,5 +1,6 @@
 import { useRef, useEffect, useCallback } from 'react'
 import { lerp, clamp, smoothstep } from '../lib/animation'
+import { interpolateRocket } from '../lib/rocketMath'
 import type { Timeline } from '../types/timeline'
 import type { MotionValue } from 'framer-motion'
 
@@ -228,8 +229,9 @@ export function useMotionTimeline(
         const rocketBeatIdx = Math.floor(t.progress * 12.99)
         const rocketBeat = t.beatStrengths[clamp(rocketBeatIdx, 0, 12)]
         if (rocketBeat > 0.05) {
-          const rx = 0.5 * t.vw + t.parallax[5].x
-          const ry = 0.4 * t.vh + t.parallax[5].y
+          const rocket = interpolateRocket(t.progress, t.vw, t.vh)
+          const rx = rocket.x + t.parallax[5].x + t.camera.x + t.camera.shakeX
+          const ry = rocket.y + t.parallax[5].y + t.camera.y + t.camera.shakeY
           const boost = clamp(Math.abs(t.velocity) / 1500, 0, 2)
           const count = 1 + Math.round(boost)
           for (let j = 0; j < count; j++) {
