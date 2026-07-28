@@ -4,6 +4,7 @@ import { BEAT_CONTENT, WORLD_BEATS } from '../../data/worlds'
 import { MEDIA_URLS } from '../../data/media'
 import { MediaPlaceholder } from '../MediaPlaceholder'
 import { HologramGallery } from '../HologramGallery'
+import { PortalVideoCarousel, type CarouselVideo } from '../PortalVideoCarousel'
 
 interface Props {
   progress: MotionValue<number>
@@ -21,7 +22,6 @@ const WORLD_ICONS: Record<number, string> = {
 const WORLD_MEDIA: Record<number, string | undefined> = {
   4: MEDIA_URLS.malyuvaika,
   5: MEDIA_URLS.hologramEvent,
-  6: MEDIA_URLS.popify,
 }
 
 function getWorldKey(beatIndex: number): string {
@@ -40,6 +40,13 @@ function getMediaAnimClass(worldKey: string): string {
   }
 }
 
+const POPIFY_VIDEOS: CarouselVideo[] = [
+  { id: 'popify-1', src: MEDIA_URLS.popify1, label: 'Popify 1' },
+  { id: 'popify-2', src: MEDIA_URLS.popify2, label: 'Popify 2' },
+  { id: 'popify-3', src: MEDIA_URLS.popify3, label: 'Popify 3' },
+  { id: 'popify-4', src: MEDIA_URLS.popify4, label: 'Popify 4' },
+]
+
 export function WorldBeat({ progress, beatIndex }: Props) {
   const strength = useBeatStrength(progress, beatIndex)
   const y = useTransform(strength, [0, 1], [22, 0])
@@ -50,6 +57,7 @@ export function WorldBeat({ progress, beatIndex }: Props) {
   const mediaAnimClass = getMediaAnimClass(worldKey)
 
   const isHologram = beatIndex === 5
+  const isPopify = beatIndex === 6
 
   return (
     <motion.div
@@ -62,6 +70,34 @@ export function WorldBeat({ progress, beatIndex }: Props) {
         <div className="flex max-w-[900px] flex-col items-center gap-8 overflow-visible md:flex-row md:text-left">
           <div className={`${mediaAnimClass} w-full shrink-0 overflow-visible md:w-[440px]`}>
             <HologramGallery />
+          </div>
+          <div className="max-w-[480px]">
+            <p
+              className="mb-3.5 text-xs font-bold uppercase tracking-[0.18em] text-gold opacity-90 stagger-word"
+              style={{ animationDelay: '0.1s' }}
+            >
+              {content.eyebrow}
+            </p>
+            <h2
+              className="text-[clamp(26px,3.9vw,42px)] leading-[1.15] text-paper stagger-word"
+              style={{ animationDelay: '0.2s' }}
+            >
+              {content.heading}
+            </h2>
+            {content.sub && (
+              <p
+                className="mx-auto mt-4 max-w-[480px] text-[15.5px] leading-[1.55] text-mist-soft md:mx-0 stagger-word"
+                style={{ animationDelay: '0.35s' }}
+              >
+                {content.sub}
+              </p>
+            )}
+          </div>
+        </div>
+      ) : isPopify ? (
+        <div className="flex max-w-[900px] flex-col items-center gap-8 overflow-visible md:flex-row md:text-left">
+          <div className={`${mediaAnimClass} w-full shrink-0 overflow-visible md:w-[500px]`}>
+            <PortalVideoCarousel videos={POPIFY_VIDEOS} />
           </div>
           <div className="max-w-[480px]">
             <p

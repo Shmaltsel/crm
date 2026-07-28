@@ -32,7 +32,6 @@ import { TimelineBeat } from './components/beats/TimelineBeat'
 import { GalleryBeat } from './components/beats/GalleryBeat'
 import { TeamVoicesBeat } from './components/beats/TeamVoicesBeat'
 import { StatsBeat } from './components/beats/StatsBeat'
-import { PopifyBeat } from './components/beats/PopifyBeat'
 import { FinaleBeat } from './components/beats/FinaleBeat'
 import { BeatWrapper } from './components/BeatWrapper'
 import type { MotionValue } from 'framer-motion'
@@ -51,7 +50,7 @@ export function LandingHero() {
   const { commands, setCommands } = useAmbientCommands()
   const [heroCompleted, setHeroCompleted] = useState(false)
 
-  const finaleStrength = beatStrengths[13]
+  const finaleStrength = beatStrengths[12]
 
   const handleHeroComplete = useCallback(() => {
     if (heroCompleted) return
@@ -59,7 +58,7 @@ export function LandingHero() {
     const track = containerRef.current
     if (!track) return
     const total = Math.max(1, track.scrollHeight - window.innerHeight)
-    const target = (1 / 14) * total
+    const target = (1 / 13) * total
     window.scrollTo(0, target)
   }, [containerRef, heroCompleted])
 
@@ -100,8 +99,7 @@ export function LandingHero() {
     [beatStrengths[9], <GalleryBeat key="gallery" progress={smoothProgress} />],
     [beatStrengths[10], <TeamVoicesBeat key="team" progress={smoothProgress} />],
     [beatStrengths[11], <StatsBeat key="stats" progress={smoothProgress} />],
-    [beatStrengths[12], <PopifyBeat key="popify" progress={smoothProgress} />],
-    [beatStrengths[13], <FinaleBeat key="finale" progress={smoothProgress} onOpenContact={() => setContactOpen(true)} />],
+    [beatStrengths[12], <FinaleBeat key="finale" progress={smoothProgress} onOpenContact={() => setContactOpen(true)} />],
   ]
 
   return (
@@ -145,7 +143,7 @@ export function LandingHero() {
 
       {/* Story beats */}
       <main id="main" ref={containerRef} className="relative" style={{ zIndex: Z.content }}>
-        <div className="h-[1200vh] max-md:h-[800vh]">
+        <div className="h-[1100vh] max-md:h-[700vh]">
           <div className="fixed inset-0 overflow-visible pointer-events-none" style={{ zIndex: Z.content }}>
             {beats.map(([strength, child], i) => (
               <BeatWrapper key={i} strength={strength}>
