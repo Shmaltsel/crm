@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import { motion, useAnimate, useTransform } from 'framer-motion'
+import { motion, useAnimate, useMotionValueEvent, useTransform } from 'framer-motion'
 import { useBeatStrength } from '../../hooks/useBeatStrength'
 import { useReducedMotion } from '../../hooks/useReducedMotion'
 import { useAmbient } from '../../context/AmbientContext'
@@ -16,12 +16,15 @@ export function FinaleBeat({ progress, onOpenContact }: Props) {
   const ambient = useAmbient()
   const [scope, animate] = useAnimate()
   const [dustSpawned, setDustSpawned] = useState(false)
+  const [visible, setVisible] = useState(false)
   const isSunriseActive = useRef(false)
   const landingAnimDone = useRef(false)
 
   const horizonY = useTransform(strength, [0, 0.5, 1], ['110%', '85%', '75%'])
   const rocketY = useTransform(strength, [0, 0.7, 0.9, 1], ['50%', '70%', '80%', '82%'])
   const rocketOpacity = useTransform(strength, [0, 0.1, 0.85, 1], [0, 1, 1, 0.8])
+
+  useMotionValueEvent(strength, 'change', (s) => setVisible(s > 0.005))
 
   useEffect(() => {
     if (dustSpawned || !ambient) return
@@ -63,7 +66,7 @@ export function FinaleBeat({ progress, onOpenContact }: Props) {
       role="region"
       aria-label="Завершення"
       className="absolute inset-0 flex flex-col items-center justify-center px-6 text-center"
-      style={{ opacity: strength }}
+      style={{ opacity: strength, visibility: visible ? 'visible' : 'hidden' }}
     >
       {/* Dark horizon line */}
       <motion.div
