@@ -58,7 +58,7 @@ export function FinaleBeat({ progress, onOpenContact }: Props) {
   }
 
   return (
-    <div
+    <motion.div
       ref={scope}
       role="region"
       aria-label="Завершення"
@@ -110,6 +110,6 @@ export function FinaleBeat({ progress, onOpenContact }: Props) {
           </button>
         </div>
       </div>
-    </div>
+    </motion.div>
   )
 }

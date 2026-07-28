@@ -34,45 +34,16 @@ export function Nav({ onOpenContact, onNavigate, progress }: Props) {
   const [scrolled, setScrolled] = useState(false)
   const [mobileOpen, setMobileOpen] = useState(false)
   const [activeIdx, setActiveIdx] = useState(0)
-  const [hidden, setHidden] = useState(false)
-  const lastScrollY = useRef(0)
-  const navLock = useRef(false)
   const linkRefs = useRef<(HTMLAnchorElement | null)[]>([])
 
   useEffect(() => {
-    let scrollTimer: ReturnType<typeof setTimeout>
-
     const handler = () => {
-      const y = window.scrollY
-      setScrolled(y > 40)
-
-      if (navLock.current) {
-        lastScrollY.current = y
-        return
-      }
-
-      if (y < 200) {
-        setHidden(false)
-      } else {
-        const delta = y - lastScrollY.current
-        if (delta > 15) {
-          setHidden(true)
-        } else if (delta < -15) {
-          setHidden(false)
-        }
-      }
-      lastScrollY.current = y
-
-      clearTimeout(scrollTimer)
-      scrollTimer = setTimeout(() => setHidden(false), 1000)
+      setScrolled(window.scrollY > 40)
     }
 
     window.addEventListener('scroll', handler, { passive: true })
     handler()
-    return () => {
-      window.removeEventListener('scroll', handler)
-      clearTimeout(scrollTimer)
-    }
+    return () => window.removeEventListener('scroll', handler)
   }, [])
 
   useMotionValueEvent(progress, 'change', (p) => {
@@ -89,8 +60,6 @@ export function Nav({ onOpenContact, onNavigate, progress }: Props) {
     : { left: 0, width: 0, opacity: 0 }
 
   const handleNavClick = (fraction: number) => {
-    navLock.current = true
-    setTimeout(() => { navLock.current = false }, 1200)
     onNavigate(fraction)
   }
 
@@ -100,7 +69,7 @@ export function Nav({ onOpenContact, onNavigate, progress }: Props) {
         scrolled
           ? 'bg-night/72 py-3 backdrop-blur-[14px] border-b border-gold/12'
           : 'py-[18px]'
-      } ${hidden ? '-translate-y-full' : 'translate-y-0'}`}
+      }`}
       style={{ zIndex: Z.nav, transitionProperty: 'transform, background, padding, border-color' }}
     >
       <div className="mx-auto flex max-w-[1180px] items-center justify-between px-7">
