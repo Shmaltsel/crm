@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 
 const HOLOGRAM_PHOTOS = [
@@ -7,74 +7,56 @@ const HOLOGRAM_PHOTOS = [
   { src: '/materials/photo_4_2026-07-28_20-55-10.jpg', alt: 'Холограма вогняного кільця' },
 ]
 
-const LAYOUT = [
-  { x: 0, y: 0, rotate: -2.5, scale: 1 },
-  { x: 68, y: 52, rotate: 1.8, scale: 0.82 },
-  { x: 8, y: 110, rotate: -1.2, scale: 0.75 },
-]
+function useImagePreload(src: string | undefined): boolean {
+  const [loaded, setLoaded] = useState(false)
+  useEffect(() => {
+    if (!src) return
+    const img = new Image()
+    img.src = src
+    img.onload = () => setLoaded(true)
+  }, [src])
+  return loaded
+}
 
 export function HologramGallery() {
   const [activeIdx, setActiveIdx] = useState<number | null>(null)
   const [hoveredIdx, setHoveredIdx] = useState<number | null>(null)
+  const hoverLoaded = useImagePreload(HOLOGRAM_PHOTOS[0].hoverSrc)
 
   return (
     <>
-      <div className="relative h-[320px] w-full md:h-[300px]">
-        {HOLOGRAM_PHOTOS.map((photo, i) => {
-          const pos = LAYOUT[i]
-          const isHovered = hoveredIdx === i
-          const showHover = isHovered && photo.hoverSrc
-
-          return (
-            <button
-              key={i}
-              onMouseEnter={() => setHoveredIdx(i)}
-              onMouseLeave={() => setHoveredIdx(null)}
-              onClick={() => setActiveIdx(i)}
-              className="absolute cursor-pointer overflow-hidden rounded-xl border border-white/10 shadow-lg transition-[z-index] duration-0"
-              style={{
-                left: pos.x,
-                top: pos.y,
-                width: i === 0 ? 200 : 160,
-                height: i === 0 ? 160 : 130,
-                rotate: `${pos.rotate}deg`,
-                scale: isHovered ? '1.15' : String(pos.scale),
-                zIndex: isHovered ? 10 : 3 - i,
-                transition: 'transform 0.5s cubic-bezier(0.25, 0.1, 0.25, 1), box-shadow 0.4s ease',
-                boxShadow: isHovered
-                  ? '0 20px 50px rgba(242,184,75,0.2), 0 0 0 1px rgba(242,184,75,0.3)'
-                  : '0 8px 24px rgba(0,0,0,0.4)',
-              }}
-            >
-              {showHover && (
-                <img
-                  src={photo.hoverSrc!}
-                  alt={photo.alt}
-                  className="absolute inset-0 h-full w-full object-cover"
-                  style={{
-                    opacity: isHovered ? 1 : 0,
-                    transition: 'opacity 0.6s ease',
-                  }}
-                />
-              )}
-              <img
-                src={photo.src}
-                alt={photo.alt}
-                className="h-full w-full object-cover"
-                style={{
-                  opacity: showHover && isHovered ? 0 : 1,
-                  transition: 'opacity 0.6s ease',
-                  transform: isHovered ? 'scale(1.08)' : 'scale(1)',
-                  transitionProperty: 'opacity, transform',
-                  transitionDuration: '0.6s, 0.5s',
-                  transitionTimingFunction: 'ease, cubic-bezier(0.25, 0.1, 0.25, 1)',
-                }}
-                loading="lazy"
-              />
-              <div className="absolute inset-0 bg-gradient-to-t from-night/50 via-transparent to-transparent opacity-0 transition-opacity duration-300 hover:opacity-100" />
-            </button>
-          )
-        })}
+      <div className="flex flex-col items-start gap-5 pl-2">
+        <div className="flex items-start gap-4">
+          <PhotoCard
+            photo={HOLOGRAM_PHOTOS[0]}
+            isHovered={hoveredIdx === 0}
+            hoverReady={hoverLoaded}
+            onHover={() => setHoveredIdx(0)}
+            onLeave={() => setHoveredIdx(null)}
+            onClick={() => setActiveIdx(0)}
+            className="h-[180px] w-[220px] -rotate-1.5"
+          />
+          <PhotoCard
+            photo={HOLOGRAM_PHOTOS[1]}
+            isHovered={hoveredIdx === 1}
+            hoverReady={false}
+            onHover={() => setHoveredIdx(1)}
+            onLeave={() => setHoveredIdx(null)}
+            onClick={() => setActiveIdx(1)}
+            className="mt-10 h-[140px] w-[180px] rotate-2"
+          />
+        </div>
+        <div className="ml-8">
+          <PhotoCard
+            photo={HOLOGRAM_PHOTOS[2]}
+            isHovered={hoveredIdx === 2}
+            hoverReady={false}
+            onHover={() => setHoveredIdx(2)}
+            onLeave={() => setHoveredIdx(null)}
+            onClick={() => setActiveIdx(2)}
+            className="h-[130px] w-[170px] -rotate-1"
+          />
+        </div>
       </div>
 
       <AnimatePresence>
@@ -112,5 +94,67 @@ export function HologramGallery() {
         )}
       </AnimatePresence>
     </>
+  )
+}
+
+function PhotoCard({
+  photo,
+  isHovered,
+  hoverReady,
+  onHover,
+  onLeave,
+  onClick,
+  className,
+}: {
+  photo: (typeof HOLOGRAM_PHOTOS)[number]
+  isHovered: boolean
+  hoverReady: boolean
+  onHover: () => void
+  onLeave: () => void
+  onClick: () => void
+  className?: string
+}) {
+  const hasHover = !!photo.hoverSrc && hoverReady
+
+  return (
+    <button
+      onMouseEnter={onHover}
+      onMouseLeave={onLeave}
+      onClick={onClick}
+      className={`relative cursor-pointer overflow-hidden rounded-xl border border-white/10 shadow-lg ${className ?? ''}`}
+      style={{
+        zIndex: isHovered ? 10 : 1,
+        transform: isHovered ? 'scale(1.12)' : 'scale(1)',
+        transition: 'transform 0.45s cubic-bezier(0.25, 0.1, 0.25, 1), box-shadow 0.35s ease',
+        boxShadow: isHovered
+          ? '0 20px 50px rgba(242,184,75,0.2), 0 0 0 1px rgba(242,184,75,0.3)'
+          : '0 8px 24px rgba(0,0,0,0.4)',
+      }}
+    >
+      {/* Base image */}
+      <img
+        src={photo.src}
+        alt={photo.alt}
+        className="absolute inset-0 h-full w-full object-cover"
+        style={{
+          opacity: hasHover && isHovered ? 0 : 1,
+          transition: 'opacity 0.55s ease, transform 0.45s cubic-bezier(0.25, 0.1, 0.25, 1)',
+          transform: isHovered ? 'scale(1.06)' : 'scale(1)',
+        }}
+        loading="lazy"
+      />
+      {/* Hover overlay image — always in DOM, just opacity toggled */}
+      {hasHover && (
+        <img
+          src={photo.hoverSrc!}
+          alt={photo.alt}
+          className="absolute inset-0 h-full w-full object-cover"
+          style={{
+            opacity: isHovered ? 1 : 0,
+            transition: 'opacity 0.55s ease',
+          }}
+        />
+      )}
+    </button>
   )
 }
