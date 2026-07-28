@@ -3,6 +3,7 @@ import { useBeatStrength } from '../../hooks/useBeatStrength'
 import { BEAT_CONTENT, WORLD_BEATS } from '../../data/worlds'
 import { MEDIA_URLS } from '../../data/media'
 import { MediaPlaceholder } from '../MediaPlaceholder'
+import { HologramGallery } from '../HologramGallery'
 
 interface Props {
   progress: MotionValue<number>
@@ -48,6 +49,8 @@ export function WorldBeat({ progress, beatIndex }: Props) {
   const worldKey = getWorldKey(beatIndex)
   const mediaAnimClass = getMediaAnimClass(worldKey)
 
+  const isHologram = beatIndex === 5
+
   return (
     <motion.div
       role="region"
@@ -55,37 +58,67 @@ export function WorldBeat({ progress, beatIndex }: Props) {
       className="absolute inset-0 flex flex-col items-center justify-center px-6 text-center"
       style={{ opacity: strength, y }}
     >
-      <div className="flex max-w-[820px] flex-col items-center gap-8 md:flex-row md:text-left">
-        <div className={`${mediaAnimClass} h-[min(200px,28vw)] w-full shrink-0 md:h-[200px] md:w-[280px]`}>
-          <MediaPlaceholder
-            label={WORLD_ICONS[beatIndex] ?? 'Ілюстрація'}
-            src={WORLD_MEDIA[beatIndex]}
-            className="h-full w-full"
-          />
-        </div>
-        <div className="max-w-[480px]">
-          <p
-            className="mb-3.5 text-xs font-bold uppercase tracking-[0.18em] text-gold opacity-90 stagger-word"
-            style={{ animationDelay: '0.1s' }}
-          >
-            {content.eyebrow}
-          </p>
-          <h2
-            className="text-[clamp(26px,3.9vw,42px)] leading-[1.15] text-paper stagger-word"
-            style={{ animationDelay: '0.2s' }}
-          >
-            {content.heading}
-          </h2>
-          {content.sub && (
+      {isHologram ? (
+        <div className="flex max-w-[820px] flex-col items-center gap-8 md:flex-row md:text-left">
+          <div className={`${mediaAnimClass} w-full shrink-0 md:w-[380px]`}>
+            <HologramGallery />
+          </div>
+          <div className="max-w-[480px]">
             <p
-              className="mx-auto mt-4 max-w-[480px] text-[15.5px] leading-[1.55] text-mist-soft md:mx-0 stagger-word"
-              style={{ animationDelay: '0.35s' }}
+              className="mb-3.5 text-xs font-bold uppercase tracking-[0.18em] text-gold opacity-90 stagger-word"
+              style={{ animationDelay: '0.1s' }}
             >
-              {content.sub}
+              {content.eyebrow}
             </p>
-          )}
+            <h2
+              className="text-[clamp(26px,3.9vw,42px)] leading-[1.15] text-paper stagger-word"
+              style={{ animationDelay: '0.2s' }}
+            >
+              {content.heading}
+            </h2>
+            {content.sub && (
+              <p
+                className="mx-auto mt-4 max-w-[480px] text-[15.5px] leading-[1.55] text-mist-soft md:mx-0 stagger-word"
+                style={{ animationDelay: '0.35s' }}
+              >
+                {content.sub}
+              </p>
+            )}
+          </div>
         </div>
-      </div>
+      ) : (
+        <div className="flex max-w-[820px] flex-col items-center gap-8 md:flex-row md:text-left">
+          <div className={`${mediaAnimClass} h-[min(200px,28vw)] w-full shrink-0 md:h-[200px] md:w-[280px]`}>
+            <MediaPlaceholder
+              label={WORLD_ICONS[beatIndex] ?? 'Ілюстрація'}
+              src={WORLD_MEDIA[beatIndex]}
+              className="h-full w-full"
+            />
+          </div>
+          <div className="max-w-[480px]">
+            <p
+              className="mb-3.5 text-xs font-bold uppercase tracking-[0.18em] text-gold opacity-90 stagger-word"
+              style={{ animationDelay: '0.1s' }}
+            >
+              {content.eyebrow}
+            </p>
+            <h2
+              className="text-[clamp(26px,3.9vw,42px)] leading-[1.15] text-paper stagger-word"
+              style={{ animationDelay: '0.2s' }}
+            >
+              {content.heading}
+            </h2>
+            {content.sub && (
+              <p
+                className="mx-auto mt-4 max-w-[480px] text-[15.5px] leading-[1.55] text-mist-soft md:mx-0 stagger-word"
+                style={{ animationDelay: '0.35s' }}
+              >
+                {content.sub}
+              </p>
+            )}
+          </div>
+        </div>
+      )}
     </motion.div>
   )
 }
