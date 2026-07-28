@@ -2513,6 +2513,32 @@ function catmullRom(p0: number, p1: number, p2: number, p3: number, t: number) {
   )
 }
 
+function catmullRomDerivative(p0: number, p1: number, p2: number, p3: number, t: number) {
+  const t2 = t * t
+  return 0.5 * (
+    (-p0 + p2) +
+    2 * (2 * p0 - 5 * p1 + 4 * p2 - p3) * t +
+    3 * (-p0 + 3 * p1 - 3 * p2 + p3) * t2
+  )
+}
+
+function lerpAngle(start: number, end: number, amount: number) {
+  const delta = ((((end - start) % 360) + 540) % 360) - 180
+  return start + delta * amount
+}
+
+const NOZZLE_Y = 55
+
+function scaleFlame(scaleX: number, scaleY: number, coords: number[], cmd: 'C' | 'L' = 'C'): string {
+  let d = ''
+  for (let i = 0; i < coords.length; i += 2) {
+    const x = coords[i] * scaleX
+    const y = NOZZLE_Y + (coords[i + 1] - NOZZLE_Y) * scaleY
+    d += (i === 0 ? 'M' : i === 2 ? ` ${cmd}` : ' ') + `${x},${y}`
+  }
+  return d
+}
+
 function interpolateRocket(progress: number, vw: number, vh: number) {
   const wp = ROCKET_WAYPOINTS
   if (wp.length < 2) return { x: 0, y: 0, heading: 0 }
@@ -2531,52 +2557,19 @@ function interpolateRocket(progress: number, vw: number, vh: number) {
   const x = catmullRom(wp[i0].x, wp[i1].x, wp[i2].x, wp[i3].x, t) * vw
   const y = catmullRom(wp[i0].y, wp[i1].y, wp[i2].y, wp[i3].y, t) * vh
 
-  const pAhead = Math.min(1, p + 0.005)
-  const floatIdxAhead = pAhead * maxIdx
-  const i1A = Math.floor(floatIdxAhead)
-  const tA = floatIdxAhead - i1A
+  const dx = catmullRomDerivative(wp[i0].x, wp[i1].x, wp[i2].x, wp[i3].x, t) * vw
+  const dy = catmullRomDerivative(wp[i0].y, wp[i1].y, wp[i2].y, wp[i3].y, t) * vh
 
-  const i0A = Math.max(0, i1A - 1)
-  const i2A = Math.min(maxIdx, i1A + 1)
-  const i3A = Math.min(maxIdx, i1A + 2)
-
-  const nextX = catmullRom(wp[i0A].x, wp[i1A].x, wp[i2A].x, wp[i3A].x, tA) * vw
-  const nextY = catmullRom(wp[i0A].y, wp[i1A].y, wp[i2A].y, wp[i3A].y, tA) * vh
-
-  const dx = nextX - x || 0.001
-  const dy = nextY - y || 0.001
-
-  const heading = Math.atan2(dy, dx) * (180 / Math.PI) + 90
+  const heading = Math.atan2(dy || 0.001, dx || 0.001) * (180 / Math.PI) + 90
 
   return { x, y, heading }
 }
-
-function flamePath(base: string, scale: number): string {
-  const m = base.match(/M([\d.-]+),([\d.-]+)\s*C([\d.-]+),([\d.-]+)\s+([\d.-]+),([\d.-]+)\s+([\d.-]+),([\d.-]+)/)
-  if (!m) return base
-  const bx = parseFloat(m[1])
-  const by = parseFloat(m[2])
-  const s = (x: number, y: number) => `${bx + (x - bx) * scale},${by + (y - by) * scale}`
-  return `M${m[1]},${m[2]} C${s(parseFloat(m[3]), parseFloat(m[4]))} ${s(parseFloat(m[5]), parseFloat(m[6]))} ${s(parseFloat(m[7]), parseFloat(m[8]))}`
-}
-
-function flameTipPath(base: string, scale: number): string {
-  const m = base.match(/M([\d.-]+),([\d.-]+)\s*L([\d.-]+),([\d.-]+)\s*L([\d.-]+),([\d.-]+)/)
-  if (!m) return base
-  const bx = parseFloat(m[1])
-  const by = parseFloat(m[2])
-  const s = (x: number, y: number) => `${bx + (x - bx) * scale},${by + (y - by) * scale}`
-  return `M${m[1]},${m[2]} L${s(parseFloat(m[3]), parseFloat(m[4]))} L${s(parseFloat(m[5]), parseFloat(m[6]))}`
-}
-
-const FLAME_OUTER = 'M-8,55 C-4,72 4,72 8,55'
-const FLAME_INNER = 'M-5,55 C-2,68 2,68 5,55'
-const FLAME_TIP = 'M-2,55 L0,68 L2,55'
 
 export function RocketOverlay({ tl, progress, subscribe }: Props) {
   const reduced = useReducedMotion()
   const [, setTick] = useState(0)
   const flameRef = useRef(1)
+  const currentHeading = useRef<number | null>(null)
 
   useEffect(() => {
     const unsub = subscribe(() => setTick((t) => t + 1))
@@ -2602,6 +2595,13 @@ export function RocketOverlay({ tl, progress, subscribe }: Props) {
   const flameScale = flameRef.current * enginePower
 
   const idleHover = (1 - enginePower) * Math.sin(now / 300) * 8
+
+  const rawHeading = rocket.heading
+  if (currentHeading.current === null) {
+    currentHeading.current = rawHeading
+  } else {
+    currentHeading.current = lerpAngle(currentHeading.current, rawHeading, 0.12)
+  }
 
   const camX = rocket.x + t.parallax[5].x + t.camera.x + t.camera.shakeX
   const camY = rocket.y + t.parallax[5].y + t.camera.y + t.camera.shakeY + idleHover
@@ -2637,7 +2637,7 @@ export function RocketOverlay({ tl, progress, subscribe }: Props) {
         style={{
           width: 100,
           height: 100,
-          transform: `translate(${camX - 50}px, ${camY - 50}px) rotate(${rocket.heading}deg) scale(${t.camera.zoom})`,
+          transform: `translate(${camX - 50}px, ${camY - 50}px) rotate(${currentHeading.current}deg) scale(${t.camera.zoom})`,
           opacity,
           willChange: 'transform',
           zIndex: Z.rocket,
@@ -2669,8 +2669,8 @@ export function RocketOverlay({ tl, progress, subscribe }: Props) {
           </defs>
 
           <g>
-            <ellipse cx="0" cy="68" rx={14 + speedFactor * 4} ry={3 + speedFactor * 1.5} fill="rgba(11,14,31,0.25)" opacity={clamp(t.camera.depth * 2, 0, 0.35)} />
-            <circle cx="0" cy="60" r={20 + speedFactor * 15} fill="url(#engineGlow)" />
+            <ellipse cx="0" cy="72" rx={16 + speedFactor * 5} ry={4 + speedFactor * 2} fill="rgba(11,14,31,0.25)" opacity={clamp(t.camera.depth * 2, 0, 0.35)} />
+            <circle cx="0" cy="62" r={24 + speedFactor * 18} fill="url(#engineGlow)" />
 
             <path
               d="M0,-65 C20,-48 22,-15 22,10 C22,30 12,48 0,55 C-12,48 -22,30 -22,10 C-22,-15 -20,-48 0,-65 Z"
@@ -2691,9 +2691,21 @@ export function RocketOverlay({ tl, progress, subscribe }: Props) {
             <path d="M-22,18 L-32,38" stroke="#FBF5EA" strokeWidth="1" opacity="0.5" />
             <path d="M22,18 L32,38" stroke="#FBF5EA" strokeWidth="1" opacity="0.5" />
 
-            <path d={flamePath(FLAME_OUTER, flameScale * (1 + speedFactor * 0.3))} fill="url(#flameOuter)" opacity={engineGlow} />
-            <path d={flamePath(FLAME_INNER, flameScale)} fill="url(#flameInner)" opacity={0.9 * engineGlow} />
-            <path d={flameTipPath(FLAME_TIP, flameScale * (1 + speedFactor * 0.2))} fill="#FBF5EA" opacity={0.7 * engineGlow} />
+            <path
+              d={scaleFlame(1 + speedFactor * 0.15, flameScale * (1 + speedFactor * 0.3), [-10, 55, -5, 85, 5, 85, 10, 55])}
+              fill="url(#flameOuter)"
+              opacity={engineGlow}
+            />
+            <path
+              d={scaleFlame(1, flameScale, [-7, 55, -3, 78, 3, 78, 7, 55])}
+              fill="url(#flameInner)"
+              opacity={0.9 * engineGlow}
+            />
+            <path
+              d={scaleFlame(1, flameScale * (1 + speedFactor * 0.2), [-3, 55, 0, 82, 3, 55], 'L')}
+              fill="#FBF5EA"
+              opacity={0.7 * engineGlow}
+            />
           </g>
         </svg>
       </div>
