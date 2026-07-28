@@ -24,8 +24,8 @@ export function HologramGallery() {
 
   return (
     <>
-      <div className="flex flex-col items-start gap-4">
-        <div className="flex items-start gap-4">
+      <div className="flex flex-col items-start gap-4 -ml-6">
+        <div className="flex items-start gap-3">
           <PhotoCard
             photo={HOLOGRAM_PHOTOS[0]}
             isHovered={hoveredIdx === 0}
@@ -33,7 +33,8 @@ export function HologramGallery() {
             onHover={() => setHoveredIdx(0)}
             onLeave={() => setHoveredIdx(null)}
             onClick={() => setActiveIdx(0)}
-            className="h-[170px] w-[210px] -rotate-2"
+            className="h-[170px] w-[210px]"
+            rotation={-12}
           />
           <PhotoCard
             photo={HOLOGRAM_PHOTOS[1]}
@@ -42,10 +43,11 @@ export function HologramGallery() {
             onHover={() => setHoveredIdx(1)}
             onLeave={() => setHoveredIdx(null)}
             onClick={() => setActiveIdx(1)}
-            className="mt-8 h-[140px] w-[175px] rotate-1.5"
+            className="mt-10 h-[140px] w-[175px]"
+            rotation={8}
           />
         </div>
-        <div className="ml-2">
+        <div className="ml-10">
           <PhotoCard
             photo={HOLOGRAM_PHOTOS[2]}
             isHovered={hoveredIdx === 2}
@@ -53,7 +55,8 @@ export function HologramGallery() {
             onHover={() => setHoveredIdx(2)}
             onLeave={() => setHoveredIdx(null)}
             onClick={() => setActiveIdx(2)}
-            className="h-[130px] w-[180px] -rotate-1"
+            className="h-[130px] w-[180px]"
+            rotation={-6}
           />
         </div>
       </div>
@@ -104,6 +107,7 @@ function PhotoCard({
   onLeave,
   onClick,
   className,
+  rotation = 0,
 }: {
   photo: (typeof HOLOGRAM_PHOTOS)[number]
   isHovered: boolean
@@ -112,6 +116,7 @@ function PhotoCard({
   onLeave: () => void
   onClick: () => void
   className?: string
+  rotation?: number
 }) {
   const hasHover = !!photo.hoverSrc && hoverReady
 
@@ -123,7 +128,7 @@ function PhotoCard({
       className={`relative cursor-pointer overflow-hidden rounded-xl border border-white/10 ${className ?? ''}`}
       style={{
         zIndex: isHovered ? 10 : 1,
-        transform: isHovered ? 'scale(1.25)' : 'scale(1)',
+        transform: isHovered ? 'scale(1.25) rotate(0deg)' : `rotate(${rotation}deg)`,
         transition: 'transform 0.5s cubic-bezier(0.25, 0.1, 0.25, 1)',
         boxShadow: isHovered
           ? '0 0 30px 10px rgba(60,140,255,0.35), 0 0 60px 20px rgba(60,140,255,0.15), 0 0 0 1px rgba(100,180,255,0.4)'
