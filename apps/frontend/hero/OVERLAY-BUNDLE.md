@@ -182,94 +182,143 @@ export function useScrollSnap(
 ## src/features/landing-hero/components/overlays/RocketOverlay.tsx
 
 ```tsx
-import { MotionValue, useTransform, useMotionValueEvent } from 'framer-motion'
-import { useState, useRef, useCallback } from 'react'
-import { useRocketPath } from '../../hooks/useRocketPath'
+import { useEffect, useRef, useState } from 'react'
 import { clamp } from '../../lib/animation'
+import { Z } from '../../lib/zIndex'
+import { useReducedMotion } from '../../hooks/useReducedMotion'
+import type { Timeline } from '../../types/timeline'
+import type { MotionValue } from 'framer-motion'
+import { ROCKET_WAYPOINTS } from '../../data/rocket'
 
 interface Props {
+  tl: Timeline
   progress: MotionValue<number>
-  finaleStrength: MotionValue<number>
+  subscribe: (cb: () => void) => () => void
 }
 
-interface Particle {
-  id: number
-  x: number
-  y: number
-  r: number
-  opacity: number
-  born: number
+function catmullRom(p0: number, p1: number, p2: number, p3: number, t: number) {
+  const t2 = t * t
+  const t3 = t2 * t
+  return 0.5 * (
+    (2 * p1) +
+    (-p0 + p2) * t +
+    (2 * p0 - 5 * p1 + 4 * p2 - p3) * t2 +
+    (-p0 + 3 * p1 - 3 * p2 + p3) * t3
+  )
 }
 
-const TRAIL_COLORS = ['#F2B84B', '#FF7A59', '#FBF5EA']
+function catmullRomDerivative(p0: number, p1: number, p2: number, p3: number, t: number) {
+  const t2 = t * t
+  return 0.5 * (
+    (-p0 + p2) +
+    2 * (2 * p0 - 5 * p1 + 4 * p2 - p3) * t +
+    3 * (-p0 + 3 * p1 - 3 * p2 + p3) * t2
+  )
+}
 
-export function RocketOverlay({ progress, finaleStrength }: Props) {
-  const { rx, ry, rr } = useRocketPath(progress)
-  const [pos, setPos] = useState({ x: 0, y: 0, r: -6 })
-  const [opacity, setOpacity] = useState(1)
-  const [particles, setParticles] = useState<Particle[]>([])
-  const idRef = useRef(0)
-  const lastTrailRef = useRef(0)
+function lerpAngle(start: number, end: number, amount: number) {
+  const delta = ((((end - start) % 360) + 540) % 360) - 180
+  return start + delta * amount
+}
 
-  const finaleS = useTransform(finaleStrength, (s) => clamp(1 - s * 1.4, 0, 1))
+const NOZZLE_Y = 55
 
-  useMotionValueEvent(rx, 'change', (v) => setPos((p) => ({ ...p, x: v * window.innerWidth })))
-  useMotionValueEvent(ry, 'change', (v) => setPos((p) => ({ ...p, y: v * window.innerHeight })))
-  useMotionValueEvent(rr, 'change', (v) => setPos((p) => ({ ...p, r: v })))
-  useMotionValueEvent(finaleS, 'change', setOpacity)
+function scaleFlame(scaleX: number, scaleY: number, coords: number[], cmd: 'C' | 'L' = 'C'): string {
+  let d = ''
+  for (let i = 0; i < coords.length; i += 2) {
+    const x = coords[i] * scaleX
+    const y = NOZZLE_Y + (coords[i + 1] - NOZZLE_Y) * scaleY
+    d += (i === 0 ? 'M' : i === 2 ? ` ${cmd}` : ' ') + `${x},${y}`
+  }
+  return d
+}
 
-  const spawnTrail = useCallback((x: number, y: number) => {
-    const now = performance.now()
-    if (now - lastTrailRef.current < 40) return
-    lastTrailRef.current = now
+function interpolateRocket(progress: number, vw: number, vh: number) {
+  const wp = ROCKET_WAYPOINTS
+  if (wp.length < 2) return { x: 0, y: 0, heading: 0 }
 
-    const newParticles: Particle[] = Array.from({ length: 2 }, () => {
-      const angle = ((pos.r + 180) * Math.PI) / 180
-      const spread = (Math.random() - 0.5) * 20
-      return {
-        id: idRef.current++,
-        x: x + Math.cos(angle) * 18 + spread,
-        y: y + Math.sin(angle) * 18 + spread,
-        r: 1.5 + Math.random() * 3,
-        opacity: 0.5 + Math.random() * 0.5,
-        born: now,
-      }
-    })
+  const maxIdx = wp.length - 1
+  const p = Math.max(0, Math.min(1, progress))
 
-    setParticles((prev) => {
-      const alive = prev.filter((p) => now - p.born < 800)
-      return [...alive, ...newParticles].slice(-40)
-    })
-  }, [pos.r])
+  const floatIdx = p * maxIdx
+  const i1 = Math.floor(floatIdx)
+  const t = floatIdx - i1
 
-  useMotionValueEvent(rx, 'change', () => {
-    spawnTrail(pos.x, pos.y)
-  })
+  const i0 = Math.max(0, i1 - 1)
+  const i2 = Math.min(maxIdx, i1 + 1)
+  const i3 = Math.min(maxIdx, i1 + 2)
 
-  useMotionValueEvent(progress, 'change', () => {
-    spawnTrail(pos.x, pos.y)
-  })
+  const x = catmullRom(wp[i0].x, wp[i1].x, wp[i2].x, wp[i3].x, t) * vw
+  const y = catmullRom(wp[i0].y, wp[i1].y, wp[i2].y, wp[i3].y, t) * vh
 
-  const now = performance.now()
+  const dx = catmullRomDerivative(wp[i0].x, wp[i1].x, wp[i2].x, wp[i3].x, t) * vw
+  const dy = catmullRomDerivative(wp[i0].y, wp[i1].y, wp[i2].y, wp[i3].y, t) * vh
+
+  const heading = Math.atan2(dy || 0.001, dx || 0.001) * (180 / Math.PI) + 90
+
+  return { x, y, heading }
+}
+
+export function RocketOverlay({ tl, progress, subscribe }: Props) {
+  const reduced = useReducedMotion()
+  const [, setTick] = useState(0)
+  const flameRef = useRef(1)
+  const currentHeading = useRef<number | null>(null)
+
+  useEffect(() => {
+    const unsub = subscribe(() => setTick((t) => t + 1))
+    return unsub
+  }, [subscribe])
+
+  const t = tl
+  const p = progress.get()
+  const rocket = interpolateRocket(p, t.vw, t.vh)
+
+  const now = t.elapsed
+  const opacity = 1
+
+  if (!reduced) {
+    flameRef.current = 1 + Math.sin(now / 90) * 0.12
+  }
+
+  const speedFactor = clamp(Math.abs(t.velocity) / 2000, 0, 1)
+
+  const enginePower = clamp(p / 0.015, 0, 1) * clamp((1 - p) / 0.015, 0, 1)
+
+  const engineGlow = (0.5 + speedFactor * 0.5) * enginePower
+  const flameScale = flameRef.current * enginePower
+
+  const idleHover = (1 - enginePower) * Math.sin(now / 300) * 8
+
+  const rawHeading = rocket.heading
+  if (currentHeading.current === null) {
+    currentHeading.current = rawHeading
+  } else {
+    currentHeading.current = lerpAngle(currentHeading.current, rawHeading, 0.12)
+  }
+
+  const camX = rocket.x + t.parallax[5].x + t.camera.x + t.camera.shakeX
+  const camY = rocket.y + t.parallax[5].y + t.camera.y + t.camera.shakeY + idleHover
+
+  const ws = t.isWarping ? t.warpStrength : 0
 
   return (
     <>
       <svg
-        className="pointer-events-none fixed inset-0 z-[6]"
+        className="pointer-events-none fixed inset-0"
         aria-hidden="true"
-        style={{ width: '100vw', height: '100vh' }}
+        style={{ width: '100vw', height: '100vh', zIndex: Z.rocket }}
       >
-        {particles.map((p) => {
+        {t.trailParticles.map((p) => {
           const age = clamp((now - p.born) / 800, 0, 1)
           const fade = 1 - age * age
-          const color = TRAIL_COLORS[p.id % TRAIL_COLORS.length]
           return (
             <circle
               key={p.id}
               cx={p.x}
               cy={p.y}
               r={p.r * (1 - age * 0.6)}
-              fill={color}
+              fill={p.color}
               opacity={p.opacity * fade * opacity}
             />
           )
@@ -277,14 +326,15 @@ export function RocketOverlay({ progress, finaleStrength }: Props) {
       </svg>
 
       <div
-        className="pointer-events-none fixed z-[6]"
+        className="pointer-events-none fixed"
         aria-hidden="true"
         style={{
           width: 100,
           height: 100,
-          transform: `translate(${pos.x - 50}px, ${pos.y - 50}px) rotate(${pos.r}deg)`,
+          transform: `translate(${camX - 50}px, ${camY - 50}px) rotate(${currentHeading.current}deg) scale(${t.camera.zoom})`,
           opacity,
           willChange: 'transform',
+          zIndex: Z.rocket,
         }}
       >
         <svg viewBox="-50 -80 100 160" className="h-full w-full overflow-visible">
@@ -303,12 +353,19 @@ export function RocketOverlay({ progress, finaleStrength }: Props) {
               <stop offset="100%" stopColor="#FF4020" stopOpacity="0" />
             </linearGradient>
             <linearGradient id="flameOuter" x1="0" y1="0" x2="0" y2="1">
-              <stop offset="0%" stopColor="#FF7A59" stopOpacity="0.6" />
+              <stop offset="0%" stopColor="#FF7A59" stopOpacity={0.6 * engineGlow} />
               <stop offset="100%" stopColor="#FF4020" stopOpacity="0" />
             </linearGradient>
+            <radialGradient id="engineGlow" cx="50%" cy="50%">
+              <stop offset="0%" stopColor="#F2B84B" stopOpacity={engineGlow * 0.3} />
+              <stop offset="100%" stopColor="#F2B84B" stopOpacity="0" />
+            </radialGradient>
           </defs>
 
           <g>
+            <ellipse cx="0" cy="72" rx={16 + speedFactor * 5} ry={4 + speedFactor * 2} fill="rgba(11,14,31,0.25)" opacity={clamp(t.camera.depth * 2, 0, 0.35)} />
+            <circle cx="0" cy="62" r={24 + speedFactor * 18} fill="url(#engineGlow)" />
+
             <path
               d="M0,-65 C20,-48 22,-15 22,10 C22,30 12,48 0,55 C-12,48 -22,30 -22,10 C-22,-15 -20,-48 0,-65 Z"
               fill="url(#rocketBody)"
@@ -328,18 +385,36 @@ export function RocketOverlay({ progress, finaleStrength }: Props) {
             <path d="M-22,18 L-32,38" stroke="#FBF5EA" strokeWidth="1" opacity="0.5" />
             <path d="M22,18 L32,38" stroke="#FBF5EA" strokeWidth="1" opacity="0.5" />
 
-            <path d="M-8,55 C-4,72 4,72 8,55" fill="url(#flameOuter)" opacity="0.5">
-              <animate attributeName="d" values="M-8,55 C-4,72 4,72 8,55;M-6,55 C-2,78 2,78 6,55;M-8,55 C-4,72 4,72 8,55" dur="0.15s" repeatCount="indefinite" />
-            </path>
-            <path d="M-5,55 C-2,68 2,68 5,55" fill="url(#flameInner)" opacity="0.9">
-              <animate attributeName="d" values="M-5,55 C-2,68 2,68 5,55;M-4,55 C-1,74 1,74 4,55;M-5,55 C-2,68 2,68 5,55" dur="0.12s" repeatCount="indefinite" />
-            </path>
-            <path d="M-2,55 L0,68 L2,55" fill="#FBF5EA" opacity="0.7">
-              <animate attributeName="d" values="M-2,55 L0,68 L2,55;M-1,55 L0,74 L1,55;M-2,55 L0,68 L2,55" dur="0.1s" repeatCount="indefinite" />
-            </path>
+            <path
+              d={scaleFlame(1 + speedFactor * 0.15, flameScale * (1 + speedFactor * 0.3), [-10, 55, -5, 85, 5, 85, 10, 55])}
+              fill="url(#flameOuter)"
+              opacity={engineGlow}
+            />
+            <path
+              d={scaleFlame(1, flameScale, [-7, 55, -3, 78, 3, 78, 7, 55])}
+              fill="url(#flameInner)"
+              opacity={0.9 * engineGlow}
+            />
+            <path
+              d={scaleFlame(1, flameScale * (1 + speedFactor * 0.2), [-3, 55, 0, 82, 3, 55], 'L')}
+              fill="#FBF5EA"
+              opacity={0.7 * engineGlow}
+            />
           </g>
         </svg>
       </div>
+
+      {t.isWarping && (
+        <div className="pointer-events-none fixed inset-0 flex items-center justify-center overflow-hidden" style={{ zIndex: Z.rocket + 10 }}>
+          <div
+            className="absolute h-[100vh] w-[140px] bg-gradient-to-r from-transparent via-gold to-transparent mix-blend-screen"
+            style={{ transform: `scaleY(${ws * 15})`, opacity: ws }}
+          />
+          <div className="absolute left-[30%] h-[150vh] w-[2px] bg-teal shadow-[0_0_15px_3px_#8FE3E0]" style={{ transform: `scaleY(${ws * 8})`, opacity: ws * 0.8 }} />
+          <div className="absolute right-[25%] h-[200vh] w-[4px] bg-coral shadow-[0_0_20px_5px_#FF7A59]" style={{ transform: `scaleY(${ws * 12})`, opacity: ws * 0.9 }} />
+          <div className="absolute left-[40%] h-[120vh] w-[1px] bg-white" style={{ transform: `scaleY(${ws * 20})`, opacity: ws * 0.5 }} />
+        </div>
+      )}
     </>
   )
 }
