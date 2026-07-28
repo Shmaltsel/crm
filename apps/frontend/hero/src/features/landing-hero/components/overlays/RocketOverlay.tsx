@@ -23,6 +23,20 @@ function catmullRom(p0: number, p1: number, p2: number, p3: number, t: number) {
   )
 }
 
+function catmullRomDerivative(p0: number, p1: number, p2: number, p3: number, t: number) {
+  const t2 = t * t
+  return 0.5 * (
+    (-p0 + p2) +
+    2 * (2 * p0 - 5 * p1 + 4 * p2 - p3) * t +
+    3 * (-p0 + 3 * p1 - 3 * p2 + p3) * t2
+  )
+}
+
+function lerpAngle(start: number, end: number, amount: number) {
+  const delta = ((((end - start) % 360) + 540) % 360) - 180
+  return start + delta * amount
+}
+
 function interpolateRocket(progress: number, vw: number, vh: number) {
   const wp = ROCKET_WAYPOINTS
   if (wp.length < 2) return { x: 0, y: 0, heading: 0 }
@@ -41,22 +55,10 @@ function interpolateRocket(progress: number, vw: number, vh: number) {
   const x = catmullRom(wp[i0].x, wp[i1].x, wp[i2].x, wp[i3].x, t) * vw
   const y = catmullRom(wp[i0].y, wp[i1].y, wp[i2].y, wp[i3].y, t) * vh
 
-  const pAhead = Math.min(1, p + 0.005)
-  const floatIdxAhead = pAhead * maxIdx
-  const i1A = Math.floor(floatIdxAhead)
-  const tA = floatIdxAhead - i1A
+  const dx = catmullRomDerivative(wp[i0].x, wp[i1].x, wp[i2].x, wp[i3].x, t) * vw
+  const dy = catmullRomDerivative(wp[i0].y, wp[i1].y, wp[i2].y, wp[i3].y, t) * vh
 
-  const i0A = Math.max(0, i1A - 1)
-  const i2A = Math.min(maxIdx, i1A + 1)
-  const i3A = Math.min(maxIdx, i1A + 2)
-
-  const nextX = catmullRom(wp[i0A].x, wp[i1A].x, wp[i2A].x, wp[i3A].x, tA) * vw
-  const nextY = catmullRom(wp[i0A].y, wp[i1A].y, wp[i2A].y, wp[i3A].y, tA) * vh
-
-  const dx = nextX - x || 0.001
-  const dy = nextY - y || 0.001
-
-  const heading = Math.atan2(dy, dx) * (180 / Math.PI) + 90
+  const heading = Math.atan2(dy || 0.001, dx || 0.001) * (180 / Math.PI) + 90
 
   return { x, y, heading }
 }
@@ -87,6 +89,7 @@ export function RocketOverlay({ tl, progress, subscribe }: Props) {
   const reduced = useReducedMotion()
   const [, setTick] = useState(0)
   const flameRef = useRef(1)
+  const currentHeading = useRef<number | null>(null)
 
   useEffect(() => {
     const unsub = subscribe(() => setTick((t) => t + 1))
@@ -112,6 +115,13 @@ export function RocketOverlay({ tl, progress, subscribe }: Props) {
   const flameScale = flameRef.current * enginePower
 
   const idleHover = (1 - enginePower) * Math.sin(now / 300) * 8
+
+  const rawHeading = rocket.heading
+  if (currentHeading.current === null) {
+    currentHeading.current = rawHeading
+  } else {
+    currentHeading.current = lerpAngle(currentHeading.current, rawHeading, 0.12)
+  }
 
   const camX = rocket.x + t.parallax[5].x + t.camera.x + t.camera.shakeX
   const camY = rocket.y + t.parallax[5].y + t.camera.y + t.camera.shakeY + idleHover
@@ -147,7 +157,7 @@ export function RocketOverlay({ tl, progress, subscribe }: Props) {
         style={{
           width: 100,
           height: 100,
-          transform: `translate(${camX - 50}px, ${camY - 50}px) rotate(${rocket.heading}deg) scale(${t.camera.zoom})`,
+          transform: `translate(${camX - 50}px, ${camY - 50}px) rotate(${currentHeading.current}deg) scale(${t.camera.zoom})`,
           opacity,
           willChange: 'transform',
           zIndex: Z.rocket,
