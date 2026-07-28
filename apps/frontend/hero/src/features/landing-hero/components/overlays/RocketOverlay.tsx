@@ -37,6 +37,18 @@ function lerpAngle(start: number, end: number, amount: number) {
   return start + delta * amount
 }
 
+const NOZZLE_Y = 55
+
+function scaleFlame(scaleX: number, scaleY: number, coords: number[], cmd: 'C' | 'L' = 'C'): string {
+  let d = ''
+  for (let i = 0; i < coords.length; i += 2) {
+    const x = coords[i] * scaleX
+    const y = NOZZLE_Y + (coords[i + 1] - NOZZLE_Y) * scaleY
+    d += (i === 0 ? 'M' : i === 2 ? ` ${cmd}` : ' ') + `${x},${y}`
+  }
+  return d
+}
+
 function interpolateRocket(progress: number, vw: number, vh: number) {
   const wp = ROCKET_WAYPOINTS
   if (wp.length < 2) return { x: 0, y: 0, heading: 0 }
@@ -190,22 +202,19 @@ export function RocketOverlay({ tl, progress, subscribe }: Props) {
             <path d="M22,18 L32,38" stroke="#FBF5EA" strokeWidth="1" opacity="0.5" />
 
             <path
-              d="M-10,55 C-5,85 5,85 10,55"
+              d={scaleFlame(1 + speedFactor * 0.15, flameScale * (1 + speedFactor * 0.3), [-10, 55, -5, 85, 5, 85, 10, 55])}
               fill="url(#flameOuter)"
               opacity={engineGlow}
-              style={{ transformOrigin: '0px 55px', transform: `scale(${1 + speedFactor * 0.15}, ${flameScale * (1 + speedFactor * 0.3)})` }}
             />
             <path
-              d="M-7,55 C-3,78 3,78 7,55"
+              d={scaleFlame(1, flameScale, [-7, 55, -3, 78, 3, 78, 7, 55])}
               fill="url(#flameInner)"
               opacity={0.9 * engineGlow}
-              style={{ transformOrigin: '0px 55px', transform: `scale(1, ${flameScale})` }}
             />
             <path
-              d="M-3,55 L0,82 L3,55"
+              d={scaleFlame(1, flameScale * (1 + speedFactor * 0.2), [-3, 55, 0, 82, 3, 55], 'L')}
               fill="#FBF5EA"
               opacity={0.7 * engineGlow}
-              style={{ transformOrigin: '0px 55px', transform: `scale(1, ${flameScale * (1 + speedFactor * 0.2)})` }}
             />
           </g>
         </svg>
