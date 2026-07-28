@@ -1,7 +1,7 @@
 import { MotionValue, useTransform } from 'framer-motion'
 import { clamp, smoothstep } from '../lib/animation'
 
-const TOTAL_BEATS = 13
+const TOTAL_BEATS = 14
 
 function computeBeatStrength(progress: number, index: number): number {
   const N = TOTAL_BEATS
@@ -39,6 +39,7 @@ export function useBeatStrengths(
   const s10 = useTransform(progress, (p) => computeBeatStrength(p, 10))
   const s11 = useTransform(progress, (p) => computeBeatStrength(p, 11))
   const s12 = useTransform(progress, (p) => computeBeatStrength(p, 12))
+  const s13 = useTransform(progress, (p) => computeBeatStrength(p, 13))
 
-  return [s0, s1, s2, s3, s4, s5, s6, s7, s8, s9, s10, s11, s12]
+  return [s0, s1, s2, s3, s4, s5, s6, s7, s8, s9, s10, s11, s12, s13]
 }

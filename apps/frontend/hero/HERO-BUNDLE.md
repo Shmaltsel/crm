@@ -1,6 +1,6 @@
 # @svitlo/hero — Project Bundle
 
-**Generated:** 2026-07-28T11:27:22.652Z
+**Generated:** 2026-07-28T20:37:44.232Z
 
 ## Project Tree
 
@@ -26,6 +26,7 @@
 │   │       │   │   ├── CampfireSparks.tsx
 │   │       │   │   ├── GlobalAmbientCanvas.tsx
 │   │       │   │   ├── GrassGround.tsx
+│   │       │   │   ├── HeroBubbles.tsx
 │   │       │   │   ├── NebulaOverlay.tsx
 │   │       │   │   ├── PortalOverlay.tsx
 │   │       │   │   ├── RocketOverlay.tsx
@@ -35,6 +36,7 @@
 │   │       │   ├── CursorGlow.tsx
 │   │       │   ├── FilmGrain.tsx
 │   │       │   ├── Footer.tsx
+│   │       │   ├── HologramGallery.tsx
 │   │       │   ├── MediaPlaceholder.tsx
 │   │       │   ├── Nav.tsx
 │   │       │   ├── ProgressRail.tsx
@@ -57,6 +59,8 @@
 │   │       │   ├── useAudioAmbience.ts
 │   │       │   ├── useBeatStrength.ts
 │   │       │   ├── useBeatStrengths.ts
+│   │       │   ├── useFirstScroll.ts
+│   │       │   ├── useHeroIntro.ts
 │   │       │   ├── useMotionTimeline.ts
 │   │       │   ├── useReducedMotion.ts
 │   │       │   ├── useRocketPath.ts
@@ -66,6 +70,7 @@
 │   │       ├── lib/
 │   │       │   ├── animation.ts
 │   │       │   ├── colors.ts
+│   │       │   ├── rocketMath.ts
 │   │       │   └── zIndex.ts
 │   │       ├── types/
 │   │       │   └── timeline.ts
@@ -130,7 +135,7 @@ import react from '@vitejs/plugin-react'
 import tailwindcss from '@tailwindcss/vite'
 
 export default defineConfig({
-  base: '/info/',
+  base: '/',
   plugins: [react(), tailwindcss()],
 })
 
@@ -252,7 +257,7 @@ export default App
 ### `src/features/landing-hero/components/beats/FinaleBeat.tsx`
 ```typescript
 import { useEffect, useRef, useState } from 'react'
-import { motion, useAnimate, useTransform } from 'framer-motion'
+import { motion, animate, useMotionValueEvent, useTransform } from 'framer-motion'
 import { useBeatStrength } from '../../hooks/useBeatStrength'
 import { useReducedMotion } from '../../hooks/useReducedMotion'
 import { useAmbient } from '../../context/AmbientContext'
@@ -267,14 +272,21 @@ export function FinaleBeat({ progress, onOpenContact }: Props) {
   const strength = useBeatStrength(progress, 12)
   const reduced = useReducedMotion()
   const ambient = useAmbient()
-  const [scope, animate] = useAnimate()
   const [dustSpawned, setDustSpawned] = useState(false)
+  const [visible, setVisible] = useState(false)
   const isSunriseActive = useRef(false)
   const landingAnimDone = useRef(false)
+  const fallbackTimerRef = useRef(0)
+
+  const sparkRef = useRef<HTMLDivElement>(null)
+  const ctaButtonRef = useRef<HTMLButtonElement>(null)
+  const ctaLabelRef = useRef<HTMLSpanElement>(null)
 
   const horizonY = useTransform(strength, [0, 0.5, 1], ['110%', '85%', '75%'])
   const rocketY = useTransform(strength, [0, 0.7, 0.9, 1], ['50%', '70%', '80%', '82%'])
   const rocketOpacity = useTransform(strength, [0, 0.1, 0.85, 1], [0, 1, 1, 0.8])
+
+  useMotionValueEvent(strength, 'change', (s) => setVisible(s > 0.005))
 
   useEffect(() => {
     if (dustSpawned || !ambient) return
@@ -291,17 +303,76 @@ export function FinaleBeat({ progress, onOpenContact }: Props) {
 
   useEffect(() => {
     if (reduced || landingAnimDone.current) return
-    let prevVal = 0
-    const unsub = strength.on('change', (v) => {
-      if (v > 0.9 && prevVal <= 0.9) {
-        landingAnimDone.current = true
-        animate('[data-cta-button]', { opacity: 1, scale: 1, width: 160, height: 48 }, { duration: 1.4, ease: [0.25, 0.1, 0.25, 1] })
-          .then(() => animate('[data-cta-label]', { opacity: 1 }, { duration: 0.3 }))
+
+    let cancelled = false
+
+    const runAnimation = async () => {
+      if (reduced) {
+        if (ctaButtonRef.current) {
+          ctaButtonRef.current.style.opacity = '1'
+          ctaButtonRef.current.style.transform = 'scale(1)'
+          ctaButtonRef.current.style.width = '160px'
+          ctaButtonRef.current.style.height = '48px'
+        }
+        if (ctaLabelRef.current) {
+          ctaLabelRef.current.style.opacity = '1'
+        }
+        return
       }
-      prevVal = v
+
+      if (sparkRef.current) {
+        await animate(sparkRef.current, { y: -80, opacity: 0 }, { duration: 0 }).then(() =>
+          animate(sparkRef.current!, { y: [null, 0], opacity: [0, 1, 1], scale: [0.5, 1.2, 1] }, { duration: 0.6, ease: [0.34, 1.56, 0.64, 1] }),
+        )
+      }
+      if (cancelled) return
+
+      if (sparkRef.current) {
+        await animate(sparkRef.current, { opacity: [1, 0], scale: [1, 2.5] }, { duration: 0.35, ease: 'easeOut' })
+      }
+      if (cancelled) return
+
+      if (ctaButtonRef.current) {
+        ctaButtonRef.current.style.opacity = '1'
+        ctaButtonRef.current.style.transform = 'scale(1)'
+        await animate(ctaButtonRef.current, { width: 160, height: 48 }, { type: 'spring', stiffness: 180, damping: 18, mass: 0.8 })
+      }
+      if (cancelled) return
+
+      if (ctaLabelRef.current) {
+        await animate(ctaLabelRef.current, { opacity: 1 }, { duration: 0.4, ease: 'easeOut' })
+      }
+    }
+
+    const unsub = strength.on('change', (v) => {
+      if (v > 0.85 && !landingAnimDone.current && !cancelled) {
+        landingAnimDone.current = true
+        clearTimeout(fallbackTimerRef.current)
+        runAnimation()
+      }
     })
-    return unsub
-  }, [strength, animate, reduced])
+
+    fallbackTimerRef.current = window.setTimeout(() => {
+      if (!landingAnimDone.current && !cancelled) {
+        landingAnimDone.current = true
+        unsub()
+        if (ctaButtonRef.current) {
+          ctaButtonRef.current.style.opacity = '1'
+          ctaButtonRef.current.style.transform = 'scale(1)'
+          animate(ctaButtonRef.current, { width: 160, height: 48 }, { duration: 0.4, ease: 'easeOut' })
+        }
+        if (ctaLabelRef.current) {
+          setTimeout(() => { if (ctaLabelRef.current) ctaLabelRef.current.style.opacity = '1' }, 150)
+        }
+      }
+    }, 1200)
+
+    return () => {
+      cancelled = true
+      unsub()
+      clearTimeout(fallbackTimerRef.current)
+    }
+  }, [strength, reduced])
 
   const handleCtaClick = () => {
     if (isSunriseActive.current) return
@@ -312,19 +383,16 @@ export function FinaleBeat({ progress, onOpenContact }: Props) {
 
   return (
     <div
-      ref={scope}
       role="region"
       aria-label="Завершення"
       className="absolute inset-0 flex flex-col items-center justify-center px-6 text-center"
-      style={{ opacity: strength }}
+      style={{ opacity: visible ? undefined : 0, visibility: visible ? 'visible' : 'hidden' }}
     >
-      {/* Dark horizon line */}
       <motion.div
         className="absolute inset-x-0 bottom-0"
         style={{ height: horizonY, background: 'linear-gradient(to top, #0B0E1F 60%, transparent)' }}
       />
 
-      {/* Rocket landing silhouette */}
       <motion.div
         className="pointer-events-none absolute left-1/2 -translate-x-1/2"
         style={{ top: rocketY, opacity: rocketOpacity }}
@@ -340,7 +408,6 @@ export function FinaleBeat({ progress, onOpenContact }: Props) {
         </svg>
       </motion.div>
 
-      {/* CTA materialization — single element, no DOM swap */}
       <div className="relative z-10 mt-32 max-w-[680px]">
         <h2 className="mb-10 text-[clamp(26px,3.9vw,42px)] leading-[1.3] text-paper" style={{ perspective: 600 }}>
           <span style={{ display: 'inline-block', transform: 'rotateX(2deg)' }}>
@@ -350,14 +417,23 @@ export function FinaleBeat({ progress, onOpenContact }: Props) {
           </span>
         </h2>
 
-        <div className="flex justify-center">
+        <div className="relative flex justify-center">
+          <div
+            ref={sparkRef}
+            className="absolute h-3 w-3 rounded-full bg-gold"
+            style={{
+              opacity: 0,
+              zIndex: 10,
+              boxShadow: '0 0 24px 8px rgba(242,184,75,0.8), 0 0 48px 16px rgba(242,184,75,0.4)',
+            }}
+          />
           <button
-            data-cta-button
+            ref={ctaButtonRef}
             onClick={handleCtaClick}
-            className="flex items-center justify-center rounded-full border border-gold bg-gold font-bold text-night transition-shadow hover:-translate-y-[3px] hover:shadow-[0_16px_36px_rgba(242,184,75,0.38)]"
-            style={{ opacity: 0, scale: 0, width: 8, height: 8, borderRadius: 9999, overflow: 'hidden' }}
+            className="relative flex items-center justify-center rounded-full border border-gold bg-gold font-bold text-night transition-shadow hover:-translate-y-[3px] hover:shadow-[0_16px_36px_rgba(242,184,75,0.38)]"
+            style={{ opacity: 0, transform: 'scale(0)', width: 8, height: 8, borderRadius: 9999, overflow: 'hidden', zIndex: 5 }}
           >
-            <span data-cta-label className="text-[14.5px] px-7 py-3.5 whitespace-nowrap" style={{ opacity: 0 }}>
+            <span ref={ctaLabelRef} className="text-[14.5px] px-7 py-3.5 whitespace-nowrap" style={{ opacity: 0 }}>
               Запросити подію
             </span>
           </button>
@@ -461,46 +537,242 @@ function GalCard({
 
 ### `src/features/landing-hero/components/beats/HeroBeat.tsx`
 ```typescript
-import { useState } from 'react'
-import { motion, useMotionValueEvent } from 'framer-motion'
-import { useBeatStrength } from '../../hooks/useBeatStrength'
+import { useEffect, useRef, useState, useCallback } from 'react'
+import { motion, animate, useMotionValueEvent } from 'framer-motion'
+import { useReducedMotion } from '../../hooks/useReducedMotion'
+import { useHeroIntro } from '../../hooks/useHeroIntro'
+import { HeroBubbles } from '../overlays/HeroBubbles'
 import type { MotionValue } from 'framer-motion'
 
 interface Props {
   progress: MotionValue<number>
   onOpenContact: () => void
+  onHeroComplete?: () => void
 }
 
-export function HeroBeat({ progress, onOpenContact }: Props) {
-  const strength = useBeatStrength(progress, 0)
-  const [visible, setVisible] = useState(true)
-  useMotionValueEvent(strength, 'change', (s) => setVisible(s > 0.005))
+export function HeroBeat({ progress, onOpenContact, onHeroComplete }: Props) {
+  const reduced = useReducedMotion()
+  const { phase: introPhase } = useHeroIntro()
+  const [heroVisible, setHeroVisible] = useState(true)
+  const [bubblesActive, setBubblesActive] = useState(false)
+  const [underwaterGlow, setUnderwaterGlow] = useState(0)
+  const [scrollTranslateY, setScrollTranslateY] = useState(0)
+  const containerRef = useRef<HTMLDivElement>(null)
+  const titleRef = useRef<HTMLHeadingElement>(null)
+  const subtitleRef = useRef<HTMLParagraphElement>(null)
+  const ctaRef = useRef<HTMLDivElement>(null)
+  const completedRef = useRef(false)
+
+  useMotionValueEvent(progress, 'change', (v) => {
+    const HERO_END = 0.08
+    const scrollFraction = Math.min(v / HERO_END, 1)
+    const y = -scrollFraction * 100
+    setScrollTranslateY(y)
+    if (scrollFraction >= 1 && !completedRef.current) {
+      completedRef.current = true
+      setHeroVisible(false)
+      onHeroComplete?.()
+    }
+  })
+
+  useEffect(() => {
+    if (introPhase === 'ready') {
+      setBubblesActive(true)
+    }
+  }, [introPhase])
+
+  useEffect(() => {
+    if (introPhase !== 'ready' || reduced) return
+    let cancelled = false
+
+    const animateAll = async () => {
+      if (!titleRef.current || !subtitleRef.current || !ctaRef.current) return
+
+      await animate(
+        titleRef.current,
+        { clipPath: 'inset(0% 0% 0% 0%)' },
+        { duration: 0.8, ease: [0.25, 0.1, 0.25, 1] },
+      )
+
+      if (cancelled || !subtitleRef.current) return
+      await Promise.all([
+        animate(
+          subtitleRef.current,
+          { opacity: 1, y: 0 },
+          { duration: 0.6, ease: [0.25, 0.1, 0.25, 1] },
+        ),
+        (async () => {
+          await new Promise((r) => setTimeout(r, 350))
+          if (!cancelled && ctaRef.current) {
+            animate(
+              ctaRef.current,
+              { opacity: 1, y: 0 },
+              { duration: 0.6, ease: [0.25, 0.1, 0.25, 1] },
+            )
+          }
+        })(),
+      ])
+    }
+
+    animateAll()
+    return () => { cancelled = true }
+  }, [introPhase, reduced])
+
+  useEffect(() => {
+    if (reduced) {
+      if (titleRef.current) titleRef.current.style.clipPath = 'inset(0% 0% 0% 0%)'
+      if (subtitleRef.current) {
+        subtitleRef.current.style.opacity = '1'
+        subtitleRef.current.style.transform = 'translateY(0)'
+      }
+      if (ctaRef.current) {
+        ctaRef.current.style.opacity = '1'
+        ctaRef.current.style.transform = 'translateY(0)'
+      }
+    }
+  }, [reduced])
+
+  if (!heroVisible) return null
+
+  const rocketX = 20 + Math.abs(scrollTranslateY) * 0.6
+  const rocketY = 80 - Math.abs(scrollTranslateY) * 0.8
 
   return (
-    <motion.div
-      role="region"
-      aria-label="Головна секція"
-      className="absolute inset-0 flex flex-col items-center justify-center px-6 text-center"
-      style={{ opacity: strength, visibility: visible ? 'visible' : 'hidden' }}
-    >
-      <div className="max-w-[680px]">
-        <h1 className="stagger-word text-[clamp(42px,7.2vw,86px)] leading-[1.02] text-paper" style={{ animationDelay: '0.1s' }}>
-          Уява<br />
-          <em className="font-serif italic text-gold glow-word">оживає</em>
-        </h1>
-        <p className="stagger-word mx-auto mt-[22px] max-w-[460px] text-[17px] leading-[1.55] text-mist" style={{ animationDelay: '0.3s' }}>
-          Ми створюємо сучасні освітні події, які діти пам&apos;ятають роками.
-        </p>
-        <div className="stagger-word mt-9 flex flex-wrap justify-center gap-3.5" style={{ animationDelay: '0.5s' }}>
-          <button
-            onClick={() => onOpenContact()}
-            className="rounded-full border border-gold bg-gold px-7 py-3.5 text-[14.5px] font-bold text-night transition-all hover:-translate-y-[3px] hover:shadow-[0_16px_36px_rgba(242,184,75,0.38)] active:scale-[0.97]"
+    <>
+      <div
+        ref={containerRef}
+        role="region"
+        aria-label="Головна секція"
+        className="fixed inset-0 flex flex-col items-center justify-center overflow-hidden"
+        style={{
+          transform: `translateY(${scrollTranslateY}vh)`,
+          zIndex: 50,
+        }}
+      >
+        <div
+          className="absolute inset-0 bg-cover bg-center transition-[filter] duration-300"
+          style={{
+            backgroundImage: 'url(/materials/preview.jpg)',
+            filter: `brightness(${1 + underwaterGlow}) saturate(${1 + underwaterGlow * 2})`,
+          }}
+        />
+        <div className="absolute inset-0 bg-gradient-to-b from-night/40 via-night/20 to-night/60" />
+
+        <div className="relative z-10 max-w-[680px] px-6 text-center">
+          <h1
+            ref={titleRef}
+            className="text-[clamp(42px,7.2vw,86px)] leading-[1.02] text-paper"
+            style={{ clipPath: 'inset(0% 100% 0% 0%)' }}
           >
-            Запросити подію
-          </button>
+            Уява<br />
+            <em className="font-serif italic text-gold glow-word">оживає</em>
+          </h1>
+          <p
+            ref={subtitleRef}
+            className="mx-auto mt-[22px] max-w-[460px] text-[17px] leading-[1.55] text-mist"
+            style={{ opacity: 0, transform: 'translateY(12px)' }}
+          >
+            Ми створюємо сучасні освітні події, які діти пам&apos;ятають роками.
+          </p>
+          <div
+            ref={ctaRef}
+            className="mt-9 flex flex-wrap justify-center gap-3.5"
+            style={{ opacity: 0, transform: 'translateY(12px)' }}
+          >
+            <button
+              onClick={() => onOpenContact()}
+              className="rounded-full border border-gold bg-gold px-7 py-3.5 text-[14.5px] font-bold text-night transition-all hover:-translate-y-[3px] hover:shadow-[0_16px_36px_rgba(242,184,75,0.38)] active:scale-[0.97]"
+            >
+              Запросити подію
+            </button>
+            <button
+              onClick={() => {
+                window.scrollTo({ top: window.innerHeight * 1.2, behavior: 'smooth' })
+              }}
+              className="rounded-full border border-paper/20 px-7 py-3.5 text-[14.5px] font-bold text-paper/80 transition-all hover:-translate-y-[3px] hover:border-paper/40 hover:text-paper active:scale-[0.97]"
+            >
+              Дізнатися більше
+            </button>
+          </div>
+        </div>
+
+        <svg
+          className="pointer-events-none absolute inset-0 h-full w-full"
+          style={{ opacity: 0.6 }}
+        >
+          <defs>
+            <linearGradient id="heroTrail" x1="0%" y1="100%" x2="100%" y2="0%">
+              <stop offset="0%" stopColor="#F2B84B" stopOpacity="0" />
+              <stop offset="40%" stopColor="#F2B84B" stopOpacity="0.5" />
+              <stop offset="100%" stopColor="#FBF5EA" stopOpacity="0.8" />
+            </linearGradient>
+          </defs>
+          <line
+            x1="15%"
+            y1="85%"
+            x2={`${rocketX}%`}
+            y2={`${rocketY}%`}
+            stroke="url(#heroTrail)"
+            strokeWidth="2"
+            strokeLinecap="round"
+          />
+          <line
+            x1="15%"
+            y1="85%"
+            x2={`${rocketX}%`}
+            y2={`${rocketY}%`}
+            stroke="#F2B84B"
+            strokeWidth="0.5"
+            strokeLinecap="round"
+            opacity="0.4"
+          />
+        </svg>
+        <div
+          className="pointer-events-none absolute"
+          style={{
+            left: `${rocketX}%`,
+            top: `${rocketY}%`,
+            transform: 'translate(-50%, -50%) rotate(-35deg)',
+            transition: 'none',
+          }}
+        >
+          <svg viewBox="-20 -30 40 60" className="h-10 w-10">
+            <defs>
+              <linearGradient id="heroRocketBody" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="0%" stopColor="#FBF5EA" />
+                <stop offset="100%" stopColor="#C9BFA8" />
+              </linearGradient>
+              <linearGradient id="heroFlame" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="0%" stopColor="#F2B84B" />
+                <stop offset="60%" stopColor="#FF7A59" />
+                <stop offset="100%" stopColor="#FF4020" stopOpacity="0" />
+              </linearGradient>
+            </defs>
+            <path
+              d="M0,-22 C7,-16 8,-5 8,3 C8,10 4,16 0,18 C-4,16 -8,10 -8,3 C-8,-5 -7,-16 0,-22 Z"
+              fill="url(#heroRocketBody)"
+              stroke="#E8DFC8"
+              strokeWidth="0.5"
+            />
+            <circle cx="0" cy="-6" r="3.5" fill="#8FE3E0" stroke="#FBF5EA" strokeWidth="0.5" />
+            <path d="M-8,6 L-13,14 L-8,11 Z" fill="#FF7A59" opacity="0.85" />
+            <path d="M8,6 L13,14 L8,11 Z" fill="#FF7A59" opacity="0.85" />
+            <path
+              d="M-4,18 L0,28 L4,18"
+              fill="url(#heroFlame)"
+              opacity={0.9}
+            />
+            <path
+              d="M-2,18 L0,25 L2,18"
+              fill="#FBF5EA"
+              opacity={0.6}
+            />
+          </svg>
         </div>
       </div>
-    </motion.div>
+
+      <HeroBubbles active={bubblesActive && heroVisible} />
+    </>
   )
 }
 
@@ -1007,6 +1279,7 @@ import { useBeatStrength } from '../../hooks/useBeatStrength'
 import { BEAT_CONTENT, WORLD_BEATS } from '../../data/worlds'
 import { MEDIA_URLS } from '../../data/media'
 import { MediaPlaceholder } from '../MediaPlaceholder'
+import { HologramGallery } from '../HologramGallery'
 
 interface Props {
   progress: MotionValue<number>
@@ -1052,44 +1325,76 @@ export function WorldBeat({ progress, beatIndex }: Props) {
   const worldKey = getWorldKey(beatIndex)
   const mediaAnimClass = getMediaAnimClass(worldKey)
 
+  const isHologram = beatIndex === 5
+
   return (
     <motion.div
       role="region"
       aria-label={content.heading}
-      className="absolute inset-0 flex flex-col items-center justify-center px-6 text-center"
+      className="absolute inset-0 flex flex-col items-center justify-center overflow-visible px-6 text-center"
       style={{ opacity: strength, y }}
     >
-      <div className="flex max-w-[820px] flex-col items-center gap-8 md:flex-row md:text-left">
-        <div className={`${mediaAnimClass} h-[min(200px,28vw)] w-full shrink-0 md:h-[200px] md:w-[280px]`}>
-          <MediaPlaceholder
-            label={WORLD_ICONS[beatIndex] ?? 'Ілюстрація'}
-            src={WORLD_MEDIA[beatIndex]}
-            className="h-full w-full"
-          />
-        </div>
-        <div className="max-w-[480px]">
-          <p
-            className="mb-3.5 text-xs font-bold uppercase tracking-[0.18em] text-gold opacity-90 stagger-word"
-            style={{ animationDelay: '0.1s' }}
-          >
-            {content.eyebrow}
-          </p>
-          <h2
-            className="text-[clamp(26px,3.9vw,42px)] leading-[1.15] text-paper stagger-word"
-            style={{ animationDelay: '0.2s' }}
-          >
-            {content.heading}
-          </h2>
-          {content.sub && (
+      {isHologram ? (
+        <div className="flex max-w-[900px] flex-col items-center gap-8 overflow-visible md:flex-row md:text-left">
+          <div className={`${mediaAnimClass} w-full shrink-0 overflow-visible md:w-[440px]`}>
+            <HologramGallery />
+          </div>
+          <div className="max-w-[480px]">
             <p
-              className="mx-auto mt-4 max-w-[480px] text-[15.5px] leading-[1.55] text-mist-soft md:mx-0 stagger-word"
-              style={{ animationDelay: '0.35s' }}
+              className="mb-3.5 text-xs font-bold uppercase tracking-[0.18em] text-gold opacity-90 stagger-word"
+              style={{ animationDelay: '0.1s' }}
             >
-              {content.sub}
+              {content.eyebrow}
             </p>
-          )}
+            <h2
+              className="text-[clamp(26px,3.9vw,42px)] leading-[1.15] text-paper stagger-word"
+              style={{ animationDelay: '0.2s' }}
+            >
+              {content.heading}
+            </h2>
+            {content.sub && (
+              <p
+                className="mx-auto mt-4 max-w-[480px] text-[15.5px] leading-[1.55] text-mist-soft md:mx-0 stagger-word"
+                style={{ animationDelay: '0.35s' }}
+              >
+                {content.sub}
+              </p>
+            )}
+          </div>
         </div>
-      </div>
+      ) : (
+        <div className="flex max-w-[820px] flex-col items-center gap-8 md:flex-row md:text-left">
+          <div className={`${mediaAnimClass} h-[min(200px,28vw)] w-full shrink-0 md:h-[200px] md:w-[280px]`}>
+            <MediaPlaceholder
+              label={WORLD_ICONS[beatIndex] ?? 'Ілюстрація'}
+              src={WORLD_MEDIA[beatIndex]}
+              className="h-full w-full"
+            />
+          </div>
+          <div className="max-w-[480px]">
+            <p
+              className="mb-3.5 text-xs font-bold uppercase tracking-[0.18em] text-gold opacity-90 stagger-word"
+              style={{ animationDelay: '0.1s' }}
+            >
+              {content.eyebrow}
+            </p>
+            <h2
+              className="text-[clamp(26px,3.9vw,42px)] leading-[1.15] text-paper stagger-word"
+              style={{ animationDelay: '0.2s' }}
+            >
+              {content.heading}
+            </h2>
+            {content.sub && (
+              <p
+                className="mx-auto mt-4 max-w-[480px] text-[15.5px] leading-[1.55] text-mist-soft md:mx-0 stagger-word"
+                style={{ animationDelay: '0.35s' }}
+              >
+                {content.sub}
+              </p>
+            )}
+          </div>
+        </div>
+      )}
     </motion.div>
   )
 }
@@ -1421,6 +1726,178 @@ export function Footer({ onOpenContact }: Props) {
 
 ```
 
+### `src/features/landing-hero/components/HologramGallery.tsx`
+```typescript
+import { useState, useEffect } from 'react'
+import { motion, AnimatePresence } from 'framer-motion'
+
+const HOLOGRAM_PHOTOS = [
+  { src: '/materials/holohrana_photo_2.jpg', hoverSrc: '/materials/hologram-kids-dark.png', alt: 'Діти біля холограмної установки' },
+  { src: '/materials/holohrama_photo.jpg', hoverSrc: '/materials/hologram-photo-dark.png', alt: 'Холограмна проекція для дітей' },
+  { src: '/materials/hologram-city.jpg', hoverSrc: '/materials/hologram-city-dark.png', alt: 'Холограма міста' },
+]
+
+function useImagePreload(src: string): boolean {
+  const [loaded, setLoaded] = useState(false)
+  useEffect(() => {
+    const img = new Image()
+    img.src = src
+    img.onload = () => setLoaded(true)
+  }, [src])
+  return loaded
+}
+
+export function HologramGallery() {
+  const [activeIdx, setActiveIdx] = useState<number | null>(null)
+  const [hoveredIdx, setHoveredIdx] = useState<number | null>(null)
+  const hoversLoaded = HOLOGRAM_PHOTOS.map((p) => useImagePreload(p.hoverSrc))
+
+  return (
+    <>
+      <div className="flex flex-col items-start gap-4 -ml-6 overflow-visible">
+        <div className="flex items-start gap-3">
+          <PhotoCard
+            photo={HOLOGRAM_PHOTOS[0]}
+            isHovered={hoveredIdx === 0}
+            hoverReady={hoversLoaded[0]}
+            onHover={() => setHoveredIdx(0)}
+            onLeave={() => setHoveredIdx(null)}
+            onClick={() => setActiveIdx(0)}
+            className="h-[170px] w-[210px]"
+            rotation={-12}
+          />
+          <PhotoCard
+            photo={HOLOGRAM_PHOTOS[1]}
+            isHovered={hoveredIdx === 1}
+            hoverReady={hoversLoaded[1]}
+            onHover={() => setHoveredIdx(1)}
+            onLeave={() => setHoveredIdx(null)}
+            onClick={() => setActiveIdx(1)}
+            className="mt-10 h-[140px] w-[175px]"
+            rotation={8}
+          />
+        </div>
+        <div className="ml-10">
+          <PhotoCard
+            photo={HOLOGRAM_PHOTOS[2]}
+            isHovered={hoveredIdx === 2}
+            hoverReady={hoversLoaded[2]}
+            onHover={() => setHoveredIdx(2)}
+            onLeave={() => setHoveredIdx(null)}
+            onClick={() => setActiveIdx(2)}
+            className="h-[130px] w-[180px]"
+            rotation={-6}
+          />
+        </div>
+      </div>
+
+      <AnimatePresence>
+        {activeIdx !== null && (
+          <motion.div
+            className="fixed inset-0 z-[60] flex items-center justify-center bg-night/80 backdrop-blur-sm"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.25 }}
+            onClick={() => setActiveIdx(null)}
+          >
+            <motion.div
+              className="relative max-h-[80vh] max-w-[90vw] overflow-hidden rounded-2xl shadow-2xl"
+              initial={{ scale: 0.9, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.9, opacity: 0 }}
+              transition={{ duration: 0.3, ease: [0.25, 0.1, 0.25, 1] }}
+              onClick={(e) => e.stopPropagation()}
+            >
+              <img
+                src={HOLOGRAM_PHOTOS[activeIdx].src}
+                alt={HOLOGRAM_PHOTOS[activeIdx].alt}
+                className="block max-h-[80vh] max-w-[90vw] object-contain"
+              />
+              <button
+                onClick={() => setActiveIdx(null)}
+                className="absolute right-3 top-3 flex h-8 w-8 items-center justify-center rounded-full bg-night/60 text-paper transition-colors hover:bg-night/80"
+                aria-label="Закрити"
+              >
+                ✕
+              </button>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </>
+  )
+}
+
+function PhotoCard({
+  photo,
+  isHovered,
+  hoverReady,
+  onHover,
+  onLeave,
+  onClick,
+  className,
+  rotation = 0,
+}: {
+  photo: (typeof HOLOGRAM_PHOTOS)[number]
+  isHovered: boolean
+  hoverReady: boolean
+  onHover: () => void
+  onLeave: () => void
+  onClick: () => void
+  className?: string
+  rotation?: number
+}) {
+  const hasHover = !!photo.hoverSrc && hoverReady
+
+  return (
+    <button
+      onMouseEnter={onHover}
+      onMouseLeave={onLeave}
+      onClick={onClick}
+      className={`relative cursor-pointer overflow-hidden rounded-xl border border-white/10 ${className ?? ''}`}
+      style={{
+        zIndex: isHovered ? 10 : 1,
+        transform: isHovered ? 'scale(1.25) rotate(0deg)' : `rotate(${rotation}deg)`,
+        transition: 'transform 0.5s cubic-bezier(0.25, 0.1, 0.25, 1)',
+        boxShadow: isHovered
+          ? '0 0 30px 10px rgba(60,140,255,0.35), 0 0 60px 20px rgba(60,140,255,0.15), 0 0 0 1px rgba(100,180,255,0.4)'
+          : '0 8px 24px rgba(0,0,0,0.4)',
+        transitionProperty: 'transform, box-shadow',
+        transitionDuration: '0.5s, 0.4s',
+        transitionTimingFunction: 'cubic-bezier(0.25, 0.1, 0.25, 1), ease',
+      }}
+    >
+      {/* Base image */}
+      <img
+        src={photo.src}
+        alt={photo.alt}
+        className="absolute inset-0 h-full w-full object-cover"
+        style={{
+          opacity: hasHover && isHovered ? 0 : 1,
+          transform: isHovered ? 'scale(1.08)' : 'scale(1)',
+          transition: 'opacity 0.55s ease, transform 0.5s cubic-bezier(0.25, 0.1, 0.25, 1)',
+        }}
+        loading="lazy"
+      />
+      {/* Hover overlay image */}
+      {hasHover && (
+        <img
+          src={photo.hoverSrc!}
+          alt={photo.alt}
+          className="absolute inset-0 h-full w-full object-cover"
+          style={{
+            opacity: isHovered ? 1 : 0,
+            transition: 'opacity 0.55s ease',
+          }}
+        />
+      )}
+    </button>
+  )
+}
+
+```
+
 ### `src/features/landing-hero/components/MediaPlaceholder.tsx`
 ```typescript
 import { useRef, useEffect, useState, useCallback } from 'react'
@@ -1445,6 +1922,9 @@ function PlaceholderIcon() {
 
 export function MediaPlaceholder({ label, icon, className = '', src }: Props) {
   if (src) {
+    if (IMAGE_EXTS.test(src)) {
+      return <ImageMedia src={src} className={className} />
+    }
     return <VideoMedia src={src} className={className} />
   }
 
@@ -1456,6 +1936,26 @@ export function MediaPlaceholder({ label, icon, className = '', src }: Props) {
         {icon ?? <PlaceholderIcon />}
         <span className="text-[11px] uppercase tracking-[0.12em] text-mist-soft/50">{label}</span>
       </div>
+    </div>
+  )
+}
+
+const IMAGE_EXTS = /\.(jpg|jpeg|png|webp|gif|avif)(\?.*)?$/i
+
+function ImageMedia({ src, className }: { src: string; className: string }) {
+  const [ready, setReady] = useState(false)
+  return (
+    <div className={`relative overflow-hidden rounded-2xl bg-night ${className}`}>
+      <img
+        src={src}
+        onLoad={() => setReady(true)}
+        className={`h-full w-full object-cover transition-opacity duration-700 ${ready ? 'opacity-100' : 'opacity-0'}`}
+      />
+      {!ready && (
+        <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+          <PlaceholderIcon />
+        </div>
+      )}
     </div>
   )
 }
@@ -1556,45 +2056,16 @@ export function Nav({ onOpenContact, onNavigate, progress }: Props) {
   const [scrolled, setScrolled] = useState(false)
   const [mobileOpen, setMobileOpen] = useState(false)
   const [activeIdx, setActiveIdx] = useState(0)
-  const [hidden, setHidden] = useState(false)
-  const lastScrollY = useRef(0)
-  const navLock = useRef(false)
   const linkRefs = useRef<(HTMLAnchorElement | null)[]>([])
 
   useEffect(() => {
-    let scrollTimer: ReturnType<typeof setTimeout>
-
     const handler = () => {
-      const y = window.scrollY
-      setScrolled(y > 40)
-
-      if (navLock.current) {
-        lastScrollY.current = y
-        return
-      }
-
-      if (y < 200) {
-        setHidden(false)
-      } else {
-        const delta = y - lastScrollY.current
-        if (delta > 15) {
-          setHidden(true)
-        } else if (delta < -15) {
-          setHidden(false)
-        }
-      }
-      lastScrollY.current = y
-
-      clearTimeout(scrollTimer)
-      scrollTimer = setTimeout(() => setHidden(false), 1000)
+      setScrolled(window.scrollY > 40)
     }
 
     window.addEventListener('scroll', handler, { passive: true })
     handler()
-    return () => {
-      window.removeEventListener('scroll', handler)
-      clearTimeout(scrollTimer)
-    }
+    return () => window.removeEventListener('scroll', handler)
   }, [])
 
   useMotionValueEvent(progress, 'change', (p) => {
@@ -1611,8 +2082,6 @@ export function Nav({ onOpenContact, onNavigate, progress }: Props) {
     : { left: 0, width: 0, opacity: 0 }
 
   const handleNavClick = (fraction: number) => {
-    navLock.current = true
-    setTimeout(() => { navLock.current = false }, 1200)
     onNavigate(fraction)
   }
 
@@ -1622,7 +2091,7 @@ export function Nav({ onOpenContact, onNavigate, progress }: Props) {
         scrolled
           ? 'bg-night/72 py-3 backdrop-blur-[14px] border-b border-gold/12'
           : 'py-[18px]'
-      } ${hidden ? '-translate-y-full' : 'translate-y-0'}`}
+      }`}
       style={{ zIndex: Z.nav, transitionProperty: 'transform, background, padding, border-color' }}
     >
       <div className="mx-auto flex max-w-[1180px] items-center justify-between px-7">
@@ -2193,6 +2662,83 @@ export function GrassGround({ tl, subscribe }: Props) {
 
 ```
 
+### `src/features/landing-hero/components/overlays/HeroBubbles.tsx`
+```typescript
+import { useMemo } from 'react'
+import { motion } from 'framer-motion'
+import { useReducedMotion } from '../../hooks/useReducedMotion'
+
+interface Bubble {
+  id: number
+  size: number
+  x: number
+  startY: number
+  drift: number
+  duration: number
+  delay: number
+  opacity: number
+}
+
+function generateBubbles(count: number): Bubble[] {
+  return Array.from({ length: count }, (_, i) => ({
+    id: i,
+    size: 4 + Math.random() * 10,
+    x: 35 + Math.random() * 30,
+    startY: 75 + Math.random() * 15,
+    drift: (Math.random() - 0.5) * 20,
+    duration: 3 + Math.random() * 3,
+    delay: Math.random() * 2,
+    opacity: 0.15 + Math.random() * 0.35,
+  }))
+}
+
+interface Props {
+  active: boolean
+}
+
+export function HeroBubbles({ active }: Props) {
+  const reduced = useReducedMotion()
+  const bubbles = useMemo(() => generateBubbles(reduced ? 0 : 10), [reduced])
+
+  if (!active || reduced) return null
+
+  return (
+    <div className="pointer-events-none fixed inset-0 overflow-hidden" style={{ zIndex: 20 }} aria-hidden="true">
+      {bubbles.map((b) => (
+        <motion.div
+          key={b.id}
+          initial={{
+            x: `${b.x}vw`,
+            y: `${b.startY}vh`,
+            scale: 0.3,
+            opacity: 0,
+          }}
+          animate={{
+            y: [`${b.startY}vh`, `${10 + Math.random() * 15}vh`],
+            x: [`${b.x}vw`, `${b.x + b.drift}vw`],
+            scale: [0.3, 1, 0.8],
+            opacity: [0, b.opacity, b.opacity * 0.6, 0],
+          }}
+          transition={{
+            duration: b.duration,
+            delay: b.delay,
+            ease: 'easeOut',
+          }}
+          className="absolute rounded-full"
+          style={{
+            width: b.size,
+            height: b.size,
+            background: `radial-gradient(circle at 35% 35%, rgba(143,227,224,${b.opacity + 0.2}), rgba(143,227,224,${b.opacity * 0.3}) 60%, transparent)`,
+            boxShadow: `inset -1px -1px 2px rgba(255,255,255,0.3), 0 0 ${b.size * 0.5}px rgba(143,227,224,${b.opacity * 0.4})`,
+          }}
+        />
+      ))}
+    </div>
+  )
+}
+
+```
+
 ### `src/features/landing-hero/components/overlays/NebulaOverlay.tsx`
 ```typescript
 import { useEffect, useRef, useState } from 'react'
@@ -2500,6 +3046,7 @@ interface Props {
   tl: Timeline
   progress: MotionValue<number>
   subscribe: (cb: () => void) => () => void
+  heroCompleted?: boolean
 }
 
 const NOZZLE_Y = 55
@@ -2514,7 +3061,7 @@ function scaleFlame(scaleX: number, scaleY: number, coords: number[], cmd: 'C' |
   return d
 }
 
-export function RocketOverlay({ tl, progress, subscribe }: Props) {
+export function RocketOverlay({ tl, progress, subscribe, heroCompleted = true }: Props) {
   const reduced = useReducedMotion()
   const [, setTick] = useState(0)
   const flameRef = useRef(1)
@@ -2530,7 +3077,7 @@ export function RocketOverlay({ tl, progress, subscribe }: Props) {
   const rocket = interpolateRocket(p, t.vw, t.vh)
 
   const now = t.elapsed
-  const opacity = 1
+  const opacity = heroCompleted ? 1 : 0
 
   if (!reduced) {
     flameRef.current = 1 + Math.sin(now / 90) * 0.12
@@ -2549,7 +3096,7 @@ export function RocketOverlay({ tl, progress, subscribe }: Props) {
   if (currentHeading.current === null) {
     currentHeading.current = rawHeading
   } else {
-    currentHeading.current = lerpAngle(currentHeading.current, rawHeading, 0.12)
+    currentHeading.current = lerpAngle(currentHeading.current, rawHeading, 0.20)
   }
 
   const camX = rocket.x + t.parallax[5].x + t.camera.x + t.camera.shakeX
@@ -2660,14 +3207,36 @@ export function RocketOverlay({ tl, progress, subscribe }: Props) {
       </div>
 
       {t.isWarping && (
-        <div className="pointer-events-none fixed inset-0 flex items-center justify-center overflow-hidden" style={{ zIndex: Z.rocket + 10 }}>
-          <div
-            className="absolute h-[100vh] w-[140px] bg-gradient-to-r from-transparent via-gold to-transparent mix-blend-screen"
-            style={{ transform: `scaleY(${ws * 15})`, opacity: ws }}
-          />
-          <div className="absolute left-[30%] h-[150vh] w-[2px] bg-teal shadow-[0_0_15px_3px_#8FE3E0]" style={{ transform: `scaleY(${ws * 8})`, opacity: ws * 0.8 }} />
-          <div className="absolute right-[25%] h-[200vh] w-[4px] bg-coral shadow-[0_0_20px_5px_#FF7A59]" style={{ transform: `scaleY(${ws * 12})`, opacity: ws * 0.9 }} />
-          <div className="absolute left-[40%] h-[120vh] w-[1px] bg-white" style={{ transform: `scaleY(${ws * 20})`, opacity: ws * 0.5 }} />
+        <div className="pointer-events-none fixed inset-0 overflow-hidden" style={{ zIndex: Z.rocket + 10 }}>
+          <svg className="absolute inset-0 h-full w-full" viewBox="0 0 100 100" preserveAspectRatio="none">
+            {Array.from({ length: 24 }, (_, i) => {
+              const angle = (i / 24) * Math.PI * 2 + (i % 3) * 0.09
+              const baseLen = 25 + (i % 5) * 12
+              const delay = (i % 6) * 0.06
+              const lineWs = clamp((ws - delay) / (1 - delay), 0, 1)
+              const expand = lineWs * lineWs * (3 - 2 * lineWs)
+              const x1 = 50 + Math.cos(angle) * 3
+              const y1 = 50 + Math.sin(angle) * 3
+              const x2 = 50 + Math.cos(angle) * baseLen * expand
+              const y2 = 50 + Math.sin(angle) * baseLen * expand
+              const opacity = expand * (1 - expand * 0.6) * 0.8
+              const colors = ['#FBF5EA', '#F2B84B', '#8FE3E0', '#FBF5EA', '#FF7A59']
+              const sw = 0.12 + (i % 3) * 0.06
+              return (
+                <line
+                  key={i}
+                  x1={x1}
+                  y1={y1}
+                  x2={x2}
+                  y2={y2}
+                  stroke={colors[i % 5]}
+                  strokeWidth={sw}
+                  strokeLinecap="round"
+                  opacity={opacity}
+                />
+              )
+            })}
+          </svg>
         </div>
       )}
     </>
@@ -2969,14 +3538,12 @@ export const GALLERY_NODES: GalleryNode[] = [
 
 ### `src/features/landing-hero/data/media.ts`
 ```typescript
-const BLOB_BASE = 'https://n1gzcjyiqdwr3azb.public.blob.vercel-storage.com'
-
 export const MEDIA_URLS = {
-  heroPreview: `${BLOB_BASE}/Hologram_Event_Kids_School.mp4`,
-  malyuvaika: `${BLOB_BASE}/%D0%B2%D1%96%D0%B4%D0%B5%D0%BE%20-%20%D0%BC%D0%B0%D0%BB%D1%8E%D0%B2%D0%B0%D0%B9%D0%BA%D0%B0.MP4`,
-  hologramEvent: `${BLOB_BASE}/Hologram_Event_Kids_School.mp4`,
-  hologramReaction: `${BLOB_BASE}/IMG_6455.MP4`,
-  popify: `${BLOB_BASE}/%D0%B2%D1%96%D0%B4%D0%B5%D0%BE%20%D0%BF%D0%BE%D0%BF%D1%96%D1%84%D0%B0%D0%B9.MP4`,
+  heroPreview: '/materials/Hologram_Event_Kids_School.mp4',
+  malyuvaika: '/materials/відео - малювайка.MP4',
+  hologramEvent: '/materials/holohrana_photo_2.jpg',
+  hologramReaction: '/materials/IMG_6455.MP4',
+  popify: '/materials/відео попіфай.MP4',
 } as const
 
 ```
@@ -3075,21 +3642,21 @@ export interface RocketWaypoint {
 }
 
 export const ROCKET_WAYPOINTS: RocketWaypoint[] = [
-  { x: 0.18, y: 0.04 },
-  { x: 0.50, y: 0.38 },
-  { x: 0.78, y: 0.26 },
-  { x: 0.18, y: 0.52 },
-  { x: 0.72, y: 0.60 },
-  { x: 0.26, y: 0.30 },
-  { x: 0.68, y: 0.70 },
-  { x: 0.32, y: 0.46 },
-  { x: 0.74, y: 0.34 },
-  { x: 0.48, y: 0.66 },
-  { x: 0.22, y: 0.28 },
-  { x: 0.72, y: 0.48 },
-  { x: 0.50, y: 0.22 },
-  { x: 0.50, y: 0.48 },
-  { x: 0.50, y: 0.85 },
+  { x: 0.20, y: 0.05 },
+  { x: 0.28, y: 0.10 },
+  { x: 0.38, y: 0.13 },
+  { x: 0.48, y: 0.18 },
+  { x: 0.56, y: 0.25 },
+  { x: 0.62, y: 0.33 },
+  { x: 0.66, y: 0.41 },
+  { x: 0.62, y: 0.49 },
+  { x: 0.52, y: 0.55 },
+  { x: 0.42, y: 0.61 },
+  { x: 0.36, y: 0.67 },
+  { x: 0.38, y: 0.73 },
+  { x: 0.46, y: 0.79 },
+  { x: 0.50, y: 0.86 },
+  { x: 0.50, y: 0.95 },
 ]
 
 ```
@@ -3407,6 +3974,99 @@ export function useBeatStrengths(
 
 ```
 
+### `src/features/landing-hero/hooks/useFirstScroll.ts`
+```typescript
+import { useEffect, useRef, useState } from 'react'
+
+export function useFirstScroll(): boolean {
+  const [hasInteracted, setHasInteracted] = useState(false)
+  const touchedRef = useRef(false)
+
+  useEffect(() => {
+    if (touchedRef.current) return
+
+    const onInteract = () => {
+      if (touchedRef.current) return
+      touchedRef.current = true
+      setHasInteracted(true)
+      window.removeEventListener('wheel', onInteract)
+      window.removeEventListener('touchmove', onInteract)
+      window.removeEventListener('keydown', onKey)
+    }
+
+    const onKey = (e: KeyboardEvent) => {
+      const scrollKeys = ['ArrowDown', 'ArrowUp', 'PageDown', 'PageUp', 'Space', ' ']
+      if (scrollKeys.includes(e.key)) onInteract()
+    }
+
+    window.addEventListener('wheel', onInteract, { passive: true })
+    window.addEventListener('touchmove', onInteract, { passive: true })
+    window.addEventListener('keydown', onKey)
+
+    return () => {
+      window.removeEventListener('wheel', onInteract)
+      window.removeEventListener('touchmove', onInteract)
+      window.removeEventListener('keydown', onKey)
+    }
+  }, [])
+
+  return hasInteracted
+}
+
+```
+
+### `src/features/landing-hero/hooks/useHeroIntro.ts`
+```typescript
+import { useEffect, useRef, useState } from 'react'
+import { useReducedMotion } from './useReducedMotion'
+
+export type HeroPhase = 'idle' | 'intro' | 'ready'
+
+interface HeroIntroState {
+  phase: HeroPhase
+  introProgress: number
+}
+
+export function useHeroIntro(): HeroIntroState {
+  const reduced = useReducedMotion()
+  const [phase, setPhase] = useState<HeroPhase>('idle')
+  const [introProgress, setIntroProgress] = useState(0)
+  const rafRef = useRef(0)
+
+  useEffect(() => {
+    if (reduced) {
+      setPhase('ready')
+      setIntroProgress(1)
+      return
+    }
+
+    const startTime = performance.now()
+    const INTRO_DURATION = 600
+
+    setPhase('intro')
+
+    const tick = (now: number) => {
+      const elapsed = now - startTime
+      const t = Math.min(elapsed / INTRO_DURATION, 1)
+      setIntroProgress(t)
+
+      if (t < 1) {
+        rafRef.current = requestAnimationFrame(tick)
+      } else {
+        setPhase('ready')
+      }
+    }
+
+    rafRef.current = requestAnimationFrame(tick)
+
+    return () => cancelAnimationFrame(rafRef.current)
+  }, [reduced])
+
+  return { phase, introProgress }
+}
+
+```
+
 ### `src/features/landing-hero/hooks/useMotionTimeline.ts`
 ```typescript
 import { useRef, useEffect, useCallback } from 'react'
@@ -3494,8 +4154,7 @@ export function useMotionTimeline(
     warpStrength: 0,
   })
 
-  const scrollRef = useRef({ y: 0, lastY: 0, velocitySmooth: 0 })
-  const cameraTarget = useRef({ x: 0, y: 0, tiltX: 0, tiltY: 0 })
+  const scrollRef = useRef({ y: 0, lastY: 0, velocitySmooth: 0, stoppedFrames: 0 })
   const shakeAccum = useRef(0)
   const idRef = useRef(0)
   const subscribersRef = useRef<Set<() => void>>(new Set())
@@ -3573,11 +4232,20 @@ export function useMotionTimeline(
         const scroll = scrollRef.current
         scroll.y = window.scrollY
         const rawVelocity = (scroll.y - scroll.lastY) / Math.max(dt, 0.001)
-        scroll.velocitySmooth = lerp(scroll.velocitySmooth, rawVelocity, clamp(dt * 12, 0, 1))
+        if (Math.abs(rawVelocity) < 20) {
+          scroll.stoppedFrames++
+        } else {
+          scroll.stoppedFrames = 0
+        }
+        if (scroll.stoppedFrames > 2) {
+          scroll.velocitySmooth = 0
+        } else {
+          scroll.velocitySmooth = lerp(scroll.velocitySmooth, rawVelocity, clamp(dt * 6, 0, 1))
+        }
         scroll.lastY = scroll.y
 
         t.velocity = clamp(scroll.velocitySmooth, -3000, 3000)
-        t.acceleration = (t.velocity - scroll.velocitySmooth) * 3
+        t.acceleration = 0
         t.direction = t.velocity > 50 ? 1 : t.velocity < -50 ? -1 : 0
         t.isScrolling = Math.abs(t.velocity) > 30
 
@@ -3587,15 +4255,11 @@ export function useMotionTimeline(
       }
 
       const speedFactor = clamp(Math.abs(t.velocity) / 2000, 0, 1)
-      cameraTarget.current.x = clamp(t.velocity * 0.003, -6, 6)
-      cameraTarget.current.y = clamp(t.acceleration * 0.0004, -4, 4)
-      cameraTarget.current.tiltX = clamp(t.velocity * 0.0015, -3, 3)
-      cameraTarget.current.tiltY = clamp(t.acceleration * 0.0002, -2, 2)
 
-      t.camera.x = lerp(t.camera.x, cameraTarget.current.x, SPRING_K)
-      t.camera.y = lerp(t.camera.y, cameraTarget.current.y, SPRING_K)
-      t.camera.tiltX = lerp(t.camera.tiltX, cameraTarget.current.tiltX, SPRING_K)
-      t.camera.tiltY = lerp(t.camera.tiltY, cameraTarget.current.tiltY, SPRING_K)
+      t.camera.x = 0
+      t.camera.y = 0
+      t.camera.tiltX = 0
+      t.camera.tiltY = 0
       t.camera.zoom = lerp(t.camera.zoom, 1 - speedFactor * 0.015, DAMPING)
 
       if (t.isScrolling && !t.isWarping) {
@@ -3610,9 +4274,9 @@ export function useMotionTimeline(
       t.camera.depth = lerp(t.camera.depth, t.progress * 0.3, DAMPING)
 
       const parallaxSpeeds = [0.02, 0.05, 0.1, 0.15, 0.25, 0.35, 0.5, 1.0]
-      const parallaxInertia = [0.02, 0.03, 0.05, 0.06, 0.08, 0.1, 0.12, 0.15]
+      const parallaxInertia = [0.02, 0.03, 0.05, 0.06, 0.08, 0.1, 0.15, 0.1]
       for (let i = 0; i < 8; i++) {
-        const targetPx = t.progress * t.vh * parallaxSpeeds[i] * t.direction
+        const targetPx = t.progress * t.vh * parallaxSpeeds[i] * 0.12
         const targetPy = t.progress * t.vh * parallaxSpeeds[i] * 0.3
         t.parallax[i].x = lerp(t.parallax[i].x, targetPx, parallaxInertia[i])
         t.parallax[i].y = lerp(t.parallax[i].y, targetPy, parallaxInertia[i])
@@ -3997,8 +4661,19 @@ export function LandingHero() {
   useScrollSnap(smoothProgress, containerRef, !reduced)
 
   const { commands, setCommands } = useAmbientCommands()
+  const [heroCompleted, setHeroCompleted] = useState(false)
 
   const finaleStrength = beatStrengths[12]
+
+  const handleHeroComplete = useCallback(() => {
+    if (heroCompleted) return
+    setHeroCompleted(true)
+    const track = containerRef.current
+    if (!track) return
+    const total = Math.max(1, track.scrollHeight - window.innerHeight)
+    const target = (1 / 13) * total
+    window.scrollTo(0, target)
+  }, [containerRef, heroCompleted])
 
   const WARP_HALF = 250
 
@@ -4029,7 +4704,7 @@ export function LandingHero() {
   }, [containerRef, smoothProgress, startWarp, reduced])
 
   const beats: [MotionValue<number>, React.ReactNode][] = [
-    [beatStrengths[0], <HeroBeat key="hero" progress={smoothProgress} onOpenContact={() => setContactOpen(true)} />],
+    [beatStrengths[0], <HeroBeat key="hero" progress={smoothProgress} onOpenContact={() => setContactOpen(true)} onHeroComplete={handleHeroComplete} />],
     [beatStrengths[1], <ManifestBeat key="manifest" progress={smoothProgress} />],
     [beatStrengths[2], <PillarsBeat key="pillars" progress={smoothProgress} />],
     ...[3, 4, 5, 6, 7].map((i) => [beatStrengths[i], <WorldBeat key={`world-${i}`} progress={smoothProgress} beatIndex={i} />] as [MotionValue<number>, React.ReactNode]),
@@ -4071,7 +4746,7 @@ export function LandingHero() {
         <GlobalAmbientCanvas tl={tl} subscribe={subscribe} setCommands={setCommands} />
         <PortalOverlay tl={tl} subscribe={subscribe} progress={smoothProgress} />
         <GrassGround tl={tl} subscribe={subscribe} />
-        <RocketOverlay tl={tl} progress={smoothProgress} subscribe={subscribe} />
+        <RocketOverlay tl={tl} progress={smoothProgress} subscribe={subscribe} heroCompleted={heroCompleted} />
         <motion.div
           className="pointer-events-none fixed inset-0 bg-night"
           style={{ opacity: finaleStrength, zIndex: 4 }}
@@ -4082,7 +4757,7 @@ export function LandingHero() {
       {/* Story beats */}
       <main id="main" ref={containerRef} className="relative" style={{ zIndex: Z.content }}>
         <div className="h-[1100vh] max-md:h-[700vh]">
-          <div className="fixed inset-0 pointer-events-none" style={{ zIndex: Z.content }}>
+          <div className="fixed inset-0 overflow-visible pointer-events-none" style={{ zIndex: Z.content }}>
             {beats.map(([strength, child], i) => (
               <BeatWrapper key={i} strength={strength}>
                 {child}
@@ -4135,6 +4810,30 @@ export function tweenScrollTo(
     }
     requestAnimationFrame(step)
   })
+}
+
+```
+
+### `src/features/landing-hero/lib/colors.ts`
+```typescript
+import { lerp } from './animation'
+
+function hexToRgb(hex: string): [number, number, number] {
+  const h = hex.replace('#', '')
+  return [
+    parseInt(h.slice(0, 2), 16),
+    parseInt(h.slice(2, 4), 16),
+    parseInt(h.slice(4, 6), 16),
+  ]
+}
+
+export function lerpColor(hexA: string, hexB: string, t: number): string {
+  const a = hexToRgb(hexA)
+  const b = hexToRgb(hexB)
+  const r = Math.round(lerp(a[0], b[0], t))
+  const g = Math.round(lerp(a[1], b[1], t))
+  const bl = Math.round(lerp(a[2], b[2], t))
+  return `rgb(${r},${g},${bl})`
 }
 
 ```
@@ -4192,29 +4891,6 @@ export function interpolateRocket(progress: number, vw: number, vh: number) {
 export function lerpAngle(start: number, end: number, amount: number) {
   const delta = ((((end - start) % 360) + 540) % 360) - 180
   return start + delta * amount
-}
-```
-
-### `src/features/landing-hero/lib/colors.ts`
-```typescript
-import { lerp } from './animation'
-
-function hexToRgb(hex: string): [number, number, number] {
-  const h = hex.replace('#', '')
-  return [
-    parseInt(h.slice(0, 2), 16),
-    parseInt(h.slice(2, 4), 16),
-    parseInt(h.slice(4, 6), 16),
-  ]
-}
-
-export function lerpColor(hexA: string, hexB: string, t: number): string {
-  const a = hexToRgb(hexA)
-  const b = hexToRgb(hexB)
-  const r = Math.round(lerp(a[0], b[0], t))
-  const g = Math.round(lerp(a[1], b[1], t))
-  const bl = Math.round(lerp(a[2], b[2], t))
-  return `rgb(${r},${g},${bl})`
 }
 
 ```
@@ -4557,4 +5233,4 @@ createRoot(document.getElementById('root')!).render(
 
 ---
 
-**Files:** 63 | **Lines:** 4,090
+**Files:** 68 | **Lines:** 4,760

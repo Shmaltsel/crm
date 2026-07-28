@@ -11,7 +11,7 @@ interface Props {
 }
 
 export function FinaleBeat({ progress, onOpenContact }: Props) {
-  const strength = useBeatStrength(progress, 12)
+  const strength = useBeatStrength(progress, 13)
   const reduced = useReducedMotion()
   const ambient = useAmbient()
   const [dustSpawned, setDustSpawned] = useState(false)
