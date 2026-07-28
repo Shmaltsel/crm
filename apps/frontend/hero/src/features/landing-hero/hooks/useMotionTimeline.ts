@@ -163,10 +163,11 @@ export function useMotionTimeline(
         scroll.y = window.scrollY
         const rawVelocity = (scroll.y - scroll.lastY) / Math.max(dt, 0.001)
         scroll.velocitySmooth = lerp(scroll.velocitySmooth, rawVelocity, clamp(dt * 12, 0, 1))
+        if (Math.abs(scroll.velocitySmooth) < 40) scroll.velocitySmooth = 0
         scroll.lastY = scroll.y
 
         t.velocity = clamp(scroll.velocitySmooth, -3000, 3000)
-        t.acceleration = (rawVelocity - scroll.velocitySmooth) * 3
+        t.acceleration = Math.abs(scroll.velocitySmooth) > 40 ? (rawVelocity - scroll.velocitySmooth) * 3 : 0
         t.direction = t.velocity > 50 ? 1 : t.velocity < -50 ? -1 : 0
         t.isScrolling = Math.abs(t.velocity) > 30
 
