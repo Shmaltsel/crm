@@ -24,7 +24,7 @@ export function HologramGallery() {
 
   return (
     <>
-      <div className="flex flex-col items-start gap-4 -ml-6">
+      <div className="flex flex-col items-start gap-4 -ml-6 overflow-visible">
         <div className="flex items-start gap-3">
           <PhotoCard
             photo={HOLOGRAM_PHOTOS[0]}

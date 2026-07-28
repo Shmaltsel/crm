@@ -59,8 +59,8 @@ export function WorldBeat({ progress, beatIndex }: Props) {
       style={{ opacity: strength, y }}
     >
       {isHologram ? (
-        <div className="flex max-w-[900px] flex-col items-center gap-8 md:flex-row md:text-left">
-          <div className={`${mediaAnimClass} w-full shrink-0 md:w-[440px]`}>
+        <div className="flex max-w-[900px] flex-col items-center gap-8 overflow-visible md:flex-row md:text-left">
+          <div className={`${mediaAnimClass} w-full shrink-0 overflow-visible md:w-[440px]`}>
             <HologramGallery />
           </div>
           <div className="max-w-[480px]">
