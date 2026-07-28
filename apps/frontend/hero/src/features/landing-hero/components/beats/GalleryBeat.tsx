@@ -1,5 +1,4 @@
-import { MotionValue, motion, useTransform, useMotionValueEvent } from 'framer-motion'
-import { useState } from 'react'
+import { MotionValue, motion, useTransform } from 'framer-motion'
 import { useBeatStrength } from '../../hooks/useBeatStrength'
 import { GALLERY_NODES } from '../../data/gallery'
 import { MediaPlaceholder } from '../MediaPlaceholder'

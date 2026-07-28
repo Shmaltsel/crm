@@ -1,10 +1,10 @@
 import { useRef, useEffect, useCallback } from 'react'
 import { lerp, clamp, smoothstep } from '../lib/animation'
+import { TOTAL_BEATS, computeBeatStrength } from '../lib/beats'
 import { interpolateRocket } from '../lib/rocketMath'
 import type { Timeline } from '../types/timeline'
 import type { MotionValue } from 'framer-motion'
 
-const TOTAL_BEATS = 13
 const DAMPING = 0.08
 const SPRING_K = 0.012
 const TRAIL_COLORS = ['#F2B84B', '#FF7A59', '#FBF5EA']
@@ -12,25 +12,6 @@ const AMBIENT_COLORS = ['#F2B84B', '#8FE3E0', '#FF7A59', '#FBF5EA']
 const WARP_DURATION_MS = 500
 
 let nextParticleId = 0
-
-function computeBeatStrength(progress: number, index: number): number {
-  const N = TOTAL_BEATS
-  const start = index / N
-  const end = (index + 1) / N
-  const range = end - start
-  const fade = range * 0.28
-  let s: number
-  if (index === 0) {
-    s = progress > end - fade ? (end - progress) / fade : 1
-  } else if (index === N - 1) {
-    s = progress < start + fade ? (progress - start) / fade : 1
-  } else {
-    if (progress < start + fade) s = (progress - start) / fade
-    else if (progress > end - fade) s = (end - progress) / fade
-    else s = 1
-  }
-  return clamp(smoothstep(clamp(s, 0, 1)), 0, 1)
-}
 
 const SCENE_LIGHTING: [number, number, number][] = [
   [0.95, 0.72, 0.29],
@@ -230,8 +211,8 @@ export function useMotionTimeline(
       }
 
       if (t.isScrolling && Math.abs(t.velocity) > 150 && t.trailParticles.length < 60 && !t.isWarping) {
-        const rocketBeatIdx = Math.floor(t.progress * 12.99)
-        const rocketBeat = t.beatStrengths[clamp(rocketBeatIdx, 0, 12)]
+        const rocketBeatIdx = Math.floor(t.progress * (TOTAL_BEATS - 1))
+        const rocketBeat = t.beatStrengths[clamp(rocketBeatIdx, 0, TOTAL_BEATS - 1)]
         if (rocketBeat > 0.05) {
           const rocket = interpolateRocket(t.progress, t.vw, t.vh)
           const rx = rocket.x + t.parallax[5].x + t.camera.x + t.camera.shakeX
@@ -270,9 +251,9 @@ export function useMotionTimeline(
         })
       }
 
-      const sceneIdx = clamp(Math.floor(t.progress * 12.99), 0, 12)
-      const nextIdx = clamp(sceneIdx + 1, 0, 12)
-      const sceneFrac = (t.progress * 12.99) - sceneIdx
+      const sceneIdx = clamp(Math.floor(t.progress * (TOTAL_BEATS - 1)), 0, TOTAL_BEATS - 1)
+      const nextIdx = clamp(sceneIdx + 1, 0, TOTAL_BEATS - 1)
+      const sceneFrac = (t.progress * (TOTAL_BEATS - 1)) - sceneIdx
       const sceneBlend = smoothstep(clamp(sceneFrac < 0.85 ? 0 : (sceneFrac - 0.85) / 0.15, 0, 1))
 
       const sA = SCENE_LIGHTING[sceneIdx]

@@ -7,6 +7,7 @@ import { useSmoothProgress } from './hooks/useSmoothProgress'
 import { useScrollSnap } from './hooks/useScrollSnap'
 import { useReducedMotion } from './hooks/useReducedMotion'
 import { clamp, tweenScrollTo } from './lib/animation'
+import { TOTAL_BEATS } from './lib/beats'
 import { Z } from './lib/zIndex'
 
 import { Nav } from './components/Nav'
@@ -48,19 +49,8 @@ export function LandingHero() {
   useScrollSnap(smoothProgress, containerRef, !reduced)
 
   const { commands, setCommands } = useAmbientCommands()
-  const [heroCompleted, setHeroCompleted] = useState(false)
 
   const finaleStrength = beatStrengths[12]
-
-  const handleHeroComplete = useCallback(() => {
-    if (heroCompleted) return
-    setHeroCompleted(true)
-    const track = containerRef.current
-    if (!track) return
-    const total = Math.max(1, track.scrollHeight - window.innerHeight)
-    const target = (1 / 13) * total
-    window.scrollTo(0, target)
-  }, [containerRef, heroCompleted])
 
   const WARP_HALF = 250
 
@@ -70,8 +60,8 @@ export function LandingHero() {
     const total = Math.max(1, track.scrollHeight - window.innerHeight)
     const target = clamp(frac, 0, 1) * total
     const currentProgress = clamp(smoothProgress.get(), 0, 1)
-    const fromBeat = Math.floor(currentProgress * 13)
-    const toBeat = Math.floor(frac * 13)
+    const fromBeat = Math.floor(currentProgress * TOTAL_BEATS)
+    const toBeat = Math.floor(frac * TOTAL_BEATS)
     const distance = Math.abs(toBeat - fromBeat)
 
     if (distance <= 1) {
@@ -91,7 +81,7 @@ export function LandingHero() {
   }, [containerRef, smoothProgress, startWarp, reduced])
 
   const beats: [MotionValue<number>, React.ReactNode][] = [
-    [beatStrengths[0], <HeroBeat key="hero" progress={smoothProgress} onOpenContact={() => setContactOpen(true)} onHeroComplete={handleHeroComplete} />],
+    [beatStrengths[0], <HeroBeat key="hero" progress={smoothProgress} strength={beatStrengths[0]} onOpenContact={() => setContactOpen(true)} />],
     [beatStrengths[1], <ManifestBeat key="manifest" progress={smoothProgress} />],
     [beatStrengths[2], <PillarsBeat key="pillars" progress={smoothProgress} />],
     ...[3, 4, 5, 6, 7].map((i) => [beatStrengths[i], <WorldBeat key={`world-${i}`} progress={smoothProgress} beatIndex={i} />] as [MotionValue<number>, React.ReactNode]),
@@ -133,7 +123,7 @@ export function LandingHero() {
         <GlobalAmbientCanvas tl={tl} subscribe={subscribe} setCommands={setCommands} />
         <PortalOverlay tl={tl} subscribe={subscribe} progress={smoothProgress} />
         <GrassGround tl={tl} subscribe={subscribe} />
-        <RocketOverlay tl={tl} progress={smoothProgress} subscribe={subscribe} heroCompleted={heroCompleted} />
+        <RocketOverlay tl={tl} progress={smoothProgress} subscribe={subscribe} />
         <motion.div
           className="pointer-events-none fixed inset-0 bg-night"
           style={{ opacity: finaleStrength, zIndex: 4 }}

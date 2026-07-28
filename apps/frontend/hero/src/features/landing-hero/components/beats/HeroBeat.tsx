@@ -1,39 +1,56 @@
-import { useEffect, useRef, useState, useCallback } from 'react'
-import { motion, animate, useMotionValueEvent } from 'framer-motion'
+import { useEffect, useRef, useState } from 'react'
+import { animate, useMotionValueEvent } from 'framer-motion'
 import { useReducedMotion } from '../../hooks/useReducedMotion'
 import { useHeroIntro } from '../../hooks/useHeroIntro'
 import { HeroBubbles } from '../overlays/HeroBubbles'
+import { Z } from '../../lib/zIndex'
 import type { MotionValue } from 'framer-motion'
 
 interface Props {
   progress: MotionValue<number>
+  strength: MotionValue<number>
   onOpenContact: () => void
-  onHeroComplete?: () => void
 }
 
-export function HeroBeat({ progress, onOpenContact, onHeroComplete }: Props) {
+export function HeroBeat({ progress, strength, onOpenContact }: Props) {
   const reduced = useReducedMotion()
   const { phase: introPhase } = useHeroIntro()
-  const [heroVisible, setHeroVisible] = useState(true)
   const [bubblesActive, setBubblesActive] = useState(false)
   const [underwaterGlow, setUnderwaterGlow] = useState(0)
-  const [scrollTranslateY, setScrollTranslateY] = useState(0)
   const containerRef = useRef<HTMLDivElement>(null)
+  const trailRef = useRef<SVGSVGElement>(null)
+  const rocketRef = useRef<SVGGElement>(null)
   const titleRef = useRef<HTMLHeadingElement>(null)
   const subtitleRef = useRef<HTMLParagraphElement>(null)
   const ctaRef = useRef<HTMLDivElement>(null)
-  const completedRef = useRef(false)
+
+  useMotionValueEvent(strength, 'change', (s) => {
+    if (containerRef.current) {
+      containerRef.current.style.opacity = String(s)
+      containerRef.current.style.pointerEvents = s > 0.15 ? 'auto' : 'none'
+    }
+  })
 
   useMotionValueEvent(progress, 'change', (v) => {
     const HERO_END = 0.08
     const scrollFraction = Math.min(v / HERO_END, 1)
     const y = -scrollFraction * 100
-    setScrollTranslateY(y)
-    if (scrollFraction >= 1 && !completedRef.current) {
-      completedRef.current = true
-      setHeroVisible(false)
-      onHeroComplete?.()
+    if (containerRef.current) {
+      containerRef.current.style.transform = `translateY(${y}vh)`
     }
+    if (trailRef.current) {
+      const rocketX = 20 + Math.abs(y) * 0.6
+      const rocketY = 80 - Math.abs(y) * 0.8
+      trailRef.current.style.setProperty('--rocket-x', `${rocketX}%`)
+      trailRef.current.style.setProperty('--rocket-y', `${rocketY}%`)
+    }
+    if (rocketRef.current) {
+      const rocketX = 20 + Math.abs(y) * 0.6
+      const rocketY = 80 - Math.abs(y) * 0.8
+      rocketRef.current.style.left = `${rocketX}%`
+      rocketRef.current.style.top = `${rocketY}%`
+    }
+    setUnderwaterGlow(scrollFraction * 0.3)
   })
 
   useEffect(() => {
@@ -93,11 +110,6 @@ export function HeroBeat({ progress, onOpenContact, onHeroComplete }: Props) {
     }
   }, [reduced])
 
-  if (!heroVisible) return null
-
-  const rocketX = 20 + Math.abs(scrollTranslateY) * 0.6
-  const rocketY = 80 - Math.abs(scrollTranslateY) * 0.8
-
   return (
     <>
       <div
@@ -106,8 +118,7 @@ export function HeroBeat({ progress, onOpenContact, onHeroComplete }: Props) {
         aria-label="Головна секція"
         className="fixed inset-0 flex flex-col items-center justify-center overflow-hidden"
         style={{
-          transform: `translateY(${scrollTranslateY}vh)`,
-          zIndex: 50,
+          zIndex: Z.content,
         }}
       >
         <div
@@ -158,6 +169,7 @@ export function HeroBeat({ progress, onOpenContact, onHeroComplete }: Props) {
         </div>
 
         <svg
+          ref={trailRef}
           className="pointer-events-none absolute inset-0 h-full w-full"
           style={{ opacity: 0.6 }}
         >
@@ -171,8 +183,8 @@ export function HeroBeat({ progress, onOpenContact, onHeroComplete }: Props) {
           <line
             x1="15%"
             y1="85%"
-            x2={`${rocketX}%`}
-            y2={`${rocketY}%`}
+            x2="var(--rocket-x, 20%)"
+            y2="var(--rocket-y, 80%)"
             stroke="url(#heroTrail)"
             strokeWidth="2"
             strokeLinecap="round"
@@ -180,8 +192,8 @@ export function HeroBeat({ progress, onOpenContact, onHeroComplete }: Props) {
           <line
             x1="15%"
             y1="85%"
-            x2={`${rocketX}%`}
-            y2={`${rocketY}%`}
+            x2="var(--rocket-x, 20%)"
+            y2="var(--rocket-y, 80%)"
             stroke="#F2B84B"
             strokeWidth="0.5"
             strokeLinecap="round"
@@ -189,10 +201,11 @@ export function HeroBeat({ progress, onOpenContact, onHeroComplete }: Props) {
           />
         </svg>
         <div
+          ref={rocketRef}
           className="pointer-events-none absolute"
           style={{
-            left: `${rocketX}%`,
-            top: `${rocketY}%`,
+            left: '20%',
+            top: '80%',
             transform: 'translate(-50%, -50%) rotate(-35deg)',
             transition: 'none',
           }}
@@ -232,7 +245,7 @@ export function HeroBeat({ progress, onOpenContact, onHeroComplete }: Props) {
         </div>
       </div>
 
-      <HeroBubbles active={bubblesActive && heroVisible} />
+      <HeroBubbles active={bubblesActive} />
     </>
   )
 }

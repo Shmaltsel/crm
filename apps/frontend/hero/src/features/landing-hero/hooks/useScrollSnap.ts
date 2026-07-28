@@ -1,8 +1,8 @@
 import { useEffect, useRef } from 'react'
 import { MotionValue } from 'framer-motion'
 import { tweenScrollTo } from '../lib/animation'
+import { TOTAL_BEATS } from '../lib/beats'
 
-const TOTAL_BEATS = 13
 const STOP_DELAY = 250
 
 function getBeatCenters(): number[] {

@@ -1,6 +1,6 @@
 # @svitlo/hero — Project Bundle
 
-**Generated:** 2026-07-28T20:48:16.256Z
+**Generated:** 2026-07-28T20:54:36.202Z
 
 ## Project Tree
 
@@ -18,7 +18,6 @@
 │   │       │   │   ├── HeroBeat.tsx
 │   │       │   │   ├── ManifestBeat.tsx
 │   │       │   │   ├── PillarsBeat.tsx
-│   │       │   │   ├── PopifyBeat.tsx
 │   │       │   │   ├── StatsBeat.tsx
 │   │       │   │   ├── TeamVoicesBeat.tsx
 │   │       │   │   ├── TimelineBeat.tsx
@@ -271,7 +270,7 @@ interface Props {
 }
 
 export function FinaleBeat({ progress, onOpenContact }: Props) {
-  const strength = useBeatStrength(progress, 13)
+  const strength = useBeatStrength(progress, 12)
   const reduced = useReducedMotion()
   const ambient = useAmbient()
   const [dustSpawned, setDustSpawned] = useState(false)
@@ -947,52 +946,6 @@ function PillarItem({
 
 ```
 
-### `src/features/landing-hero/components/beats/PopifyBeat.tsx`
-```typescript
-import { MotionValue, motion, useTransform } from 'framer-motion'
-import { useBeatStrength } from '../../hooks/useBeatStrength'
-import { MEDIA_URLS } from '../../data/media'
-import { PortalVideoCarousel, type CarouselVideo } from '../PortalVideoCarousel'
-
-interface Props {
-  progress: MotionValue<number>
-}
-
-const POPIFY_VIDEOS: CarouselVideo[] = [
-  { id: 'popify-1', src: MEDIA_URLS.popify1, label: 'Popify 1' },
-  { id: 'popify-2', src: MEDIA_URLS.popify2, label: 'Popify 2' },
-  { id: 'popify-3', src: MEDIA_URLS.popify3, label: 'Popify 3' },
-  { id: 'popify-4', src: MEDIA_URLS.popify4, label: 'Popify 4' },
-]
-
-export function PopifyBeat({ progress }: Props) {
-  const strength = useBeatStrength(progress, 12)
-  const y = useTransform(strength, [0, 1], [22, 0])
-
-  return (
-    <motion.div
-      role="region"
-      aria-label="Відео на згадку"
-      className="absolute inset-0 flex flex-col items-center justify-center px-6 text-center"
-      style={{ opacity: strength, y }}
-    >
-      <div className="max-w-[900px]">
-        <p className="mb-3.5 text-xs font-bold uppercase tracking-[0.18em] text-gold opacity-90">
-          Проєкт 03 · Popify
-        </p>
-        <h2 className="text-[clamp(26px,3.9vw,42px)] leading-[1.15] text-paper">
-          Відео на згадку
-        </h2>
-        <div className="mt-8">
-          <PortalVideoCarousel videos={POPIFY_VIDEOS} />
-        </div>
-      </div>
-    </motion.div>
-  )
-}
-
-```
-
 ### `src/features/landing-hero/components/beats/StatsBeat.tsx`
 ```typescript
 import { MotionValue, motion, useTransform, useMotionValue, animate, useMotionValueEvent } from 'framer-motion'
@@ -1328,6 +1281,7 @@ import { BEAT_CONTENT, WORLD_BEATS } from '../../data/worlds'
 import { MEDIA_URLS } from '../../data/media'
 import { MediaPlaceholder } from '../MediaPlaceholder'
 import { HologramGallery } from '../HologramGallery'
+import { PortalVideoCarousel, type CarouselVideo } from '../PortalVideoCarousel'
 
 interface Props {
   progress: MotionValue<number>
@@ -1345,7 +1299,6 @@ const WORLD_ICONS: Record<number, string> = {
 const WORLD_MEDIA: Record<number, string | undefined> = {
   4: MEDIA_URLS.malyuvaika,
   5: MEDIA_URLS.hologramEvent,
-  6: MEDIA_URLS.popify,
 }
 
 function getWorldKey(beatIndex: number): string {
@@ -1364,6 +1317,13 @@ function getMediaAnimClass(worldKey: string): string {
   }
 }
 
+const POPIFY_VIDEOS: CarouselVideo[] = [
+  { id: 'popify-1', src: MEDIA_URLS.popify1, label: 'Popify 1' },
+  { id: 'popify-2', src: MEDIA_URLS.popify2, label: 'Popify 2' },
+  { id: 'popify-3', src: MEDIA_URLS.popify3, label: 'Popify 3' },
+  { id: 'popify-4', src: MEDIA_URLS.popify4, label: 'Popify 4' },
+]
+
 export function WorldBeat({ progress, beatIndex }: Props) {
   const strength = useBeatStrength(progress, beatIndex)
   const y = useTransform(strength, [0, 1], [22, 0])
@@ -1374,6 +1334,7 @@ export function WorldBeat({ progress, beatIndex }: Props) {
   const mediaAnimClass = getMediaAnimClass(worldKey)
 
   const isHologram = beatIndex === 5
+  const isPopify = beatIndex === 6
 
   return (
     <motion.div
@@ -1386,6 +1347,34 @@ export function WorldBeat({ progress, beatIndex }: Props) {
         <div className="flex max-w-[900px] flex-col items-center gap-8 overflow-visible md:flex-row md:text-left">
           <div className={`${mediaAnimClass} w-full shrink-0 overflow-visible md:w-[440px]`}>
             <HologramGallery />
+          </div>
+          <div className="max-w-[480px]">
+            <p
+              className="mb-3.5 text-xs font-bold uppercase tracking-[0.18em] text-gold opacity-90 stagger-word"
+              style={{ animationDelay: '0.1s' }}
+            >
+              {content.eyebrow}
+            </p>
+            <h2
+              className="text-[clamp(26px,3.9vw,42px)] leading-[1.15] text-paper stagger-word"
+              style={{ animationDelay: '0.2s' }}
+            >
+              {content.heading}
+            </h2>
+            {content.sub && (
+              <p
+                className="mx-auto mt-4 max-w-[480px] text-[15.5px] leading-[1.55] text-mist-soft md:mx-0 stagger-word"
+                style={{ animationDelay: '0.35s' }}
+              >
+                {content.sub}
+              </p>
+            )}
+          </div>
+        </div>
+      ) : isPopify ? (
+        <div className="flex max-w-[900px] flex-col items-center gap-8 overflow-visible md:flex-row md:text-left">
+          <div className={`${mediaAnimClass} w-full shrink-0 overflow-visible md:w-[500px]`}>
+            <PortalVideoCarousel videos={POPIFY_VIDEOS} />
           </div>
           <div className="max-w-[480px]">
             <p
@@ -4328,7 +4317,7 @@ export function useBeatStrength(
 import { MotionValue, useTransform } from 'framer-motion'
 import { clamp, smoothstep } from '../lib/animation'
 
-const TOTAL_BEATS = 14
+const TOTAL_BEATS = 13
 
 function computeBeatStrength(progress: number, index: number): number {
   const N = TOTAL_BEATS
@@ -4366,9 +4355,8 @@ export function useBeatStrengths(
   const s10 = useTransform(progress, (p) => computeBeatStrength(p, 10))
   const s11 = useTransform(progress, (p) => computeBeatStrength(p, 11))
   const s12 = useTransform(progress, (p) => computeBeatStrength(p, 12))
-  const s13 = useTransform(progress, (p) => computeBeatStrength(p, 13))
 
-  return [s0, s1, s2, s3, s4, s5, s6, s7, s8, s9, s10, s11, s12, s13]
+  return [s0, s1, s2, s3, s4, s5, s6, s7, s8, s9, s10, s11, s12]
 }
 
 ```
@@ -5044,7 +5032,6 @@ import { TimelineBeat } from './components/beats/TimelineBeat'
 import { GalleryBeat } from './components/beats/GalleryBeat'
 import { TeamVoicesBeat } from './components/beats/TeamVoicesBeat'
 import { StatsBeat } from './components/beats/StatsBeat'
-import { PopifyBeat } from './components/beats/PopifyBeat'
 import { FinaleBeat } from './components/beats/FinaleBeat'
 import { BeatWrapper } from './components/BeatWrapper'
 import type { MotionValue } from 'framer-motion'
@@ -5063,7 +5050,7 @@ export function LandingHero() {
   const { commands, setCommands } = useAmbientCommands()
   const [heroCompleted, setHeroCompleted] = useState(false)
 
-  const finaleStrength = beatStrengths[13]
+  const finaleStrength = beatStrengths[12]
 
   const handleHeroComplete = useCallback(() => {
     if (heroCompleted) return
@@ -5071,7 +5058,7 @@ export function LandingHero() {
     const track = containerRef.current
     if (!track) return
     const total = Math.max(1, track.scrollHeight - window.innerHeight)
-    const target = (1 / 14) * total
+    const target = (1 / 13) * total
     window.scrollTo(0, target)
   }, [containerRef, heroCompleted])
 
@@ -5112,8 +5099,7 @@ export function LandingHero() {
     [beatStrengths[9], <GalleryBeat key="gallery" progress={smoothProgress} />],
     [beatStrengths[10], <TeamVoicesBeat key="team" progress={smoothProgress} />],
     [beatStrengths[11], <StatsBeat key="stats" progress={smoothProgress} />],
-    [beatStrengths[12], <PopifyBeat key="popify" progress={smoothProgress} />],
-    [beatStrengths[13], <FinaleBeat key="finale" progress={smoothProgress} onOpenContact={() => setContactOpen(true)} />],
+    [beatStrengths[12], <FinaleBeat key="finale" progress={smoothProgress} onOpenContact={() => setContactOpen(true)} />],
   ]
 
   return (
@@ -5157,7 +5143,7 @@ export function LandingHero() {
 
       {/* Story beats */}
       <main id="main" ref={containerRef} className="relative" style={{ zIndex: Z.content }}>
-        <div className="h-[1200vh] max-md:h-[800vh]">
+        <div className="h-[1100vh] max-md:h-[700vh]">
           <div className="fixed inset-0 overflow-visible pointer-events-none" style={{ zIndex: Z.content }}>
             {beats.map(([strength, child], i) => (
               <BeatWrapper key={i} strength={strength}>
@@ -5634,4 +5620,4 @@ createRoot(document.getElementById('root')!).render(
 
 ---
 
-**Files:** 70 | **Lines:** 5,151
+**Files:** 69 | **Lines:** 5,142

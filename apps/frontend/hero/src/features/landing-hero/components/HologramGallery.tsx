@@ -20,7 +20,10 @@ function useImagePreload(src: string): boolean {
 export function HologramGallery() {
   const [activeIdx, setActiveIdx] = useState<number | null>(null)
   const [hoveredIdx, setHoveredIdx] = useState<number | null>(null)
-  const hoversLoaded = HOLOGRAM_PHOTOS.map((p) => useImagePreload(p.hoverSrc))
+  const h0 = useImagePreload(HOLOGRAM_PHOTOS[0].hoverSrc)
+  const h1 = useImagePreload(HOLOGRAM_PHOTOS[1].hoverSrc)
+  const h2 = useImagePreload(HOLOGRAM_PHOTOS[2].hoverSrc)
+  const hoversLoaded = [h0, h1, h2]
 
   return (
     <>
@@ -125,7 +128,7 @@ function PhotoCard({
       onMouseEnter={onHover}
       onMouseLeave={onLeave}
       onClick={onClick}
-      className={`relative cursor-pointer overflow-hidden rounded-xl border border-white/10 ${className ?? ''}`}
+      className={`relative cursor-pointer ${className ?? ''}`}
       style={{
         zIndex: isHovered ? 10 : 1,
         transform: isHovered ? 'scale(1.25) rotate(0deg)' : `rotate(${rotation}deg)`,
@@ -138,30 +141,32 @@ function PhotoCard({
         transitionTimingFunction: 'cubic-bezier(0.25, 0.1, 0.25, 1), ease',
       }}
     >
-      {/* Base image */}
-      <img
-        src={photo.src}
-        alt={photo.alt}
-        className="absolute inset-0 h-full w-full object-cover"
-        style={{
-          opacity: hasHover && isHovered ? 0 : 1,
-          transform: isHovered ? 'scale(1.08)' : 'scale(1)',
-          transition: 'opacity 0.55s ease, transform 0.5s cubic-bezier(0.25, 0.1, 0.25, 1)',
-        }}
-        loading="lazy"
-      />
-      {/* Hover overlay image */}
-      {hasHover && (
+      <div className="overflow-hidden rounded-xl border border-white/10">
+        {/* Base image */}
         <img
-          src={photo.hoverSrc!}
+          src={photo.src}
           alt={photo.alt}
           className="absolute inset-0 h-full w-full object-cover"
           style={{
-            opacity: isHovered ? 1 : 0,
-            transition: 'opacity 0.55s ease',
+            opacity: hasHover && isHovered ? 0 : 1,
+            transform: isHovered ? 'scale(1.08)' : 'scale(1)',
+            transition: 'opacity 0.55s ease, transform 0.5s cubic-bezier(0.25, 0.1, 0.25, 1)',
           }}
+          loading="lazy"
         />
-      )}
+        {/* Hover overlay image */}
+        {hasHover && (
+          <img
+            src={photo.hoverSrc!}
+            alt={photo.alt}
+            className="absolute inset-0 h-full w-full object-cover"
+            style={{
+              opacity: isHovered ? 1 : 0,
+              transition: 'opacity 0.55s ease',
+            }}
+          />
+        )}
+      </div>
     </button>
   )
 }
