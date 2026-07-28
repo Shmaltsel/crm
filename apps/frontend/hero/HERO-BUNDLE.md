@@ -2492,39 +2492,14 @@ import { useEffect, useRef, useState } from 'react'
 import { clamp } from '../../lib/animation'
 import { Z } from '../../lib/zIndex'
 import { useReducedMotion } from '../../hooks/useReducedMotion'
+import { interpolateRocket, lerpAngle } from '../../lib/rocketMath'
 import type { Timeline } from '../../types/timeline'
 import type { MotionValue } from 'framer-motion'
-import { ROCKET_WAYPOINTS } from '../../data/rocket'
 
 interface Props {
   tl: Timeline
   progress: MotionValue<number>
   subscribe: (cb: () => void) => () => void
-}
-
-function catmullRom(p0: number, p1: number, p2: number, p3: number, t: number) {
-  const t2 = t * t
-  const t3 = t2 * t
-  return 0.5 * (
-    (2 * p1) +
-    (-p0 + p2) * t +
-    (2 * p0 - 5 * p1 + 4 * p2 - p3) * t2 +
-    (-p0 + 3 * p1 - 3 * p2 + p3) * t3
-  )
-}
-
-function catmullRomDerivative(p0: number, p1: number, p2: number, p3: number, t: number) {
-  const t2 = t * t
-  return 0.5 * (
-    (-p0 + p2) +
-    2 * (2 * p0 - 5 * p1 + 4 * p2 - p3) * t +
-    3 * (-p0 + 3 * p1 - 3 * p2 + p3) * t2
-  )
-}
-
-function lerpAngle(start: number, end: number, amount: number) {
-  const delta = ((((end - start) % 360) + 540) % 360) - 180
-  return start + delta * amount
 }
 
 const NOZZLE_Y = 55
@@ -2537,32 +2512,6 @@ function scaleFlame(scaleX: number, scaleY: number, coords: number[], cmd: 'C' |
     d += (i === 0 ? 'M' : i === 2 ? ` ${cmd}` : ' ') + `${x},${y}`
   }
   return d
-}
-
-function interpolateRocket(progress: number, vw: number, vh: number) {
-  const wp = ROCKET_WAYPOINTS
-  if (wp.length < 2) return { x: 0, y: 0, heading: 0 }
-
-  const maxIdx = wp.length - 1
-  const p = Math.max(0, Math.min(1, progress))
-
-  const floatIdx = p * maxIdx
-  const i1 = Math.floor(floatIdx)
-  const t = floatIdx - i1
-
-  const i0 = Math.max(0, i1 - 1)
-  const i2 = Math.min(maxIdx, i1 + 1)
-  const i3 = Math.min(maxIdx, i1 + 2)
-
-  const x = catmullRom(wp[i0].x, wp[i1].x, wp[i2].x, wp[i3].x, t) * vw
-  const y = catmullRom(wp[i0].y, wp[i1].y, wp[i2].y, wp[i3].y, t) * vh
-
-  const dx = catmullRomDerivative(wp[i0].x, wp[i1].x, wp[i2].x, wp[i3].x, t) * vw
-  const dy = catmullRomDerivative(wp[i0].y, wp[i1].y, wp[i2].y, wp[i3].y, t) * vh
-
-  const heading = Math.atan2(dy || 0.001, dx || 0.001) * (180 / Math.PI) + 90
-
-  return { x, y, heading }
 }
 
 export function RocketOverlay({ tl, progress, subscribe }: Props) {
@@ -3462,6 +3411,7 @@ export function useBeatStrengths(
 ```typescript
 import { useRef, useEffect, useCallback } from 'react'
 import { lerp, clamp, smoothstep } from '../lib/animation'
+import { interpolateRocket } from '../lib/rocketMath'
 import type { Timeline } from '../types/timeline'
 import type { MotionValue } from 'framer-motion'
 
@@ -3690,8 +3640,9 @@ export function useMotionTimeline(
         const rocketBeatIdx = Math.floor(t.progress * 12.99)
         const rocketBeat = t.beatStrengths[clamp(rocketBeatIdx, 0, 12)]
         if (rocketBeat > 0.05) {
-          const rx = 0.5 * t.vw + t.parallax[5].x
-          const ry = 0.4 * t.vh + t.parallax[5].y
+          const rocket = interpolateRocket(t.progress, t.vw, t.vh)
+          const rx = rocket.x + t.parallax[5].x + t.camera.x + t.camera.shakeX
+          const ry = rocket.y + t.parallax[5].y + t.camera.y + t.camera.shakeY
           const boost = clamp(Math.abs(t.velocity) / 1500, 0, 2)
           const count = 1 + Math.round(boost)
           for (let j = 0; j < count; j++) {
@@ -4186,6 +4137,62 @@ export function tweenScrollTo(
   })
 }
 
+```
+
+### `src/features/landing-hero/lib/rocketMath.ts`
+```typescript
+import { ROCKET_WAYPOINTS } from '../data/rocket'
+
+export function catmullRom(p0: number, p1: number, p2: number, p3: number, t: number) {
+  const t2 = t * t
+  const t3 = t2 * t
+  return 0.5 * (
+    (2 * p1) +
+    (-p0 + p2) * t +
+    (2 * p0 - 5 * p1 + 4 * p2 - p3) * t2 +
+    (-p0 + 3 * p1 - 3 * p2 + p3) * t3
+  )
+}
+
+export function catmullRomDerivative(p0: number, p1: number, p2: number, p3: number, t: number) {
+  const t2 = t * t
+  return 0.5 * (
+    (-p0 + p2) +
+    2 * (2 * p0 - 5 * p1 + 4 * p2 - p3) * t +
+    3 * (-p0 + 3 * p1 - 3 * p2 + p3) * t2
+  )
+}
+
+export function interpolateRocket(progress: number, vw: number, vh: number) {
+  const wp = ROCKET_WAYPOINTS
+  if (wp.length < 2) return { x: 0, y: 0, heading: 0 }
+
+  const maxIdx = wp.length - 1
+  const p = Math.max(0, Math.min(1, progress))
+
+  const floatIdx = p * maxIdx
+  const i1 = Math.floor(floatIdx)
+  const t = floatIdx - i1
+
+  const i0 = Math.max(0, i1 - 1)
+  const i2 = Math.min(maxIdx, i1 + 1)
+  const i3 = Math.min(maxIdx, i1 + 2)
+
+  const x = catmullRom(wp[i0].x, wp[i1].x, wp[i2].x, wp[i3].x, t) * vw
+  const y = catmullRom(wp[i0].y, wp[i1].y, wp[i2].y, wp[i3].y, t) * vh
+
+  const dx = catmullRomDerivative(wp[i0].x, wp[i1].x, wp[i2].x, wp[i3].x, t) * vw
+  const dy = catmullRomDerivative(wp[i0].y, wp[i1].y, wp[i2].y, wp[i3].y, t) * vh
+
+  const heading = Math.atan2(dy || 0.001, dx || 0.001) * (180 / Math.PI) + 90
+
+  return { x, y, heading }
+}
+
+export function lerpAngle(start: number, end: number, amount: number) {
+  const delta = ((((end - start) % 360) + 540) % 360) - 180
+  return start + delta * amount
+}
 ```
 
 ### `src/features/landing-hero/lib/colors.ts`

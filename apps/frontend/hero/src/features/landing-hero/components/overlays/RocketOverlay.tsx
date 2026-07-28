@@ -10,6 +10,7 @@ interface Props {
   tl: Timeline
   progress: MotionValue<number>
   subscribe: (cb: () => void) => () => void
+  heroCompleted?: boolean
 }
 
 const NOZZLE_Y = 55
@@ -24,7 +25,7 @@ function scaleFlame(scaleX: number, scaleY: number, coords: number[], cmd: 'C' |
   return d
 }
 
-export function RocketOverlay({ tl, progress, subscribe }: Props) {
+export function RocketOverlay({ tl, progress, subscribe, heroCompleted = true }: Props) {
   const reduced = useReducedMotion()
   const [, setTick] = useState(0)
   const flameRef = useRef(1)
@@ -40,7 +41,7 @@ export function RocketOverlay({ tl, progress, subscribe }: Props) {
   const rocket = interpolateRocket(p, t.vw, t.vh)
 
   const now = t.elapsed
-  const opacity = 1
+  const opacity = heroCompleted ? 1 : 0
 
   if (!reduced) {
     flameRef.current = 1 + Math.sin(now / 90) * 0.12
