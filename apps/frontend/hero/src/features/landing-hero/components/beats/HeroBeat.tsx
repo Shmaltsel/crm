@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState, useCallback } from 'react'
-import { motion, animate } from 'framer-motion'
+import { motion, animate, useMotionValueEvent } from 'framer-motion'
 import { useReducedMotion } from '../../hooks/useReducedMotion'
 import { useHeroIntro } from '../../hooks/useHeroIntro'
 import { useFirstScroll } from '../../hooks/useFirstScroll'
@@ -14,7 +14,7 @@ interface Props {
 
 type HeroState = 'intro' | 'ready' | 'rocket' | 'transition' | 'done'
 
-export function HeroBeat({ progress: _progress, onOpenContact, onHeroComplete }: Props) {
+export function HeroBeat({ progress, onOpenContact, onHeroComplete }: Props) {
   const reduced = useReducedMotion()
   const { phase: introPhase } = useHeroIntro()
   const hasInteracted = useFirstScroll()
@@ -22,12 +22,18 @@ export function HeroBeat({ progress: _progress, onOpenContact, onHeroComplete }:
   const [bubblesActive, setBubblesActive] = useState(false)
   const [underwaterGlow, setUnderwaterGlow] = useState(0)
   const [rocketProgress, setRocketProgress] = useState(0)
+  const [scrollOpacity, setScrollOpacity] = useState(1)
   const containerRef = useRef<HTMLDivElement>(null)
   const titleRef = useRef<HTMLHeadingElement>(null)
   const subtitleRef = useRef<HTMLParagraphElement>(null)
   const ctaRef = useRef<HTMLDivElement>(null)
   const rocketRafRef = useRef(0)
   const transitionRafRef = useRef(0)
+
+  useMotionValueEvent(progress, 'change', (v) => {
+    const fade = v < 0.05 ? 1 : v < 0.08 ? 1 - (v - 0.05) / 0.03 : 0
+    setScrollOpacity(fade)
+  })
 
   const animateTitle = useCallback(async () => {
     if (!titleRef.current) return
@@ -157,6 +163,7 @@ export function HeroBeat({ progress: _progress, onOpenContact, onHeroComplete }:
   const isHeroActive = heroState !== 'done'
   const rocketX = 15 + rocketProgress * 65
   const rocketY = 85 - rocketProgress * 100
+  const heroOpacity = Math.min(isHeroActive ? 1 : 0, scrollOpacity)
 
   return (
     <>
@@ -166,9 +173,9 @@ export function HeroBeat({ progress: _progress, onOpenContact, onHeroComplete }:
         aria-label="Головна секція"
         className="fixed inset-0 flex flex-col items-center justify-center overflow-hidden"
         style={{
-          opacity: isHeroActive ? 1 : 0,
-          visibility: isHeroActive ? 'visible' : 'hidden',
-          pointerEvents: isHeroActive ? 'auto' : 'none',
+          opacity: heroOpacity,
+          visibility: heroOpacity > 0 ? 'visible' : 'hidden',
+          pointerEvents: heroOpacity > 0 ? 'auto' : 'none',
           zIndex: 50,
         }}
       >
