@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 
 const HOLOGRAM_PHOTOS = [
-  { src: '/materials/holohrana_photo_2.jpg', hoverSrc: '/materials/дітибіляголограмитемно.png', alt: 'Діти біля холограмної установки' },
+  { src: '/materials/holohrana_photo_2.jpg', hoverSrc: '/materials/hologram-kids-dark.png', alt: 'Діти біля холограмної установки' },
   { src: '/materials/holohrama_photo.jpg', alt: 'Холограмна проекція для дітей' },
   { src: '/materials/photo_4_2026-07-28_20-55-10.jpg', alt: 'Холограма вогняного кільця' },
 ]
