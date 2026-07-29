@@ -5,6 +5,7 @@ const SEGMENT_H = 200
 const SEGMENT_COUNT = 5
 const CYCLE = 2
 const FISH_SRC = '/materials/fish-sprite.png'
+const FISH_TOTAL_W = SEGMENT_W * SEGMENT_COUNT
 
 const SEG_PEAK = [3, 10, 16, 42, 45] as const
 const SEG_Z = [0, 0, 10, 30, 20] as const
@@ -17,11 +18,11 @@ function buildKeyframes(): string {
     const zPos = SEG_Z[i]
     const zNeg = SEG_Z_NEG[i]
     css += `@keyframes sf_rot${i}{`
-    css += `0%{transform:rotateY(0deg)}`
-    css += `25%{transform:translateZ(${zPos}px) rotateY(${-peak}deg)}`
-    css += `50%{transform:rotateY(0deg)}`
-    css += `75%{transform:translateZ(${zNeg}px) rotateY(${peak}deg)}`
-    css += `100%{transform:rotateY(0deg)}`
+    css += `0%{transform:translate3d(59px,0,0) rotateY(0deg)}`
+    css += `25%{transform:translate3d(59px,0,${zPos}px) rotateY(${-peak}deg)}`
+    css += `50%{transform:translate3d(59px,0,0) rotateY(0deg)}`
+    css += `75%{transform:translate3d(59px,0,${zNeg}px) rotateY(${peak}deg)}`
+    css += `100%{transform:translate3d(59px,0,0) rotateY(0deg)}`
     css += `}`
   }
   css += `@keyframes sf_figure8{`
@@ -40,7 +41,7 @@ function buildKeyframes(): string {
 
 const KEYFRAMES_CSS = buildKeyframes()
 
-function FishSegment({ depth }: { depth: number }): JSX.Element {
+function FishSegment({ depth, animated }: { depth: number; animated: boolean }): JSX.Element {
   if (depth >= SEGMENT_COUNT) {
     return (
       <div
@@ -48,7 +49,7 @@ function FishSegment({ depth }: { depth: number }): JSX.Element {
           width: `${SEGMENT_W}px`,
           height: `${SEGMENT_H}px`,
           backgroundImage: `url(${FISH_SRC})`,
-          backgroundSize: `${SEGMENT_W * SEGMENT_COUNT}px ${SEGMENT_H}px`,
+          backgroundSize: `${FISH_TOTAL_W}px ${SEGMENT_H}px`,
           backgroundPosition: `${-depth * SEGMENT_W}px 0px`,
           backgroundRepeat: 'no-repeat',
         }}
@@ -62,14 +63,14 @@ function FishSegment({ depth }: { depth: number }): JSX.Element {
         width: `${SEGMENT_W}px`,
         height: `${SEGMENT_H}px`,
         backgroundImage: `url(${FISH_SRC})`,
-        backgroundSize: `${SEGMENT_W * SEGMENT_COUNT}px ${SEGMENT_H}px`,
+        backgroundSize: `${FISH_TOTAL_W}px ${SEGMENT_H}px`,
         backgroundPosition: `${-depth * SEGMENT_W}px 0px`,
         backgroundRepeat: 'no-repeat',
         transformStyle: 'preserve-3d',
-        animation: `sf_rot${depth} ${CYCLE}s linear infinite`,
+        animation: animated ? `sf_rot${depth} ${CYCLE}s linear infinite` : 'none',
       }}
     >
-      <FishSegment depth={depth + 1} />
+      <FishSegment depth={depth + 1} animated={animated} />
     </div>
   )
 }
@@ -84,16 +85,25 @@ export function SwimmingFish({ className = '' }: { className?: string }) {
       onMouseLeave={() => setSwimming(false)}
     >
       <style>{KEYFRAMES_CSS}</style>
-      <div style={{ perspective: '800px' }}>
+      <div
+        style={{
+          perspective: '800px',
+          width: `${FISH_TOTAL_W}px`,
+          height: `${SEGMENT_H}px`,
+          position: 'relative',
+        }}
+      >
         <div
           style={{
-            animation: swimming
-              ? 'sf_figure8 4s ease-in-out infinite'
-              : 'none',
+            position: 'absolute',
+            top: 0,
+            left: '50%',
+            marginLeft: '-148px',
+            animation: swimming ? 'sf_figure8 4s ease-in-out infinite' : 'none',
             transformStyle: 'preserve-3d',
           }}
         >
-          <FishSegment depth={0} />
+          <FishSegment depth={0} animated={swimming} />
         </div>
       </div>
     </div>
