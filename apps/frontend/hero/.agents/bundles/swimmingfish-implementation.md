@@ -19,8 +19,9 @@
 успадкованого — ефект "хребта, що плавно згинається".
 
 ### Анімація
-- **Idle:** риба стоїть стабільно, без жодного руху (`animation: none`)
+- **Idle:** риба стоїть стабільно, без жодного руху (`animation: undefined` — не задається взагалі)
 - **Hover:** тіло хвилюється (`sf_rot0-4`) + риба пливе вісімкою (`sf_figure8`)
+- `animation: undefined` коли idle (не 'none' — уникати flash при завантаженні)
 
 ### Центрування
 Кумулятивний зсунутість вкладених сегментів: 4 × 59px = 236px праворуч.
@@ -156,7 +157,7 @@ export function SwimmingFish({ className = '' }: { className?: string }) {
             top: 0,
             left: '50%',
             marginLeft: '-148px',
-            animation: swimming ? 'sf_figure8 4s ease-in-out infinite' : 'none',
+            animation: swimming ? 'sf_figure8 4s ease-in-out infinite' : undefined,
             transformStyle: 'preserve-3d',
           }}
         >
