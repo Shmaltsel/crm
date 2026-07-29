@@ -32,7 +32,8 @@
 - `transformOrigin: 0px 100px` — шарнір зліва по центру висоти (hinge point)
 - Постійний `transform: translate3d(59px, 0, 0px) rotateY(0deg)` — базовий стан (idle)
 - `animation` заміщує transform під час hover, повертається до базового в idle
-- `translate3d(59px, 0, Z)` — X=59px (спокій), Z=[0, 0, ±10, +30/-23, ±20]
+- `animation: undefined` коли idle (не 'none' — уникати flash при завантаженні)
+- `translate3d(Xpx, 0, Z)` — X=[59,59,58,55,52] на 25%, X=[59,59,58,54,52] на 75% (assimetriчно для seg3), Z=[0, 0, ±10, +30/-23, ±20]
 - `rotateY`: ±3°, ±10°, ±16°, ±42°, ±45°
 - Всі сегменти: ОДНА Й ТА сама фаза (cycle 2s, linear)
 
