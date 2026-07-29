@@ -56,6 +56,8 @@ const FISH_TOTAL_W = SEGMENT_W * SEGMENT_COUNT
 const SEG_PEAK = [3, 10, 16, 42, 45] as const
 const SEG_Z = [0, 0, 10, 30, 20] as const
 const SEG_Z_NEG = [0, 0, -10, -23, -20] as const
+const SEG_X = [59, 59, 58, 55, 52] as const
+const SEG_X_NEG = [59, 59, 58, 54, 52] as const
 
 function buildKeyframes(): string {
   let css = ''
@@ -63,11 +65,13 @@ function buildKeyframes(): string {
     const peak = SEG_PEAK[i]
     const zPos = SEG_Z[i]
     const zNeg = SEG_Z_NEG[i]
+    const xPos = SEG_X[i]
+    const xNeg = SEG_X_NEG[i]
     css += `@keyframes sf_rot${i}{`
     css += `0%{transform:translate3d(59px,0,0) rotateY(0deg)}`
-    css += `25%{transform:translate3d(59px,0,${zPos}px) rotateY(${-peak}deg)}`
+    css += `25%{transform:translate3d(${xPos}px,0,${zPos}px) rotateY(${-peak}deg)}`
     css += `50%{transform:translate3d(59px,0,0) rotateY(0deg)}`
-    css += `75%{transform:translate3d(59px,0,${zNeg}px) rotateY(${peak}deg)}`
+    css += `75%{transform:translate3d(${xNeg}px,0,${zNeg}px) rotateY(${peak}deg)}`
     css += `100%{transform:translate3d(59px,0,0) rotateY(0deg)}`
     css += `}`
   }
@@ -115,7 +119,7 @@ function FishSegment({ depth, animated }: { depth: number; animated: boolean }):
         transformStyle: 'preserve-3d',
         transformOrigin: '0px 100px',
         transform: 'translate3d(59px, 0, 0px) rotateY(0deg)',
-        animation: animated ? `sf_rot${depth} ${CYCLE}s linear infinite` : 'none',
+        animation: animated ? `sf_rot${depth} ${CYCLE}s linear infinite` : undefined,
       }}
     >
       <FishSegment depth={depth + 1} animated={animated} />
