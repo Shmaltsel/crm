@@ -69,7 +69,7 @@ function FishSegment({ depth, animated }: { depth: number; animated: boolean }):
         transformStyle: 'preserve-3d',
         transformOrigin: '0px 100px',
         transform: 'translate3d(59px, 0, 0px) rotateY(0deg)',
-        animation: animated ? `sf_rot${depth} ${CYCLE}s linear infinite` : 'none',
+        animation: animated ? `sf_rot${depth} ${CYCLE}s linear infinite` : undefined,
       }}
     >
       <FishSegment depth={depth + 1} animated={animated} />
