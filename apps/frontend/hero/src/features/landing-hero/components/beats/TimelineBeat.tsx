@@ -8,7 +8,7 @@ interface Props {
 }
 
 export function TimelineBeat({ progress }: Props) {
-  const strength = useBeatStrength(progress, 8)
+  const strength = useBeatStrength(progress, 7)
   const y = useTransform(strength, [0, 1], [22, 0])
   const [linePct, setLinePct] = useState(0)
 

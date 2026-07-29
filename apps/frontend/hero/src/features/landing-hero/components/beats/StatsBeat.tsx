@@ -9,7 +9,7 @@ interface Props {
 }
 
 export function StatsBeat({ progress }: Props) {
-  const strength = useBeatStrength(progress, 11)
+  const strength = useBeatStrength(progress, 10)
   const y = useTransform(strength, [0, 1], [22, 0])
 
   return (

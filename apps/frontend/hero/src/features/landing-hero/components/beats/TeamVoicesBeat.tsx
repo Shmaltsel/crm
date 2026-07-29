@@ -9,7 +9,7 @@ interface Props {
 }
 
 export function TeamVoicesBeat({ progress }: Props) {
-  const strength = useBeatStrength(progress, 10)
+  const strength = useBeatStrength(progress, 9)
   const y = useTransform(strength, [0, 1], [22, 0])
   const [activeIdx, setActiveIdx] = useState(0)
   const [selectedMember, setSelectedMember] = useState<number | null>(null)

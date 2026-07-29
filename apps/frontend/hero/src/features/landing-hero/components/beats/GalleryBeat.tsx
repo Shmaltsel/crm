@@ -11,7 +11,7 @@ const ACCENTS = ['#F2B84B', '#FF7A59', '#8FE3E0', '#FF6EC7', '#F2B84B']
 const ROTATIONS = [-2.5, 1.8, -1.2, 3.1, -0.7]
 
 export function GalleryBeat({ progress }: Props) {
-  const strength = useBeatStrength(progress, 9)
+  const strength = useBeatStrength(progress, 8)
   const y = useTransform(strength, [0, 1], [22, 0])
 
   return (
