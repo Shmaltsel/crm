@@ -12,11 +12,17 @@
 (спрайт `fish-sprite.png`, 300×200px RGBA) та `background-position` для показу своєї "смуги".
 
 **БЕЗ overflow:hidden** — в оригіналі його немає; фон обрізається власними розмірами елемента.
-**backface-visibility: hidden + WebkitBackfaceVisibility: hidden** — на ВСІХ сегментах (включно з листовим), прибирає "дублікат" при кумулятивному куті >90°.
+**backface-visibility: hidden + WebkitBackfaceVisibility: hidden** — на ВСІХ сегментах, прибирає "дублікат" при кумулятивному куті >90°.
 
 Вкладеність забезпечує КОМПОЗИЦІЮ трансформів: обертання батьківського сегмента
 переноситься на всі дочірні, кожен наступний сегмент додає СВОЄ обертання ПОВЕРХ
 успадкованого — ефект "хребта, що плавно згинається".
+
+### Рекурсія (5 сегментів, без зайвого 6-го div)
+Останній сегмент (depth=4, хвіст) — одночасно і wrapper, і "лист":
+`isLast = depth === SEGMENT_COUNT - 1`, child рендериться лише `!isLast && ...`.
+Окрема "leaf"-гілка видалена — кожен з 5 сегментів (depth 0-4) показує свою частину спрайту
+і несе transform/animation. Різниця лише в тому, чи має він дитину.
 
 ### Анімація
 - **Idle:** риба стоїть стабільно, без жодного руху (`animation: undefined` — не задається взагалі)
@@ -34,10 +40,10 @@
 - `transformOrigin: 0px 100px` — шарнір зліва по центру висоти (hinge point)
 - Постійний `transform: translate3d(59px, 0, 0px) rotateY(0deg)` — базовий стан (idle)
 - `animation` заміщує transform під час hover, повертається до базового в idle
-- `animation: undefined` коли idle (не 'none' — уникати flash при завантаженні)
-- `translate3d(Xpx, 0, Z)` — X=[59,59,58,55,52] на 25%, X=[59,59,58,54,52] на 75% (assimetriчно для seg3), Z=[0, 0, ±10, +30/-23, ±20]
+- `translate3d(Xpx, 0, Z)` — X=[59,59,58,55,52] на 25%, X=[59,59,58,54,52] на 75% (asymmetric for seg3), Z=[0, 0, ±10, +30/-23, ±20]
 - `rotateY`: ±3°, ±10°, ±16°, ±42°, ±45°
 - Всі сегменти: ОДНА Й ТА сама фаза (cycle 2s, linear)
+- **sf_figure8 amplitude зменшена** для 280px слоту: ±20px X, ±10px Y (max)
 
 ---
 
@@ -79,13 +85,13 @@ function buildKeyframes(): string {
   }
   css += `@keyframes sf_figure8{`
   css += `0%{transform:translate(0,0) scaleX(1)}`
-  css += `12.5%{transform:translate(30px,-18px) scaleX(1)}`
-  css += `25%{transform:translate(50px,0) scaleX(1)}`
-  css += `37.5%{transform:translate(30px,18px) scaleX(1)}`
+  css += `12.5%{transform:translate(12px,-10px) scaleX(1)}`
+  css += `25%{transform:translate(20px,0) scaleX(1)}`
+  css += `37.5%{transform:translate(12px,10px) scaleX(1)}`
   css += `50%{transform:translate(0,0) scaleX(-1)}`
-  css += `62.5%{transform:translate(-30px,-18px) scaleX(-1)}`
-  css += `75%{transform:translate(-50px,0) scaleX(-1)}`
-  css += `87.5%{transform:translate(-30px,18px) scaleX(-1)}`
+  css += `62.5%{transform:translate(-12px,-10px) scaleX(-1)}`
+  css += `75%{transform:translate(-20px,0) scaleX(-1)}`
+  css += `87.5%{transform:translate(-12px,10px) scaleX(-1)}`
   css += `100%{transform:translate(0,0) scaleX(1)}`
   css += `}`
   return css
@@ -94,22 +100,7 @@ function buildKeyframes(): string {
 const KEYFRAMES_CSS = buildKeyframes()
 
 function FishSegment({ depth, animated }: { depth: number; animated: boolean }): JSX.Element {
-  if (depth >= SEGMENT_COUNT) {
-    return (
-      <div
-        style={{
-          width: `${SEGMENT_W}px`,
-          height: `${SEGMENT_H}px`,
-          backgroundImage: `url(${FISH_SRC})`,
-          backgroundSize: `${FISH_TOTAL_W}px ${SEGMENT_H}px`,
-          backgroundPosition: `${-depth * SEGMENT_W}px 0px`,
-          backgroundRepeat: 'no-repeat',
-          backfaceVisibility: 'hidden',
-          WebkitBackfaceVisibility: 'hidden',
-        }}
-      />
-    )
-  }
+  const isLast = depth === SEGMENT_COUNT - 1
 
   return (
     <div
@@ -128,7 +119,7 @@ function FishSegment({ depth, animated }: { depth: number; animated: boolean }):
         animation: animated ? `sf_rot${depth} ${CYCLE}s linear infinite` : undefined,
       }}
     >
-      <FishSegment depth={depth + 1} animated={animated} />
+      {!isLast && <FishSegment depth={depth + 1} animated={animated} />}
     </div>
   )
 }
