@@ -29,10 +29,12 @@
 ### Ключові значення (з оригінального style2.css)
 - `perspective: 800px` на зовнішньому контейнері
 - `transform-style: preserve-3d` на кожному сегменті
+- `transformOrigin: 0px 100px` — шарнір зліва по центру висоти (hinge point)
+- Постійний `transform: translate3d(59px, 0, 0px) rotateY(0deg)` — базовий стан (idle)
+- `animation` заміщує transform під час hover, повертається до базового в idle
 - `translate3d(59px, 0, Z)` — X=59px (спокій), Z=[0, 0, ±10, +30/-23, ±20]
 - `rotateY`: ±3°, ±10°, ±16°, ±42°, ±45°
 - Всі сегменти: ОДНА Й ТА сама фаза (cycle 2s, linear)
-- `transformOrigin`: дефолт center (без явного вказання)
 
 ---
 
@@ -110,6 +112,8 @@ function FishSegment({ depth, animated }: { depth: number; animated: boolean }):
         backgroundPosition: `${-depth * SEGMENT_W}px 0px`,
         backgroundRepeat: 'no-repeat',
         transformStyle: 'preserve-3d',
+        transformOrigin: '0px 100px',
+        transform: 'translate3d(59px, 0, 0px) rotateY(0deg)',
         animation: animated ? `sf_rot${depth} ${CYCLE}s linear infinite` : 'none',
       }}
     >
