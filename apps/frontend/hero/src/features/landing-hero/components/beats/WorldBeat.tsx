@@ -17,7 +17,6 @@ const WORLD_ICONS: Record<number, string> = {
   4: 'Рибка оживає',
   5: 'Голограма — проекція',
   6: 'Popify — зйомка',
-  7: 'Popify — прайс',
 }
 
 const WORLD_MEDIA: Record<number, string | undefined> = {

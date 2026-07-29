@@ -50,7 +50,7 @@ export function LandingHero() {
 
   const { commands, setCommands } = useAmbientCommands()
 
-  const finaleStrength = beatStrengths[12]
+  const finaleStrength = beatStrengths[11]
 
   const WARP_HALF = 250
 
@@ -84,12 +84,12 @@ export function LandingHero() {
     [beatStrengths[0], <HeroBeat key="hero" progress={smoothProgress} strength={beatStrengths[0]} onOpenContact={() => setContactOpen(true)} />],
     [beatStrengths[1], <ManifestBeat key="manifest" progress={smoothProgress} />],
     [beatStrengths[2], <PillarsBeat key="pillars" progress={smoothProgress} />],
-    ...[3, 4, 5, 6, 7].map((i) => [beatStrengths[i], <WorldBeat key={`world-${i}`} progress={smoothProgress} beatIndex={i} />] as [MotionValue<number>, React.ReactNode]),
-    [beatStrengths[8], <TimelineBeat key="timeline" progress={smoothProgress} />],
-    [beatStrengths[9], <GalleryBeat key="gallery" progress={smoothProgress} />],
-    [beatStrengths[10], <TeamVoicesBeat key="team" progress={smoothProgress} />],
-    [beatStrengths[11], <StatsBeat key="stats" progress={smoothProgress} />],
-    [beatStrengths[12], <FinaleBeat key="finale" progress={smoothProgress} onOpenContact={() => setContactOpen(true)} />],
+    ...[3, 4, 5, 6].map((i) => [beatStrengths[i], <WorldBeat key={`world-${i}`} progress={smoothProgress} beatIndex={i} />] as [MotionValue<number>, React.ReactNode]),
+    [beatStrengths[7], <TimelineBeat key="timeline" progress={smoothProgress} />],
+    [beatStrengths[8], <GalleryBeat key="gallery" progress={smoothProgress} />],
+    [beatStrengths[9], <TeamVoicesBeat key="team" progress={smoothProgress} />],
+    [beatStrengths[10], <StatsBeat key="stats" progress={smoothProgress} />],
+    [beatStrengths[11], <FinaleBeat key="finale" progress={smoothProgress} onOpenContact={() => setContactOpen(true)} />],
   ]
 
   return (

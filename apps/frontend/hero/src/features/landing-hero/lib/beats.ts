@@ -1,6 +1,6 @@
 import { clamp, smoothstep } from './animation'
 
-export const TOTAL_BEATS = 13
+export const TOTAL_BEATS = 12
 
 export function computeBeatStrength(progress: number, index: number): number {
   const N = TOTAL_BEATS
