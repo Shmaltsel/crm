@@ -56,6 +56,8 @@ function FishSegment({ depth, animated }: { depth: number; animated: boolean }):
           backgroundSize: `${FISH_TOTAL_W}px ${SEGMENT_H}px`,
           backgroundPosition: `${-depth * SEGMENT_W}px 0px`,
           backgroundRepeat: 'no-repeat',
+          backfaceVisibility: 'hidden',
+          WebkitBackfaceVisibility: 'hidden',
         }}
       />
     )
@@ -70,6 +72,8 @@ function FishSegment({ depth, animated }: { depth: number; animated: boolean }):
         backgroundSize: `${FISH_TOTAL_W}px ${SEGMENT_H}px`,
         backgroundPosition: `${-depth * SEGMENT_W}px 0px`,
         backgroundRepeat: 'no-repeat',
+        backfaceVisibility: 'hidden',
+        WebkitBackfaceVisibility: 'hidden',
         transformStyle: 'preserve-3d',
         transformOrigin: '0px 100px',
         transform: 'translate3d(59px, 0, 0px) rotateY(0deg)',
