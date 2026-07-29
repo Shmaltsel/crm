@@ -46,9 +46,14 @@ export function useScrollSnap(
     const markUserInput = () => { userInputRef.current = true }
     window.addEventListener('wheel', markUserInput, { passive: true })
     window.addEventListener('touchmove', markUserInput, { passive: true })
+    window.addEventListener('pointerdown', markUserInput, { passive: true })
 
     const evaluate = () => {
       if (snappingRef.current) return
+      if (userInputRef.current) {
+        userInputRef.current = false
+        return
+      }
       const track = containerRef.current
       if (!track) return
       const total = Math.max(1, track.scrollHeight - window.innerHeight)
@@ -107,6 +112,7 @@ export function useScrollSnap(
       window.removeEventListener('scrollend', onScrollEnd)
       window.removeEventListener('wheel', markUserInput)
       window.removeEventListener('touchmove', markUserInput)
+      window.removeEventListener('pointerdown', markUserInput)
       clearTimeout(timerRef.current)
     }
   }, [containerRef, enabled])
