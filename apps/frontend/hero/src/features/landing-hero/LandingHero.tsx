@@ -38,7 +38,10 @@ import { BeatWrapper } from './components/BeatWrapper'
 import type { MotionValue } from 'framer-motion'
 
 export function LandingHero() {
-  useEffect(() => { window.scrollTo(0, 0) }, [])
+  useEffect(() => {
+    history.scrollRestoration = 'manual'
+    window.scrollTo(0, 0)
+  }, [])
 
   const { containerRef, scrollYProgress } = useScrollStory()
   const smoothProgress = useSmoothProgress(scrollYProgress)
