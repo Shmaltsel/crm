@@ -12,6 +12,7 @@
 (спрайт `fish-sprite.png`, 300×200px RGBA) та `background-position` для показу своєї "смуги".
 
 **БЕЗ overflow:hidden** — в оригіналі його немає; фон обрізається власними розмірами елемента.
+**backface-visibility: hidden + WebkitBackfaceVisibility: hidden** — на ВСІХ сегментах (включно з листовим), прибирає "дублікат" при кумулятивному куті >90°.
 
 Вкладеність забезпечує КОМПОЗИЦІЮ трансформів: обертання батьківського сегмента
 переноситься на всі дочірні, кожен наступний сегмент додає СВОЄ обертання ПОВЕРХ
@@ -102,6 +103,8 @@ function FishSegment({ depth, animated }: { depth: number; animated: boolean }):
           backgroundSize: `${FISH_TOTAL_W}px ${SEGMENT_H}px`,
           backgroundPosition: `${-depth * SEGMENT_W}px 0px`,
           backgroundRepeat: 'no-repeat',
+          backfaceVisibility: 'hidden',
+          WebkitBackfaceVisibility: 'hidden',
         }}
       />
     )
@@ -116,6 +119,8 @@ function FishSegment({ depth, animated }: { depth: number; animated: boolean }):
         backgroundSize: `${FISH_TOTAL_W}px ${SEGMENT_H}px`,
         backgroundPosition: `${-depth * SEGMENT_W}px 0px`,
         backgroundRepeat: 'no-repeat',
+        backfaceVisibility: 'hidden',
+        WebkitBackfaceVisibility: 'hidden',
         transformStyle: 'preserve-3d',
         transformOrigin: '0px 100px',
         transform: 'translate3d(59px, 0, 0px) rotateY(0deg)',
