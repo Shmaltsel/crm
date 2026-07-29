@@ -67,6 +67,8 @@ function FishSegment({ depth, animated }: { depth: number; animated: boolean }):
         backgroundPosition: `${-depth * SEGMENT_W}px 0px`,
         backgroundRepeat: 'no-repeat',
         transformStyle: 'preserve-3d',
+        transformOrigin: '0px 100px',
+        transform: 'translate3d(59px, 0, 0px) rotateY(0deg)',
         animation: animated ? `sf_rot${depth} ${CYCLE}s linear infinite` : 'none',
       }}
     >
