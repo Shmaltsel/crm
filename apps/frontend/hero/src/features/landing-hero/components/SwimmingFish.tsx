@@ -116,6 +116,8 @@ export function SwimmingFish({ className = '' }: { className?: string }) {
   const curPos = useRef({ x: 0, y: 0, tilt: 0 })
   const returning = useRef(false)
   const blend = useRef(0)
+  const mouseTarget = useRef({ x: 0, y: 0 })
+  const centerPos = useRef({ x: 0, y: 0 })
 
   useEffect(() => {
     if (swimming) {
@@ -137,14 +139,16 @@ export function SwimmingFish({ className = '' }: { className?: string }) {
         curPos.current.y += (0 - curPos.current.y) * ease
         curPos.current.tilt += (0 - curPos.current.tilt) * ease
         smoothScaleX.current += (1 - smoothScaleX.current) * ease
+        centerPos.current.x += (0 - centerPos.current.x) * ease
+        centerPos.current.y += (0 - centerPos.current.y) * ease
 
         const b = blend.current
         const bx = curPos.current.x * b
         const by = curPos.current.y * b
         const bt = curPos.current.tilt * b
 
-        const tx = (bx + FISH_OFFSET_X).toFixed(2)
-        const ty = by.toFixed(2)
+        const tx = (bx + centerPos.current.x + FISH_OFFSET_X).toFixed(2)
+        const ty = (by + centerPos.current.y).toFixed(2)
         const sx = smoothScaleX.current.toFixed(3)
         const rot = bt.toFixed(2)
 
@@ -152,7 +156,7 @@ export function SwimmingFish({ className = '' }: { className?: string }) {
         if (swimRef.current) swimRef.current.style.transform = fishTransform
         if (shadowSwimRef.current) {
           shadowSwimRef.current.style.transform =
-            `translate(${(bx + FISH_OFFSET_X + SHADOW_OFFSET_X).toFixed(2)}px,${(by + SHADOW_OFFSET_Y).toFixed(2)}px) scaleX(${sx}) rotate(${rot}deg)`
+            `translate(${(bx + centerPos.current.x + FISH_OFFSET_X + SHADOW_OFFSET_X).toFixed(2)}px,${(by + centerPos.current.y + SHADOW_OFFSET_Y).toFixed(2)}px) scaleX(${sx}) rotate(${rot}deg)`
         }
 
         let hingeX = 0
@@ -190,7 +194,10 @@ export function SwimmingFish({ className = '' }: { className?: string }) {
       curPos.current.x = pos.x * b
       curPos.current.y = pos.y * b
 
-      const rawScaleX = Math.cos(pos.tanAngle) < 0 ? 1 : -1
+      centerPos.current.x += (mouseTarget.current.x - centerPos.current.x) * 0.08
+      centerPos.current.y += (mouseTarget.current.y - centerPos.current.y) * 0.08
+
+      const rawScaleX = Math.cos(pos.tanAngle) < 0 ? -1 : 1
       const lerpFactor = 0.08
       smoothScaleX.current += (rawScaleX - smoothScaleX.current) * lerpFactor
       if (Math.abs(smoothScaleX.current - rawScaleX) < 0.005) {
@@ -201,8 +208,8 @@ export function SwimmingFish({ className = '' }: { className?: string }) {
       const clampedTilt = Math.max(-5, Math.min(5, tiltDeg))
       curPos.current.tilt = clampedTilt * b
 
-      const tx = (curPos.current.x + FISH_OFFSET_X).toFixed(2)
-      const ty = curPos.current.y.toFixed(2)
+      const tx = (curPos.current.x + centerPos.current.x + FISH_OFFSET_X).toFixed(2)
+      const ty = (curPos.current.y + centerPos.current.y).toFixed(2)
       const sx = smoothScaleX.current.toFixed(3)
       const rot = curPos.current.tilt.toFixed(2)
 
@@ -211,7 +218,7 @@ export function SwimmingFish({ className = '' }: { className?: string }) {
       }
       if (shadowSwimRef.current) {
         shadowSwimRef.current.style.transform =
-          `translate(${(curPos.current.x + FISH_OFFSET_X + SHADOW_OFFSET_X).toFixed(2)}px,${(curPos.current.y + SHADOW_OFFSET_Y).toFixed(2)}px) scaleX(${sx}) rotate(${rot}deg)`
+          `translate(${(curPos.current.x + centerPos.current.x + FISH_OFFSET_X + SHADOW_OFFSET_X).toFixed(2)}px,${(curPos.current.y + centerPos.current.y + SHADOW_OFFSET_Y).toFixed(2)}px) scaleX(${sx}) rotate(${rot}deg)`
       }
 
       let cumAngleDeg = 0
@@ -237,6 +244,18 @@ export function SwimmingFish({ className = '' }: { className?: string }) {
     rafRef.current = requestAnimationFrame(animate)
     return () => cancelAnimationFrame(rafRef.current)
   }, [swimming])
+
+  function handleMouseMove(e: React.MouseEvent<HTMLDivElement>) {
+    const rect = e.currentTarget.getBoundingClientRect()
+    const cx = rect.width / 2
+    const cy = rect.height / 2
+    let dx = e.clientX - rect.left - cx
+    let dy = e.clientY - rect.top - cy
+    dx = Math.max(-150, Math.min(150, dx))
+    dy = Math.max(-150, Math.min(150, dy))
+    mouseTarget.current.x = dx
+    mouseTarget.current.y = dy
+  }
 
   function renderSegments(
     refs: (HTMLDivElement | null)[],
@@ -275,6 +294,7 @@ export function SwimmingFish({ className = '' }: { className?: string }) {
       style={{ overflow: 'visible', marginLeft: -60 }}
       onMouseEnter={() => setSwimming(true)}
       onMouseLeave={() => setSwimming(false)}
+      onMouseMove={handleMouseMove}
     >
       <div
         style={{
