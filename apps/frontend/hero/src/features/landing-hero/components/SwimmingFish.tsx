@@ -31,13 +31,13 @@ function buildKeyframes(): string {
   }
   css += `@keyframes sf_figure8{`
   css += `0%{transform:translate(0,0) scaleX(1)}`
-  css += `12.5%{transform:translate(30px,-18px) scaleX(1)}`
-  css += `25%{transform:translate(50px,0) scaleX(1)}`
-  css += `37.5%{transform:translate(30px,18px) scaleX(1)}`
+  css += `12.5%{transform:translate(12px,-10px) scaleX(1)}`
+  css += `25%{transform:translate(20px,0) scaleX(1)}`
+  css += `37.5%{transform:translate(12px,10px) scaleX(1)}`
   css += `50%{transform:translate(0,0) scaleX(-1)}`
-  css += `62.5%{transform:translate(-30px,-18px) scaleX(-1)}`
-  css += `75%{transform:translate(-50px,0) scaleX(-1)}`
-  css += `87.5%{transform:translate(-30px,18px) scaleX(-1)}`
+  css += `62.5%{transform:translate(-12px,-10px) scaleX(-1)}`
+  css += `75%{transform:translate(-20px,0) scaleX(-1)}`
+  css += `87.5%{transform:translate(-12px,10px) scaleX(-1)}`
   css += `100%{transform:translate(0,0) scaleX(1)}`
   css += `}`
   return css
@@ -46,22 +46,7 @@ function buildKeyframes(): string {
 const KEYFRAMES_CSS = buildKeyframes()
 
 function FishSegment({ depth, animated }: { depth: number; animated: boolean }): JSX.Element {
-  if (depth >= SEGMENT_COUNT) {
-    return (
-      <div
-        style={{
-          width: `${SEGMENT_W}px`,
-          height: `${SEGMENT_H}px`,
-          backgroundImage: `url(${FISH_SRC})`,
-          backgroundSize: `${FISH_TOTAL_W}px ${SEGMENT_H}px`,
-          backgroundPosition: `${-depth * SEGMENT_W}px 0px`,
-          backgroundRepeat: 'no-repeat',
-          backfaceVisibility: 'hidden',
-          WebkitBackfaceVisibility: 'hidden',
-        }}
-      />
-    )
-  }
+  const isLast = depth === SEGMENT_COUNT - 1
 
   return (
     <div
@@ -80,7 +65,7 @@ function FishSegment({ depth, animated }: { depth: number; animated: boolean }):
         animation: animated ? `sf_rot${depth} ${CYCLE}s linear infinite` : undefined,
       }}
     >
-      <FishSegment depth={depth + 1} animated={animated} />
+      {!isLast && <FishSegment depth={depth + 1} animated={animated} />}
     </div>
   )
 }
