@@ -6,26 +6,33 @@
 
 ## How It Works
 
-Риба використовує оригінальний CSS-підхід з вкладеними `<div>` (chain nesting).
+Риба використовує оригінальний CSS-підхід з вкладеними `<div>` (chain nesting) та `background-position` slicing.
 
-5 сегментів (Riba1–Riba5) ВКЛАДЕНІ один в одного, кожен 60×200px, з `background-image`
-(спрайт `fish-sprite.png`, 300×200px) та `background-position` для показу своєї "смуги".
+5 сегментів (Riba1–Riba5) ВКЛАДЕНІ один в одного рекурсивно, кожен 60×200px, з `background-image`
+(спрайт `fish-sprite.png`, 300×200px RGBA) та `background-position` для показу своєї "смуги".
+
+**БЕЗ overflow:hidden** — в оригіналі його немає; фон обрізається власними розмірами елемента.
 
 Вкладеність забезпечує КОМПОЗИЦІЮ трансформів: обертання батьківського сегмента
-переноситься на всі дочірні, а кожен наступний сегмент додає СВОЄ додаткове обертання
-ПОВЕРХ успадкованого. Саме це створює ефект "хребта, що плавно згинається".
+переноситься на всі дочірні, кожен наступний сегмент додає СВОЄ обертання ПОВЕРХ
+успадкованого — ефект "хребта, що плавно згинається".
 
-Ключові моменти:
-- **БЕЗ overflow:hidden** — в оригіналі його немає; фон обрізається власними
-  розмірами елемента (background-clip: border-box за замовчуванням)
-- **translate3d(X, 0, Z)** позиціонує кожен дочірній сегмент відносно батьківського
-- **transform-style: preserve-3d** на кожному сегменті
-- **perspective: 800px** на зовнішньому контейнері
-- **transformOrigin: center** (дефолт, без явного вказання)
+### Анімація
+- **Idle:** риба стоїть стабільно, без жодного руху (`animation: none`)
+- **Hover:** тіло хвилюється (`sf_rot0-4`) + риба пливе вісімкою (`sf_figure8`)
 
-Амплітуди: ±3°, ±10°, ±16°, ±42°, ±45° (з оригінального CSS).
-TranslateX: 59px (спокій), 59/58/55/52px (піки) — з style2.css anim1-5.
-TranslateZ: [0, 0, ±10, +30/-23, ±20] — з style2.css anim1-5.
+### Центрування
+Кумулятивний зсунутість вкладених сегментів: 4 × 59px = 236px праворуч.
+Компенсується `marginLeft: -148px` на контейнері (половина від ≈296px загальної ширини).
+Контейнер має фіксовані розміри 300×200px з `position: relative`.
+
+### Ключові значення (з оригінального style2.css)
+- `perspective: 800px` на зовнішньому контейнері
+- `transform-style: preserve-3d` на кожному сегменті
+- `translate3d(59px, 0, Z)` — X=59px (спокій), Z=[0, 0, ±10, +30/-23, ±20]
+- `rotateY`: ±3°, ±10°, ±16°, ±42°, ±45°
+- Всі сегменти: ОДНА Й ТА сама фаза (cycle 2s, linear)
+- `transformOrigin`: дефолт center (без явного вказання)
 
 ---
 
@@ -41,11 +48,9 @@ const SEGMENT_H = 200
 const SEGMENT_COUNT = 5
 const CYCLE = 2
 const FISH_SRC = '/materials/fish-sprite.png'
+const FISH_TOTAL_W = SEGMENT_W * SEGMENT_COUNT
 
 const SEG_PEAK = [3, 10, 16, 42, 45] as const
-const SEG_X = [59, 59, 59, 59, 59] as const
-const SEG_X_PEAK = [59, 59, 58, 55, 52] as const
-const SEG_X_PEAK_NEG = [59, 59, 58, 54, 52] as const
 const SEG_Z = [0, 0, 10, 30, 20] as const
 const SEG_Z_NEG = [0, 0, -10, -23, -20] as const
 
@@ -53,26 +58,33 @@ function buildKeyframes(): string {
   let css = ''
   for (let i = 0; i < SEGMENT_COUNT; i++) {
     const peak = SEG_PEAK[i]
-    const xRest = SEG_X[i]
-    const xPeak = SEG_X_PEAK[i]
-    const xPeakNeg = SEG_X_PEAK_NEG[i]
     const zPos = SEG_Z[i]
     const zNeg = SEG_Z_NEG[i]
     css += `@keyframes sf_rot${i}{`
-    css += `0%{transform:translate3d(${xRest}px,0,0) rotateY(0deg)}`
-    css += `25%{transform:translate3d(${xPeak}px,0,${zPos}px) rotateY(${-peak}deg)}`
-    css += `50%{transform:translate3d(${xRest}px,0,0) rotateY(0deg)}`
-    css += `75%{transform:translate3d(${xPeakNeg}px,0,${zNeg}px) rotateY(${peak}deg)}`
-    css += `100%{transform:translate3d(${xRest}px,0,0) rotateY(0deg)}`
+    css += `0%{transform:translate3d(59px,0,0) rotateY(0deg)}`
+    css += `25%{transform:translate3d(59px,0,${zPos}px) rotateY(${-peak}deg)}`
+    css += `50%{transform:translate3d(59px,0,0) rotateY(0deg)}`
+    css += `75%{transform:translate3d(59px,0,${zNeg}px) rotateY(${peak}deg)}`
+    css += `100%{transform:translate3d(59px,0,0) rotateY(0deg)}`
     css += `}`
   }
-  css += '@keyframes sf_wobble{0%,100%{transform:translateY(0)}50%{transform:translateY(-12px)}}'
+  css += `@keyframes sf_figure8{`
+  css += `0%{transform:translate(0,0) scaleX(1)}`
+  css += `12.5%{transform:translate(30px,-18px) scaleX(1)}`
+  css += `25%{transform:translate(50px,0) scaleX(1)}`
+  css += `37.5%{transform:translate(30px,18px) scaleX(1)}`
+  css += `50%{transform:translate(0,0) scaleX(-1)}`
+  css += `62.5%{transform:translate(-30px,-18px) scaleX(-1)}`
+  css += `75%{transform:translate(-50px,0) scaleX(-1)}`
+  css += `87.5%{transform:translate(-30px,18px) scaleX(-1)}`
+  css += `100%{transform:translate(0,0) scaleX(1)}`
+  css += `}`
   return css
 }
 
 const KEYFRAMES_CSS = buildKeyframes()
 
-function FishSegment({ depth }: { depth: number }): JSX.Element {
+function FishSegment({ depth, animated }: { depth: number; animated: boolean }): JSX.Element {
   if (depth >= SEGMENT_COUNT) {
     return (
       <div
@@ -80,7 +92,7 @@ function FishSegment({ depth }: { depth: number }): JSX.Element {
           width: `${SEGMENT_W}px`,
           height: `${SEGMENT_H}px`,
           backgroundImage: `url(${FISH_SRC})`,
-          backgroundSize: `${SEGMENT_W * SEGMENT_COUNT}px ${SEGMENT_H}px`,
+          backgroundSize: `${FISH_TOTAL_W}px ${SEGMENT_H}px`,
           backgroundPosition: `${-depth * SEGMENT_W}px 0px`,
           backgroundRepeat: 'no-repeat',
         }}
@@ -94,14 +106,14 @@ function FishSegment({ depth }: { depth: number }): JSX.Element {
         width: `${SEGMENT_W}px`,
         height: `${SEGMENT_H}px`,
         backgroundImage: `url(${FISH_SRC})`,
-        backgroundSize: `${SEGMENT_W * SEGMENT_COUNT}px ${SEGMENT_H}px`,
+        backgroundSize: `${FISH_TOTAL_W}px ${SEGMENT_H}px`,
         backgroundPosition: `${-depth * SEGMENT_W}px 0px`,
         backgroundRepeat: 'no-repeat',
         transformStyle: 'preserve-3d',
-        animation: `sf_rot${depth} ${CYCLE}s linear infinite`,
+        animation: animated ? `sf_rot${depth} ${CYCLE}s linear infinite` : 'none',
       }}
     >
-      <FishSegment depth={depth + 1} />
+      <FishSegment depth={depth + 1} animated={animated} />
     </div>
   )
 }
@@ -116,14 +128,25 @@ export function SwimmingFish({ className = '' }: { className?: string }) {
       onMouseLeave={() => setSwimming(false)}
     >
       <style>{KEYFRAMES_CSS}</style>
-      <div style={{ perspective: '800px' }}>
+      <div
+        style={{
+          perspective: '800px',
+          width: `${FISH_TOTAL_W}px`,
+          height: `${SEGMENT_H}px`,
+          position: 'relative',
+        }}
+      >
         <div
           style={{
-            animation: `sf_wobble 1.2s ease-in-out infinite`,
+            position: 'absolute',
+            top: 0,
+            left: '50%',
+            marginLeft: '-148px',
+            animation: swimming ? 'sf_figure8 4s ease-in-out infinite' : 'none',
             transformStyle: 'preserve-3d',
           }}
         >
-          <FishSegment depth={0} />
+          <FishSegment depth={0} animated={swimming} />
         </div>
       </div>
     </div>
