@@ -14,7 +14,7 @@ export interface BeatContent {
 export const WORLD_BEATS: WorldBeatData[] = [
   { beatIndices: [3, 4], portalKey: 'malyuvaika' },
   { beatIndices: [5], portalKey: 'hologram' },
-  { beatIndices: [6, 7], portalKey: 'popify' },
+  { beatIndices: [6], portalKey: 'popify' },
 ]
 
 export const BEAT_CONTENT: Record<number, BeatContent> = {
@@ -37,10 +37,5 @@ export const BEAT_CONTENT: Record<number, BeatContent> = {
     eyebrow: 'Проєкт 03 · Popify',
     heading: 'Відео на згадку',
     sub: 'Сучасний формат зйомки яскравих 360°-відео. Уся апаратура — наша. Від дітей потрібні лише настрій і улюблена пісня.',
-  },
-  7: {
-    eyebrow: 'Як це працює',
-    heading: 'Своє відео за кілька хвилин',
-    sub: '1-2 людини у кадрі — 200 грн, 3 і більше — 100 грн з кожного. Спробувати може кожен охочий.',
   },
 }

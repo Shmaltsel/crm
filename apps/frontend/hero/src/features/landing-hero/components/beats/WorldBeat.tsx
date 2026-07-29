@@ -4,6 +4,7 @@ import { BEAT_CONTENT, WORLD_BEATS } from '../../data/worlds'
 import { MEDIA_URLS } from '../../data/media'
 import { MediaPlaceholder } from '../MediaPlaceholder'
 import { HologramGallery } from '../HologramGallery'
+import { SwimmingFish } from '../SwimmingFish'
 import { PortalVideoCarousel, type CarouselVideo } from '../PortalVideoCarousel'
 
 interface Props {
@@ -58,6 +59,7 @@ export function WorldBeat({ progress, beatIndex }: Props) {
 
   const isHologram = beatIndex === 5
   const isPopify = beatIndex === 6
+  const isFish = beatIndex === 4
 
   return (
     <motion.div
@@ -98,6 +100,34 @@ export function WorldBeat({ progress, beatIndex }: Props) {
         <div className="flex max-w-[900px] flex-col items-center gap-8 overflow-visible md:flex-row md:text-left">
           <div className={`${mediaAnimClass} w-full shrink-0 overflow-visible md:w-[500px]`}>
             <PortalVideoCarousel videos={POPIFY_VIDEOS} />
+          </div>
+          <div className="max-w-[480px]">
+            <p
+              className="mb-3.5 text-xs font-bold uppercase tracking-[0.18em] text-gold opacity-90 stagger-word"
+              style={{ animationDelay: '0.1s' }}
+            >
+              {content.eyebrow}
+            </p>
+            <h2
+              className="text-[clamp(26px,3.9vw,42px)] leading-[1.15] text-paper stagger-word"
+              style={{ animationDelay: '0.2s' }}
+            >
+              {content.heading}
+            </h2>
+            {content.sub && (
+              <p
+                className="mx-auto mt-4 max-w-[480px] text-[15.5px] leading-[1.55] text-mist-soft md:mx-0 stagger-word"
+                style={{ animationDelay: '0.35s' }}
+              >
+                {content.sub}
+              </p>
+            )}
+          </div>
+        </div>
+      ) : isFish ? (
+        <div className="flex max-w-[820px] flex-col items-center gap-8 md:flex-row md:text-left">
+          <div className={`${mediaAnimClass} flex h-[min(200px,28vw)] w-full shrink-0 items-center justify-center md:h-[200px] md:w-[280px]`}>
+            <SwimmingFish />
           </div>
           <div className="max-w-[480px]">
             <p

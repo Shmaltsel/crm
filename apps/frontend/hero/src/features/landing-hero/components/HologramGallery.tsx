@@ -128,7 +128,7 @@ function PhotoCard({
       onMouseEnter={onHover}
       onMouseLeave={onLeave}
       onClick={onClick}
-      className={`relative cursor-pointer ${className ?? ''}`}
+      className={`relative overflow-visible cursor-pointer ${className ?? ''}`}
       style={{
         zIndex: isHovered ? 10 : 1,
         transform: isHovered ? 'scale(1.25) rotate(0deg)' : `rotate(${rotation}deg)`,
@@ -141,7 +141,7 @@ function PhotoCard({
         transitionTimingFunction: 'cubic-bezier(0.25, 0.1, 0.25, 1), ease',
       }}
     >
-      <div className="overflow-hidden rounded-xl border border-white/10">
+      <div className="h-full w-full overflow-hidden rounded-xl border border-white/10">
         {/* Base image */}
         <img
           src={photo.src}

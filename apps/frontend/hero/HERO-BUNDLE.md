@@ -1,6 +1,6 @@
 # @svitlo/hero — Project Bundle
 
-**Generated:** 2026-07-28T20:54:36.202Z
+**Generated:** 2026-07-28T21:10:05.151Z
 
 ## Project Tree
 
@@ -70,6 +70,7 @@
 │   │       │   └── useSmoothProgress.ts
 │   │       ├── lib/
 │   │       │   ├── animation.ts
+│   │       │   ├── beats.ts
 │   │       │   ├── colors.ts
 │   │       │   ├── rocketMath.ts
 │   │       │   └── zIndex.ts
@@ -448,8 +449,7 @@ export function FinaleBeat({ progress, onOpenContact }: Props) {
 
 ### `src/features/landing-hero/components/beats/GalleryBeat.tsx`
 ```typescript
-import { MotionValue, motion, useTransform, useMotionValueEvent } from 'framer-motion'
-import { useState } from 'react'
+import { MotionValue, motion, useTransform } from 'framer-motion'
 import { useBeatStrength } from '../../hooks/useBeatStrength'
 import { GALLERY_NODES } from '../../data/gallery'
 import { MediaPlaceholder } from '../MediaPlaceholder'
@@ -538,42 +538,59 @@ function GalCard({
 
 ### `src/features/landing-hero/components/beats/HeroBeat.tsx`
 ```typescript
-import { useEffect, useRef, useState, useCallback } from 'react'
-import { motion, animate, useMotionValueEvent } from 'framer-motion'
+import { useEffect, useRef, useState } from 'react'
+import { animate, useMotionValueEvent } from 'framer-motion'
 import { useReducedMotion } from '../../hooks/useReducedMotion'
 import { useHeroIntro } from '../../hooks/useHeroIntro'
 import { HeroBubbles } from '../overlays/HeroBubbles'
+import { Z } from '../../lib/zIndex'
 import type { MotionValue } from 'framer-motion'
 
 interface Props {
   progress: MotionValue<number>
+  strength: MotionValue<number>
   onOpenContact: () => void
-  onHeroComplete?: () => void
 }
 
-export function HeroBeat({ progress, onOpenContact, onHeroComplete }: Props) {
+export function HeroBeat({ progress, strength, onOpenContact }: Props) {
   const reduced = useReducedMotion()
   const { phase: introPhase } = useHeroIntro()
-  const [heroVisible, setHeroVisible] = useState(true)
   const [bubblesActive, setBubblesActive] = useState(false)
   const [underwaterGlow, setUnderwaterGlow] = useState(0)
-  const [scrollTranslateY, setScrollTranslateY] = useState(0)
   const containerRef = useRef<HTMLDivElement>(null)
+  const trailRef = useRef<SVGSVGElement>(null)
+  const rocketRef = useRef<SVGGElement>(null)
   const titleRef = useRef<HTMLHeadingElement>(null)
   const subtitleRef = useRef<HTMLParagraphElement>(null)
   const ctaRef = useRef<HTMLDivElement>(null)
-  const completedRef = useRef(false)
+
+  useMotionValueEvent(strength, 'change', (s) => {
+    if (containerRef.current) {
+      containerRef.current.style.opacity = String(s)
+      containerRef.current.style.pointerEvents = s > 0.15 ? 'auto' : 'none'
+    }
+  })
 
   useMotionValueEvent(progress, 'change', (v) => {
     const HERO_END = 0.08
     const scrollFraction = Math.min(v / HERO_END, 1)
     const y = -scrollFraction * 100
-    setScrollTranslateY(y)
-    if (scrollFraction >= 1 && !completedRef.current) {
-      completedRef.current = true
-      setHeroVisible(false)
-      onHeroComplete?.()
+    if (containerRef.current) {
+      containerRef.current.style.transform = `translateY(${y}vh)`
     }
+    if (trailRef.current) {
+      const rocketX = 20 + Math.abs(y) * 0.6
+      const rocketY = 80 - Math.abs(y) * 0.8
+      trailRef.current.style.setProperty('--rocket-x', `${rocketX}%`)
+      trailRef.current.style.setProperty('--rocket-y', `${rocketY}%`)
+    }
+    if (rocketRef.current) {
+      const rocketX = 20 + Math.abs(y) * 0.6
+      const rocketY = 80 - Math.abs(y) * 0.8
+      rocketRef.current.style.left = `${rocketX}%`
+      rocketRef.current.style.top = `${rocketY}%`
+    }
+    setUnderwaterGlow(scrollFraction * 0.3)
   })
 
   useEffect(() => {
@@ -633,11 +650,6 @@ export function HeroBeat({ progress, onOpenContact, onHeroComplete }: Props) {
     }
   }, [reduced])
 
-  if (!heroVisible) return null
-
-  const rocketX = 20 + Math.abs(scrollTranslateY) * 0.6
-  const rocketY = 80 - Math.abs(scrollTranslateY) * 0.8
-
   return (
     <>
       <div
@@ -646,8 +658,7 @@ export function HeroBeat({ progress, onOpenContact, onHeroComplete }: Props) {
         aria-label="Головна секція"
         className="fixed inset-0 flex flex-col items-center justify-center overflow-hidden"
         style={{
-          transform: `translateY(${scrollTranslateY}vh)`,
-          zIndex: 50,
+          zIndex: Z.content,
         }}
       >
         <div
@@ -698,6 +709,7 @@ export function HeroBeat({ progress, onOpenContact, onHeroComplete }: Props) {
         </div>
 
         <svg
+          ref={trailRef}
           className="pointer-events-none absolute inset-0 h-full w-full"
           style={{ opacity: 0.6 }}
         >
@@ -711,8 +723,8 @@ export function HeroBeat({ progress, onOpenContact, onHeroComplete }: Props) {
           <line
             x1="15%"
             y1="85%"
-            x2={`${rocketX}%`}
-            y2={`${rocketY}%`}
+            x2="var(--rocket-x, 20%)"
+            y2="var(--rocket-y, 80%)"
             stroke="url(#heroTrail)"
             strokeWidth="2"
             strokeLinecap="round"
@@ -720,8 +732,8 @@ export function HeroBeat({ progress, onOpenContact, onHeroComplete }: Props) {
           <line
             x1="15%"
             y1="85%"
-            x2={`${rocketX}%`}
-            y2={`${rocketY}%`}
+            x2="var(--rocket-x, 20%)"
+            y2="var(--rocket-y, 80%)"
             stroke="#F2B84B"
             strokeWidth="0.5"
             strokeLinecap="round"
@@ -729,10 +741,11 @@ export function HeroBeat({ progress, onOpenContact, onHeroComplete }: Props) {
           />
         </svg>
         <div
+          ref={rocketRef}
           className="pointer-events-none absolute"
           style={{
-            left: `${rocketX}%`,
-            top: `${rocketY}%`,
+            left: '20%',
+            top: '80%',
             transform: 'translate(-50%, -50%) rotate(-35deg)',
             transition: 'none',
           }}
@@ -772,7 +785,7 @@ export function HeroBeat({ progress, onOpenContact, onHeroComplete }: Props) {
         </div>
       </div>
 
-      <HeroBubbles active={bubblesActive && heroVisible} />
+      <HeroBubbles active={bubblesActive} />
     </>
   )
 }
@@ -1787,7 +1800,10 @@ function useImagePreload(src: string): boolean {
 export function HologramGallery() {
   const [activeIdx, setActiveIdx] = useState<number | null>(null)
   const [hoveredIdx, setHoveredIdx] = useState<number | null>(null)
-  const hoversLoaded = HOLOGRAM_PHOTOS.map((p) => useImagePreload(p.hoverSrc))
+  const h0 = useImagePreload(HOLOGRAM_PHOTOS[0].hoverSrc)
+  const h1 = useImagePreload(HOLOGRAM_PHOTOS[1].hoverSrc)
+  const h2 = useImagePreload(HOLOGRAM_PHOTOS[2].hoverSrc)
+  const hoversLoaded = [h0, h1, h2]
 
   return (
     <>
@@ -1892,7 +1908,7 @@ function PhotoCard({
       onMouseEnter={onHover}
       onMouseLeave={onLeave}
       onClick={onClick}
-      className={`relative cursor-pointer overflow-hidden rounded-xl border border-white/10 ${className ?? ''}`}
+      className={`relative cursor-pointer ${className ?? ''}`}
       style={{
         zIndex: isHovered ? 10 : 1,
         transform: isHovered ? 'scale(1.25) rotate(0deg)' : `rotate(${rotation}deg)`,
@@ -1905,30 +1921,32 @@ function PhotoCard({
         transitionTimingFunction: 'cubic-bezier(0.25, 0.1, 0.25, 1), ease',
       }}
     >
-      {/* Base image */}
-      <img
-        src={photo.src}
-        alt={photo.alt}
-        className="absolute inset-0 h-full w-full object-cover"
-        style={{
-          opacity: hasHover && isHovered ? 0 : 1,
-          transform: isHovered ? 'scale(1.08)' : 'scale(1)',
-          transition: 'opacity 0.55s ease, transform 0.5s cubic-bezier(0.25, 0.1, 0.25, 1)',
-        }}
-        loading="lazy"
-      />
-      {/* Hover overlay image */}
-      {hasHover && (
+      <div className="overflow-hidden rounded-xl border border-white/10">
+        {/* Base image */}
         <img
-          src={photo.hoverSrc!}
+          src={photo.src}
           alt={photo.alt}
           className="absolute inset-0 h-full w-full object-cover"
           style={{
-            opacity: isHovered ? 1 : 0,
-            transition: 'opacity 0.55s ease',
+            opacity: hasHover && isHovered ? 0 : 1,
+            transform: isHovered ? 'scale(1.08)' : 'scale(1)',
+            transition: 'opacity 0.55s ease, transform 0.5s cubic-bezier(0.25, 0.1, 0.25, 1)',
           }}
+          loading="lazy"
         />
-      )}
+        {/* Hover overlay image */}
+        {hasHover && (
+          <img
+            src={photo.hoverSrc!}
+            alt={photo.alt}
+            className="absolute inset-0 h-full w-full object-cover"
+            style={{
+              opacity: isHovered ? 1 : 0,
+              transition: 'opacity 0.55s ease',
+            }}
+          />
+        )}
+      </div>
     </button>
   )
 }
@@ -4274,34 +4292,7 @@ export function useAudioAmbience() {
 ### `src/features/landing-hero/hooks/useBeatStrength.ts`
 ```typescript
 import { MotionValue, useTransform } from 'framer-motion'
-import { clamp, smoothstep } from '../lib/animation'
-
-const TOTAL_BEATS = 13
-
-/**
- * For a given beat index, computes a "strength" value (0..1) from global scroll progress.
- * Each beat occupies [i/N, (i+1)/N] of total scroll.
- * 28% fade zones at boundaries; first/last beats have special half-fade logic.
- */
-function computeBeatStrength(progress: number, index: number): number {
-  const N = TOTAL_BEATS
-  const start = index / N
-  const end = (index + 1) / N
-  const range = end - start
-  const fade = range * 0.28
-
-  let s: number
-  if (index === 0) {
-    s = progress > end - fade ? (end - progress) / fade : 1
-  } else if (index === N - 1) {
-    s = progress < start + fade ? (progress - start) / fade : 1
-  } else {
-    if (progress < start + fade) s = (progress - start) / fade
-    else if (progress > end - fade) s = (end - progress) / fade
-    else s = 1
-  }
-  return clamp(smoothstep(clamp(s, 0, 1)), 0, 1)
-}
+import { computeBeatStrength } from '../lib/beats'
 
 export function useBeatStrength(
   progress: MotionValue<number>,
@@ -4315,29 +4306,7 @@ export function useBeatStrength(
 ### `src/features/landing-hero/hooks/useBeatStrengths.ts`
 ```typescript
 import { MotionValue, useTransform } from 'framer-motion'
-import { clamp, smoothstep } from '../lib/animation'
-
-const TOTAL_BEATS = 13
-
-function computeBeatStrength(progress: number, index: number): number {
-  const N = TOTAL_BEATS
-  const start = index / N
-  const end = (index + 1) / N
-  const range = end - start
-  const fade = range * 0.28
-
-  let s: number
-  if (index === 0) {
-    s = progress > end - fade ? (end - progress) / fade : 1
-  } else if (index === N - 1) {
-    s = progress < start + fade ? (progress - start) / fade : 1
-  } else {
-    if (progress < start + fade) s = (progress - start) / fade
-    else if (progress > end - fade) s = (end - progress) / fade
-    else s = 1
-  }
-  return clamp(smoothstep(clamp(s, 0, 1)), 0, 1)
-}
+import { computeBeatStrength } from '../lib/beats'
 
 export function useBeatStrengths(
   progress: MotionValue<number>,
@@ -4458,11 +4427,11 @@ export function useHeroIntro(): HeroIntroState {
 ```typescript
 import { useRef, useEffect, useCallback } from 'react'
 import { lerp, clamp, smoothstep } from '../lib/animation'
+import { TOTAL_BEATS, computeBeatStrength } from '../lib/beats'
 import { interpolateRocket } from '../lib/rocketMath'
 import type { Timeline } from '../types/timeline'
 import type { MotionValue } from 'framer-motion'
 
-const TOTAL_BEATS = 13
 const DAMPING = 0.08
 const SPRING_K = 0.012
 const TRAIL_COLORS = ['#F2B84B', '#FF7A59', '#FBF5EA']
@@ -4470,25 +4439,6 @@ const AMBIENT_COLORS = ['#F2B84B', '#8FE3E0', '#FF7A59', '#FBF5EA']
 const WARP_DURATION_MS = 500
 
 let nextParticleId = 0
-
-function computeBeatStrength(progress: number, index: number): number {
-  const N = TOTAL_BEATS
-  const start = index / N
-  const end = (index + 1) / N
-  const range = end - start
-  const fade = range * 0.28
-  let s: number
-  if (index === 0) {
-    s = progress > end - fade ? (end - progress) / fade : 1
-  } else if (index === N - 1) {
-    s = progress < start + fade ? (progress - start) / fade : 1
-  } else {
-    if (progress < start + fade) s = (progress - start) / fade
-    else if (progress > end - fade) s = (end - progress) / fade
-    else s = 1
-  }
-  return clamp(smoothstep(clamp(s, 0, 1)), 0, 1)
-}
 
 const SCENE_LIGHTING: [number, number, number][] = [
   [0.95, 0.72, 0.29],
@@ -4688,8 +4638,8 @@ export function useMotionTimeline(
       }
 
       if (t.isScrolling && Math.abs(t.velocity) > 150 && t.trailParticles.length < 60 && !t.isWarping) {
-        const rocketBeatIdx = Math.floor(t.progress * 12.99)
-        const rocketBeat = t.beatStrengths[clamp(rocketBeatIdx, 0, 12)]
+        const rocketBeatIdx = Math.floor(t.progress * (TOTAL_BEATS - 1))
+        const rocketBeat = t.beatStrengths[clamp(rocketBeatIdx, 0, TOTAL_BEATS - 1)]
         if (rocketBeat > 0.05) {
           const rocket = interpolateRocket(t.progress, t.vw, t.vh)
           const rx = rocket.x + t.parallax[5].x + t.camera.x + t.camera.shakeX
@@ -4728,9 +4678,9 @@ export function useMotionTimeline(
         })
       }
 
-      const sceneIdx = clamp(Math.floor(t.progress * 12.99), 0, 12)
-      const nextIdx = clamp(sceneIdx + 1, 0, 12)
-      const sceneFrac = (t.progress * 12.99) - sceneIdx
+      const sceneIdx = clamp(Math.floor(t.progress * (TOTAL_BEATS - 1)), 0, TOTAL_BEATS - 1)
+      const nextIdx = clamp(sceneIdx + 1, 0, TOTAL_BEATS - 1)
+      const sceneFrac = (t.progress * (TOTAL_BEATS - 1)) - sceneIdx
       const sceneBlend = smoothstep(clamp(sceneFrac < 0.85 ? 0 : (sceneFrac - 0.85) / 0.15, 0, 1))
 
       const sA = SCENE_LIGHTING[sceneIdx]
@@ -4839,8 +4789,8 @@ export function useRocketPath(progress: MotionValue<number>) {
 import { useEffect, useRef } from 'react'
 import { MotionValue } from 'framer-motion'
 import { tweenScrollTo } from '../lib/animation'
+import { TOTAL_BEATS } from '../lib/beats'
 
-const TOTAL_BEATS = 13
 const STOP_DELAY = 250
 
 function getBeatCenters(): number[] {
@@ -5007,6 +4957,7 @@ import { useSmoothProgress } from './hooks/useSmoothProgress'
 import { useScrollSnap } from './hooks/useScrollSnap'
 import { useReducedMotion } from './hooks/useReducedMotion'
 import { clamp, tweenScrollTo } from './lib/animation'
+import { TOTAL_BEATS } from './lib/beats'
 import { Z } from './lib/zIndex'
 
 import { Nav } from './components/Nav'
@@ -5048,19 +4999,8 @@ export function LandingHero() {
   useScrollSnap(smoothProgress, containerRef, !reduced)
 
   const { commands, setCommands } = useAmbientCommands()
-  const [heroCompleted, setHeroCompleted] = useState(false)
 
   const finaleStrength = beatStrengths[12]
-
-  const handleHeroComplete = useCallback(() => {
-    if (heroCompleted) return
-    setHeroCompleted(true)
-    const track = containerRef.current
-    if (!track) return
-    const total = Math.max(1, track.scrollHeight - window.innerHeight)
-    const target = (1 / 13) * total
-    window.scrollTo(0, target)
-  }, [containerRef, heroCompleted])
 
   const WARP_HALF = 250
 
@@ -5070,8 +5010,8 @@ export function LandingHero() {
     const total = Math.max(1, track.scrollHeight - window.innerHeight)
     const target = clamp(frac, 0, 1) * total
     const currentProgress = clamp(smoothProgress.get(), 0, 1)
-    const fromBeat = Math.floor(currentProgress * 13)
-    const toBeat = Math.floor(frac * 13)
+    const fromBeat = Math.floor(currentProgress * TOTAL_BEATS)
+    const toBeat = Math.floor(frac * TOTAL_BEATS)
     const distance = Math.abs(toBeat - fromBeat)
 
     if (distance <= 1) {
@@ -5091,7 +5031,7 @@ export function LandingHero() {
   }, [containerRef, smoothProgress, startWarp, reduced])
 
   const beats: [MotionValue<number>, React.ReactNode][] = [
-    [beatStrengths[0], <HeroBeat key="hero" progress={smoothProgress} onOpenContact={() => setContactOpen(true)} onHeroComplete={handleHeroComplete} />],
+    [beatStrengths[0], <HeroBeat key="hero" progress={smoothProgress} strength={beatStrengths[0]} onOpenContact={() => setContactOpen(true)} />],
     [beatStrengths[1], <ManifestBeat key="manifest" progress={smoothProgress} />],
     [beatStrengths[2], <PillarsBeat key="pillars" progress={smoothProgress} />],
     ...[3, 4, 5, 6, 7].map((i) => [beatStrengths[i], <WorldBeat key={`world-${i}`} progress={smoothProgress} beatIndex={i} />] as [MotionValue<number>, React.ReactNode]),
@@ -5133,7 +5073,7 @@ export function LandingHero() {
         <GlobalAmbientCanvas tl={tl} subscribe={subscribe} setCommands={setCommands} />
         <PortalOverlay tl={tl} subscribe={subscribe} progress={smoothProgress} />
         <GrassGround tl={tl} subscribe={subscribe} />
-        <RocketOverlay tl={tl} progress={smoothProgress} subscribe={subscribe} heroCompleted={heroCompleted} />
+        <RocketOverlay tl={tl} progress={smoothProgress} subscribe={subscribe} />
         <motion.div
           className="pointer-events-none fixed inset-0 bg-night"
           style={{ opacity: finaleStrength, zIndex: 4 }}
@@ -5197,6 +5137,34 @@ export function tweenScrollTo(
     }
     requestAnimationFrame(step)
   })
+}
+
+```
+
+### `src/features/landing-hero/lib/beats.ts`
+```typescript
+import { clamp, smoothstep } from './animation'
+
+export const TOTAL_BEATS = 13
+
+export function computeBeatStrength(progress: number, index: number): number {
+  const N = TOTAL_BEATS
+  const start = index / N
+  const end = (index + 1) / N
+  const range = end - start
+  const fade = range * 0.28
+
+  let s: number
+  if (index === 0) {
+    s = progress > end - fade ? (end - progress) / fade : 1
+  } else if (index === N - 1) {
+    s = progress < start + fade ? (progress - start) / fade : 1
+  } else {
+    if (progress < start + fade) s = (progress - start) / fade
+    else if (progress > end - fade) s = (end - progress) / fade
+    else s = 1
+  }
+  return clamp(smoothstep(clamp(s, 0, 1)), 0, 1)
 }
 
 ```
@@ -5620,4 +5588,4 @@ createRoot(document.getElementById('root')!).render(
 
 ---
 
-**Files:** 69 | **Lines:** 5,142
+**Files:** 70 | **Lines:** 5,105
