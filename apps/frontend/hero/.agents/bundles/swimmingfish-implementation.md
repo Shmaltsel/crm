@@ -148,7 +148,7 @@ export function SwimmingFish({ className = '' }: { className?: string }) {
             top: 0,
             left: '50%',
             marginLeft: '-148px',
-            animation: swimming ? 'sf_figure8 4s ease-in-out infinite' : undefined,
+            animation: swimming ? 'sf_figure8 4s ease-in-out infinite' : 'none',
             transformStyle: 'preserve-3d',
           }}
         >
