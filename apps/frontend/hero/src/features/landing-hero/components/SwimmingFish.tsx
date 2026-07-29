@@ -3,14 +3,25 @@ import { useState } from 'react'
 const SEGMENT_W = 60
 const SEGMENT_COUNT = 5
 const CYCLE = 2
+const SVG_TOTAL_W = 300
 
 const SEG_PEAK = [3, 10, 16, 42, 45] as const
+const SEG_Z = [0, 0, 10, 30, 20] as const
+const SEG_Z_NEG = [0, 0, -10, -23, -20] as const
 
 function buildKeyframes(): string {
   let css = ''
   for (let i = 0; i < SEGMENT_COUNT; i++) {
     const peak = SEG_PEAK[i]
-    css += `@keyframes sf_rot${i}{0%{transform:rotateY(0deg)}25%{transform:rotateY(${-peak}deg)}50%{transform:rotateY(0deg)}75%{transform:rotateY(${peak}deg)}100%{transform:rotateY(0deg)}}`
+    const zPos = SEG_Z[i]
+    const zNeg = SEG_Z_NEG[i]
+    css += `@keyframes sf_rot${i}{`
+    css += `0%{transform:translate3d(0,0,0) rotateY(0deg)}`
+    css += `25%{transform:translate3d(0,0,${zPos}px) rotateY(${-peak}deg)}`
+    css += `50%{transform:translate3d(0,0,0) rotateY(0deg)}`
+    css += `75%{transform:translate3d(0,0,${zNeg}px) rotateY(${peak}deg)}`
+    css += `100%{transform:translate3d(0,0,0) rotateY(0deg)}`
+    css += `}`
   }
   css += '@keyframes sf_swim{0%{transform:translateX(-120%)}100%{transform:translateX(120%)}}'
   css += '@keyframes sf_wobble{0%,100%{transform:translateY(0)}50%{transform:translateY(-12px)}}'
@@ -21,7 +32,11 @@ const KEYFRAMES_CSS = buildKeyframes()
 
 function FishSVG() {
   return (
-    <>
+    <svg
+      viewBox={`0 0 ${SVG_TOTAL_W} 100`}
+      className="h-full w-full"
+      style={{ display: 'block' }}
+    >
       <defs>
         <linearGradient id="sfH" x1="0" y1="0" x2="0" y2="1">
           <stop offset="0%" stopColor="#FFD97A" />
@@ -59,7 +74,51 @@ function FishSVG() {
       <path d="M250,50 L300,20 Q305,50 300,80 Z" fill="url(#sfT)" />
       <path d="M255,50 L295,28 Q298,50 295,72 Z" fill="url(#sfT)" opacity={0.6} />
       <path d="M260,50 L290,36 Q292,50 290,64 Z" fill="url(#sfT)" opacity={0.3} />
-    </>
+    </svg>
+  )
+}
+
+function SegmentWindow({
+  depth,
+  children,
+}: {
+  depth: number
+  children: React.ReactNode
+}): JSX.Element {
+  if (depth >= SEGMENT_COUNT) {
+    return <>{children}</>
+  }
+
+  const offset = -(depth * SEGMENT_W)
+
+  return (
+    <div
+      style={{
+        width: `${SEGMENT_W}px`,
+        height: '100%',
+        overflow: 'hidden',
+        position: 'relative',
+        transformStyle: 'preserve-3d',
+        transformOrigin: '0px 50px',
+        animation: `sf_rot${depth} ${CYCLE}s linear infinite`,
+      }}
+    >
+      <div
+        style={{
+          position: 'absolute',
+          top: 0,
+          left: 0,
+          height: '100%',
+          width: `${SVG_TOTAL_W}px`,
+          transform: `translateX(${offset}px)`,
+          transformStyle: 'preserve-3d',
+        }}
+      >
+        <SegmentWindow depth={depth + 1}>
+          {children}
+        </SegmentWindow>
+      </div>
+    </div>
   )
 }
 
@@ -68,85 +127,30 @@ export function SwimmingFish({ className = '' }: { className?: string }) {
 
   return (
     <div
-      className={`relative flex items-center justify-center overflow-hidden ${className}`}
+      className={`relative flex items-center justify-center ${className}`}
       onMouseEnter={() => setSwimming(true)}
       onMouseLeave={() => setSwimming(false)}
     >
       <style>{KEYFRAMES_CSS}</style>
-      {/* Outer wrapper: perspective for 3D */}
       <div
         style={{
           perspective: '800px',
           perspectiveOrigin: '50% 50%',
         }}
       >
-        {/* Swim + wobble container */}
         <div
           style={{
             animation: swimming
               ? 'sf_swim 4s ease-in-out infinite alternate, sf_wobble 1.2s ease-in-out infinite'
               : 'sf_wobble 1.2s ease-in-out infinite',
             transformStyle: 'preserve-3d',
+            width: `${SEGMENT_W * SEGMENT_COUNT}px`,
+            height: '100px',
           }}
         >
-          {/* SVG viewBox: 300×100, fish fits in that */}
-          <svg
-            viewBox="0 0 300 100"
-            className="h-auto w-[180px] md:w-[220px]"
-            style={{ overflow: 'visible' }}
-          >
-            {/* Segment 1 (head): clip 0-60, rotate ±3° */}
-            <g
-              style={{
-                clipPath: 'inset(0 240px 0 0)',
-                transformOrigin: `${SEGMENT_W}px 50px`,
-                animation: `sf_rot0 ${CYCLE}s linear infinite`,
-                transformStyle: 'preserve-3d',
-              }}
-            >
-              {/* Segment 2: clip 60-120, rotate ±10° */}
-              <g
-                style={{
-                  clipPath: 'inset(0 180px 0 0)',
-                  transformOrigin: `${SEGMENT_W * 2}px 50px`,
-                  animation: `sf_rot1 ${CYCLE}s linear infinite`,
-                  transformStyle: 'preserve-3d',
-                }}
-              >
-                {/* Segment 3: clip 120-180, rotate ±16° */}
-                <g
-                  style={{
-                    clipPath: 'inset(0 120px 0 0)',
-                    transformOrigin: `${SEGMENT_W * 3}px 50px`,
-                    animation: `sf_rot2 ${CYCLE}s linear infinite`,
-                    transformStyle: 'preserve-3d',
-                  }}
-                >
-                  {/* Segment 4: clip 180-240, rotate ±42° */}
-                  <g
-                    style={{
-                      clipPath: 'inset(0 60px 0 0)',
-                      transformOrigin: `${SEGMENT_W * 4}px 50px`,
-                      animation: `sf_rot3 ${CYCLE}s linear infinite`,
-                      transformStyle: 'preserve-3d',
-                    }}
-                  >
-                    {/* Segment 5 (tail): clip 240-300, rotate ±45° */}
-                    <g
-                      style={{
-                        clipPath: 'inset(0 0px 0 0)',
-                        transformOrigin: `${SEGMENT_W * 5}px 50px`,
-                        animation: `sf_rot4 ${CYCLE}s linear infinite`,
-                        transformStyle: 'preserve-3d',
-                      }}
-                    >
-                      <FishSVG />
-                    </g>
-                  </g>
-                </g>
-              </g>
-            </g>
-          </svg>
+          <SegmentWindow depth={0}>
+            <FishSVG />
+          </SegmentWindow>
         </div>
       </div>
     </div>
