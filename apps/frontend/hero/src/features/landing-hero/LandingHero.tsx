@@ -1,4 +1,4 @@
-import { useCallback, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import { motion } from 'framer-motion'
 import { useScrollStory } from './hooks/useScrollStory'
 import { useMotionTimeline } from './hooks/useMotionTimeline'
@@ -38,6 +38,8 @@ import { BeatWrapper } from './components/BeatWrapper'
 import type { MotionValue } from 'framer-motion'
 
 export function LandingHero() {
+  useEffect(() => { window.scrollTo(0, 0) }, [])
+
   const { containerRef, scrollYProgress } = useScrollStory()
   const smoothProgress = useSmoothProgress(scrollYProgress)
   const { tl, subscribe, startWarp } = useMotionTimeline(smoothProgress)
